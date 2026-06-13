@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        :root {
+            --primary-glow: rgba(0, 219, 233, 0.15);
+            --glass-bg: rgba(16, 20, 22, 0.6);
+        }
+        body {
+            background-color: #020405;
+            background-image: 
+                linear-gradient(rgba(0, 219, 233, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 219, 233, 0.03) 1px, transparent 1px);
+            background-size: 32px 32px;
+            color: #e0e3e6;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(132, 148, 149, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        .glass-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(219, 252, 255, 0.3), transparent);
+        }
+        .cyber-button {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .cyber-button:hover {
+            box-shadow: 0 0 15px rgba(0, 219, 233, 0.4);
+            transform: translateY(-1px);
+        }
+        .glow-pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 219, 233, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(0, 219, 233, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 219, 233, 0); }
+        }
+        .cut-corner {
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-bright": "#363a3c",
+                      "on-secondary-fixed-variant": "#6b00b0",
+                      "on-tertiary-container": "#c10018",
+                      "secondary-fixed-dim": "#dfb7ff",
+                      "on-error-container": "#ffdad6",
+                      "inverse-surface": "#e0e3e6",
+                      "surface-variant": "#313538",
+                      "on-primary-container": "#006970",
+                      "secondary-container": "#9d05ff",
+                      "on-primary": "#00363a",
+                      "surface-container-high": "#272a2d",
+                      "inverse-on-surface": "#2d3133",
+                      "on-background": "#e0e3e6",
+                      "on-secondary-fixed": "#2d004f",
+                      "primary-fixed": "#7df4ff",
+                      "on-tertiary-fixed-variant": "#930010",
+                      "surface-container": "#1c2022",
+                      "tertiary-fixed": "#ffdad6",
+                      "surface-container-highest": "#313538",
+                      "on-surface-variant": "#b9cacb",
+                      "tertiary-container": "#ffcec9",
+                      "on-secondary-container": "#f7e6ff",
+                      "primary-fixed-dim": "#00dbe9",
+                      "tertiary": "#fff3f2",
+                      "on-secondary": "#4b007e",
+                      "on-primary-fixed": "#002022",
+                      "secondary": "#dfb7ff",
+                      "primary-container": "#00f0ff",
+                      "surface-container-low": "#181c1e",
+                      "on-error": "#690005",
+                      "on-primary-fixed-variant": "#004f54",
+                      "surface": "#101416",
+                      "surface-tint": "#00dbe9",
+                      "outline-variant": "#3b494b",
+                      "background": "#101416",
+                      "surface-container-lowest": "#0b0f11",
+                      "inverse-primary": "#006970",
+                      "error-container": "#93000a",
+                      "secondary-fixed": "#f1daff",
+                      "error": "#ffb4ab",
+                      "primary": "#dbfcff",
+                      "tertiary-fixed-dim": "#ffb3ac",
+                      "on-surface": "#e0e3e6",
+                      "outline": "#849495",
+                      "surface-dim": "#101416",
+                      "on-tertiary-fixed": "#410003",
+                      "on-tertiary": "#680008"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "container-max": "1440px",
+                      "margin-desktop": "32px",
+                      "margin-mobile": "16px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "display-lg": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "data-sm": ["JetBrains Mono"],
+                      "label-caps": ["JetBrains Mono"],
+                      "body-base": ["Inter"],
+                      "data-lg": ["JetBrains Mono"]
+              },
+              "fontSize": {
+                      "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800"}],
+                      "headline-md": ["24px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "data-sm": ["13px", {"lineHeight": "1.2", "letterSpacing": "0.02em", "fontWeight": "400"}],
+                      "label-caps": ["11px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700"}],
+                      "body-base": ["16px", {"lineHeight": "1.5", "letterSpacing": "0em", "fontWeight": "400"}],
+                      "data-lg": ["20px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "500"}]
+              }
+            },
+          },
+        }
+      </script>
+</head>
+<body class="dark overflow-x-hidden">
+<!-- TopNavBar -->
+<nav class="flex justify-between items-center w-full px-margin-desktop h-16 fixed top-0 z-50 bg-surface/80 backdrop-blur-md border-b border-outline-variant/20 shadow-[0_0_15px_rgba(0,219,233,0.1)]">
+<div class="flex items-center gap-8">
+<span class="font-display-lg text-display-lg font-black tracking-tighter text-primary italic">ARCSIGNAL</span>
+<div class="hidden md:flex gap-6">
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Dashboard</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Markets</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Feed</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Leaderboard</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Analytics</a>
+<a class="font-label-caps text-label-caps text-primary border-b-2 border-primary pb-1" href="#">Profile</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="bg-surface-container-high px-3 py-1.5 rounded-lg border border-outline-variant/30 flex items-center gap-2">
+<span class="font-data-sm text-data-sm text-primary">0.00 USDC</span>
+</div>
+<button class="bg-primary-container text-on-primary-container px-4 py-1.5 rounded-lg font-label-caps text-label-caps cyber-button flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]" data-icon="account_balance_wallet">account_balance_wallet</span>
+                Connect Wallet
+            </button>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] w-[264px] flex flex-col p-4 z-40 bg-surface-container-low/60 backdrop-blur-xl border-r border-outline-variant/20">
+<div class="flex items-center gap-3 px-2 mb-8">
+<div class="w-8 h-8 rounded bg-primary-container/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[18px] glow-pulse rounded-full" data-icon="hub">hub</span>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-primary leading-none">ARC TESTNET</p>
+<p class="font-data-sm text-data-sm text-on-surface-variant text-[10px]">ARC-W1 Node Active</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-on-surface-variant hover:bg-surface-bright/10 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-label-caps text-label-caps">Markets</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-on-surface-variant hover:bg-surface-bright/10 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="query_stats">query_stats</span>
+<span class="font-label-caps text-label-caps">Activity</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg bg-primary-container/10 text-primary border-r-2 border-primary translate-x-1 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span>
+<span class="font-label-caps text-label-caps">Portfolio</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-on-surface-variant hover:bg-surface-bright/10 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="lock">lock</span>
+<span class="font-label-caps text-label-caps">Vaults</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-on-surface-variant hover:bg-surface-bright/10 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+<span class="font-label-caps text-label-caps">Governance</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded-lg text-on-surface-variant hover:bg-surface-bright/10 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+<span class="font-label-caps text-label-caps">Support</span>
+</a>
+</nav>
+<button class="my-6 w-full py-3 bg-primary text-on-primary font-label-caps text-label-caps rounded-lg cyber-button flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="add">add</span>
+            New Prediction
+        </button>
+<div class="pt-4 border-t border-outline-variant/20 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-bright/10 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-caps text-label-caps">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-bright/10 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span class="font-label-caps text-label-caps">Docs</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="ml-[264px] pt-24 px-margin-desktop pb-20 max-w-[1200px]">
+<!-- Profile Header -->
+<header class="glass-card p-8 rounded-xl mb-gutter flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
+<div class="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-[80px]"></div>
+<div class="flex items-center gap-6 z-10">
+<div class="w-20 h-20 rounded-xl bg-surface-container-highest border border-primary/30 flex items-center justify-center relative">
+<span class="material-symbols-outlined text-display-lg text-primary" data-icon="fingerprint">fingerprint</span>
+<div class="absolute -bottom-1 -right-1 w-4 h-4 bg-primary rounded-full border-2 border-surface glow-pulse"></div>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md text-primary flex items-center gap-3">
+                        0x4a2...9b1c
+                        <button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="content_copy">content_copy</span>
+</button>
+</h1>
+<div class="flex items-center gap-4 mt-1">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-primary glow-pulse"></span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">Connected to ARC Testnet</span>
+</div>
+<div class="h-4 w-[1px] bg-outline-variant/30"></div>
+<span class="font-label-caps text-label-caps text-on-surface-variant">ID: #ARC-1024</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end z-10">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-1">Balance</p>
+<div class="flex items-baseline gap-2">
+<span class="font-data-lg text-[32px] font-bold text-primary">1,240.50</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">USDC</span>
+</div>
+</div>
+</header>
+<!-- Personal Stats Row -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-gutter mb-gutter">
+<div class="glass-card p-6 rounded-xl text-center">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-2">Win Rate</p>
+<p class="font-data-lg text-headline-md text-primary font-bold">68%</p>
+<div class="w-full h-1 bg-surface-container-highest mt-3 rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 68%"></div>
+</div>
+</div>
+<div class="glass-card p-6 rounded-xl text-center">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-2">Staked Value</p>
+<p class="font-data-lg text-headline-md text-primary font-bold">5,200 <span class="text-xs font-normal">USDC</span></p>
+<p class="font-data-sm text-data-sm text-primary/60 mt-1">Active Collateral</p>
+</div>
+<div class="glass-card p-6 rounded-xl text-center border-primary/40 shadow-[inset_0_0_10px_rgba(0,219,233,0.05)]">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-2">Total Profit</p>
+<p class="font-data-lg text-headline-md text-primary font-bold">+1,240 <span class="text-xs font-normal">USDC</span></p>
+<p class="font-data-sm text-data-sm text-primary/60 mt-1">Net Earnings</p>
+</div>
+<div class="glass-card p-6 rounded-xl text-center">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-2">Markets Entered</p>
+<p class="font-data-lg text-headline-md text-primary font-bold">42</p>
+<p class="font-data-sm text-data-sm text-on-surface-variant mt-1">Predictions Cast</p>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<!-- Left: Staking History -->
+<div class="lg:col-span-2 flex flex-col gap-gutter">
+<div class="glass-card rounded-xl overflow-hidden">
+<div class="px-6 py-4 border-b border-outline-variant/20 flex justify-between items-center">
+<h2 class="font-label-caps text-label-caps text-primary tracking-widest">STAKING HISTORY</h2>
+<div class="flex gap-2">
+<span class="bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-bold border border-primary/20">LIVE</span>
+<span class="bg-surface-bright/20 text-on-surface-variant px-2 py-0.5 rounded text-[10px] font-bold">SETTLED</span>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left font-data-sm text-data-sm">
+<thead>
+<tr class="bg-surface-container-high/30 text-on-surface-variant">
+<th class="px-6 py-3 font-medium">Market</th>
+<th class="px-6 py-3 font-medium">Side</th>
+<th class="px-6 py-3 font-medium text-right">Amount</th>
+<th class="px-6 py-3 font-medium text-center">Outcome</th>
+<th class="px-6 py-3 font-medium text-right">P&amp;L</th>
+<th class="px-6 py-3 font-medium text-right">Date</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<tr class="hover:bg-surface-bright/5 transition-colors">
+<td class="px-6 py-4 font-medium text-on-surface">BTC/USD Prediction</td>
+<td class="px-6 py-4"><span class="text-primary bg-primary/10 px-2 py-0.5 rounded-sm">FOLLOW</span></td>
+<td class="px-6 py-4 text-right">500.00</td>
+<td class="px-6 py-4 text-center"><span class="text-primary font-bold">WIN</span></td>
+<td class="px-6 py-4 text-right text-primary">+240.00</td>
+<td class="px-6 py-4 text-right text-on-surface-variant">Oct 24</td>
+</tr>
+<tr class="hover:bg-surface-bright/5 transition-colors">
+<td class="px-6 py-4 font-medium text-on-surface">SOL Network TVL</td>
+<td class="px-6 py-4"><span class="text-error bg-error/10 px-2 py-0.5 rounded-sm">FADE</span></td>
+<td class="px-6 py-4 text-right">250.00</td>
+<td class="px-6 py-4 text-center"><span class="text-error font-bold">LOSS</span></td>
+<td class="px-6 py-4 text-right text-error">-250.00</td>
+<td class="px-6 py-4 text-right text-on-surface-variant">Oct 23</td>
+</tr>
+<tr class="hover:bg-surface-bright/5 transition-colors">
+<td class="px-6 py-4 font-medium text-on-surface">ETH Burn Rate</td>
+<td class="px-6 py-4"><span class="text-primary bg-primary/10 px-2 py-0.5 rounded-sm">FOLLOW</span></td>
+<td class="px-6 py-4 text-right">100.00</td>
+<td class="px-6 py-4 text-center text-on-surface-variant italic">PENDING</td>
+<td class="px-6 py-4 text-right text-on-surface-variant">--</td>
+<td class="px-6 py-4 text-right text-on-surface-variant">Oct 24</td>
+</tr>
+<tr class="hover:bg-surface-bright/5 transition-colors">
+<td class="px-6 py-4 font-medium text-on-surface">Layer 2 Adoption</td>
+<td class="px-6 py-4"><span class="text-primary bg-primary/10 px-2 py-0.5 rounded-sm">FOLLOW</span></td>
+<td class="px-6 py-4 text-right">1,200.00</td>
+<td class="px-6 py-4 text-center"><span class="text-primary font-bold">WIN</span></td>
+<td class="px-6 py-4 text-right text-primary">+850.00</td>
+<td class="px-6 py-4 text-right text-on-surface-variant">Oct 22</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Right: NFT Badge & Extras -->
+<div class="flex flex-col gap-gutter">
+<div class="glass-card rounded-xl p-6 relative overflow-hidden group">
+<div class="absolute inset-0 opacity-20 group-hover:opacity-40 transition-opacity">
+
+</div>
+<div class="relative z-10 flex flex-col items-center text-center">
+<div class="w-full h-48 rounded-lg mb-6 flex items-center justify-center relative border border-primary/20 bg-surface-container-lowest/40 backdrop-blur-sm">
+<div class="w-32 h-32 relative">
+<div class="absolute inset-0 bg-primary/20 blur-xl rounded-full"></div>
+<img alt="Prediction Pass" class="w-full h-full object-cover rounded-lg relative z-10 border border-primary/40 shadow-2xl" data-alt="A futuristic, high-detail cyberpunk NFT badge floating in a dark, atmospheric void. The badge features intricate holographic circuits, glowing cyan and violet neon lines, and sharp metallic edges. The lighting is dramatic, with high-contrast glints of light reflecting off the chrome surfaces, emphasizing its premium and technological nature. The overall aesthetic is dark and sophisticated, aligned with an elite trading platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYAKiEQSwZdPohnESXp0_67MdYdOt4zPmvoAg_s5Vr9T_38HnyVQOUnrvTqxjFTwTWYCQaxLVn3Mzik5LD41feb7qZzUSeTutinxCzkEd49RhWhbuy76vJ41dcid9N638pWVLJo1W2R5ARC1N2a8s2IHra_FKnPQgD6F8B96NISrJJ0fI6z1LbbVQxEsT6Kl8ZKq0v2pqf6YLIir379b3857bcMYVhlHobI1jZP4e4bR0kjG1h1GS4jUNm-cbfy41PJbSmz7B4vDl9"/>
+</div>
+</div>
+<h3 class="font-headline-md text-[18px] text-primary mb-2">MINT PREDICTION PASS NFT</h3>
+<p class="font-body-base text-data-sm text-on-surface-variant mb-6 px-4">Unlock advanced analytics, zero-fee staking, and exclusive governance rights on the ARC Network.</p>
+<button class="w-full py-3 bg-primary text-on-primary font-label-caps text-label-caps rounded-lg cyber-button shadow-[0_0_20px_rgba(0,219,233,0.3)]">
+                            Claim Access
+                        </button>
+</div>
+</div>
+<div class="glass-card rounded-xl p-6">
+<h3 class="font-label-caps text-label-caps text-primary mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" data-icon="bolt">bolt</span>
+                        RECENT ACHIEVEMENTS
+                    </h3>
+<div class="space-y-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="trending_up">trending_up</span>
+</div>
+<div>
+<p class="font-data-sm text-data-sm text-on-surface font-bold">HODL STRATEGIST</p>
+<p class="text-[10px] text-on-surface-variant font-label-caps">STAKED 10+ DAYS</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container/10 border border-secondary-container/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<div>
+<p class="font-data-sm text-data-sm text-on-surface font-bold">ORACLE EYE</p>
+<p class="text-[10px] text-on-surface-variant font-label-caps">5 CONSECUTIVE WINS</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Simple micro-interaction for active wallet state
+        document.querySelector('.cyber-button').addEventListener('click', function() {
+            this.classList.toggle('bg-primary');
+            this.classList.toggle('text-on-primary');
+            this.innerHTML = this.innerHTML.includes('Connect') ? 
+                '<span class="material-symbols-outlined text-[16px]" data-icon="check_circle">check_circle</span> 0x4a2...9b1c' : 
+                '<span class="material-symbols-outlined text-[16px]" data-icon="account_balance_wallet">account_balance_wallet</span> Connect Wallet';
+        });
+
+        // Dynamic glow following mouse for cards
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+                card.style.background = `radial-gradient(400px circle at ${x}px ${y}px, rgba(0, 219, 233, 0.04), transparent), var(--glass-bg)`;
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.background = `var(--glass-bg)`;
+            });
+        });
+    </script>
+</body></html>

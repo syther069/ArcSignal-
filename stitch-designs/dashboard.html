@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ARCSIGNAL | AI-Powered Prediction Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        .scanline-effect::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 20px;
+            background: linear-gradient(to bottom, transparent, rgba(0, 219, 233, 0.05), transparent);
+            animation: scanline 3s linear infinite;
+            pointer-events: none;
+        }
+        .glass-card {
+            backdrop-filter: blur(12px);
+            background: rgba(16, 20, 22, 0.6);
+            border: 1px solid rgba(132, 148, 149, 0.2);
+        }
+        .glass-card:hover {
+            border-color: rgba(0, 219, 233, 0.6);
+            box-shadow: 0 0 15px rgba(0, 219, 233, 0.1);
+        }
+        .data-glow {
+            text-shadow: 0 0 8px rgba(0, 219, 233, 0.5);
+        }
+        body {
+            background-color: #020405;
+            background-image: radial-gradient(circle at 2px 2px, rgba(0, 219, 233, 0.05) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+        .cut-corner {
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(0, 219, 233, 0.2);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#363a3c",
+                        "on-secondary-fixed-variant": "#6b00b0",
+                        "on-tertiary-container": "#c10018",
+                        "secondary-fixed-dim": "#dfb7ff",
+                        "on-error-container": "#ffdad6",
+                        "inverse-surface": "#e0e3e6",
+                        "surface-variant": "#313538",
+                        "on-primary-container": "#006970",
+                        "secondary-container": "#9d05ff",
+                        "on-primary": "#00363a",
+                        "surface-container-high": "#272a2d",
+                        "inverse-on-surface": "#2d3133",
+                        "on-background": "#e0e3e6",
+                        "on-secondary-fixed": "#2d004f",
+                        "primary-fixed": "#7df4ff",
+                        "on-tertiary-fixed-variant": "#930010",
+                        "surface-container": "#1c2022",
+                        "tertiary-fixed": "#ffdad6",
+                        "surface-container-highest": "#313538",
+                        "on-surface-variant": "#b9cacb",
+                        "tertiary-container": "#ffcec9",
+                        "on-secondary-container": "#f7e6ff",
+                        "primary-fixed-dim": "#00dbe9",
+                        "tertiary": "#fff3f2",
+                        "on-secondary": "#4b007e",
+                        "on-primary-fixed": "#002022",
+                        "secondary": "#dfb7ff",
+                        "primary-container": "#00f0ff",
+                        "surface-container-low": "#181c1e",
+                        "on-error": "#690005",
+                        "on-primary-fixed-variant": "#004f54",
+                        "surface": "#101416",
+                        "surface-tint": "#00dbe9",
+                        "outline-variant": "#3b494b",
+                        "background": "#101416",
+                        "surface-container-lowest": "#0b0f11",
+                        "inverse-primary": "#006970",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#f1daff",
+                        "error": "#ffb4ab",
+                        "primary": "#dbfcff",
+                        "tertiary-fixed-dim": "#ffb3ac",
+                        "on-surface": "#e0e3e6",
+                        "outline": "#849495",
+                        "surface-dim": "#101416",
+                        "on-tertiary-fixed": "#410003",
+                        "on-tertiary": "#680008"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "data-sm": ["JetBrains Mono"],
+                        "label-caps": ["JetBrains Mono"],
+                        "body-base": ["Inter"],
+                        "data-lg": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800"}],
+                        "headline-md": ["24px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "data-sm": ["13px", {"lineHeight": "1.2", "letterSpacing": "0.02em", "fontWeight": "400"}],
+                        "label-caps": ["11px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700"}],
+                        "body-base": ["16px", {"lineHeight": "1.5", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "data-lg": ["20px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="text-on-surface selection:bg-primary-container/30">
+<!-- TopNavBar -->
+<nav class="flex justify-between items-center w-full px-margin-desktop h-16 fixed top-0 z-50 bg-surface/80 backdrop-blur-md border-b border-outline-variant/20 shadow-[0_0_15px_rgba(0,219,233,0.1)]">
+<div class="flex items-center gap-6">
+<span class="font-display-lg text-display-lg font-black tracking-tighter text-primary italic">ARCSIGNAL</span>
+<div class="bg-primary-container/10 border border-primary/40 px-2 py-0.5 rounded-sm">
+<span class="font-label-caps text-label-caps text-primary">ARC TESTNET</span>
+</div>
+<div class="hidden lg:flex gap-8 ml-4">
+<a class="font-label-caps text-label-caps text-primary border-b-2 border-primary pb-1" href="#">Dashboard</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Markets</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Feed</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Leaderboard</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Analytics</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Profile</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="bg-surface-container-high px-3 py-1.5 rounded border border-outline-variant/20">
+<span class="font-data-sm text-data-sm text-on-surface">0.00 USDC</span>
+</div>
+<button class="bg-primary-container text-on-primary px-4 py-2 font-label-caps text-label-caps font-bold transition-all hover:shadow-[0_0_15px_rgba(0,219,233,0.4)] active:scale-95">
+                Connect Wallet
+            </button>
+<span class="material-symbols-outlined text-primary cursor-pointer" data-icon="account_balance_wallet">account_balance_wallet</span>
+</div>
+</nav>
+<!-- Live Ticker -->
+<div class="fixed top-16 left-0 w-full h-8 bg-surface-container-lowest border-b border-outline-variant/10 z-40 overflow-hidden flex items-center">
+<div class="animate-marquee whitespace-nowrap flex items-center gap-12 px-4">
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-[10px] text-on-surface-variant">BTC</span>
+<span class="font-data-sm text-[12px] text-primary">$64,231</span>
+<span class="font-data-sm text-[12px] text-primary-fixed-dim">(+2.1%)</span>
+</div>
+<div class="w-1 h-1 bg-outline-variant rounded-full"></div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-[10px] text-on-surface-variant">ETH</span>
+<span class="font-data-sm text-[12px] text-primary">$3,420</span>
+<span class="font-data-sm text-[12px] text-on-tertiary-container">(-0.5%)</span>
+</div>
+<div class="w-1 h-1 bg-outline-variant rounded-full"></div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-[10px] text-on-surface-variant">ARSENAL VS PORTO</span>
+<span class="font-data-sm text-[12px] text-primary">2 - 1</span>
+<span class="font-data-sm text-[12px] text-primary-container animate-pulse">(82')</span>
+</div>
+<!-- Duplicate for infinite effect -->
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-[10px] text-on-surface-variant">SOL</span>
+<span class="font-data-sm text-[12px] text-primary">$145.22</span>
+<span class="font-data-sm text-[12px] text-primary-fixed-dim">(+4.8%)</span>
+</div>
+</div>
+</div>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-24 h-[calc(100vh-96px)] w-[264px] bg-surface-container-low/60 backdrop-blur-xl border-r border-outline-variant/20 flex flex-col p-4 z-40">
+<div class="mb-8">
+<button class="w-full bg-primary-container text-on-primary p-3 font-label-caps text-label-caps font-bold transition-all hover:shadow-[0_0_20px_rgba(0,219,233,0.5)] flex items-center justify-center gap-2 active:scale-95">
+<span class="material-symbols-outlined text-[18px]" data-icon="add_circle">add_circle</span>
+                New Prediction
+            </button>
+</div>
+<nav class="flex-1 space-y-1">
+<div class="flex items-center gap-3 p-3 bg-primary-container/10 text-primary border-r-2 border-primary cursor-pointer group">
+<span class="material-symbols-outlined text-[20px]" data-icon="analytics">analytics</span>
+<span class="font-label-caps text-label-caps">Markets</span>
+</div>
+<div class="flex items-center gap-3 p-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-bright/10 transition-all cursor-pointer group">
+<span class="material-symbols-outlined text-[20px]" data-icon="query_stats">query_stats</span>
+<span class="font-label-caps text-label-caps">Activity</span>
+</div>
+<div class="flex items-center gap-3 p-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-bright/10 transition-all cursor-pointer group">
+<span class="material-symbols-outlined text-[20px]" data-icon="account_balance">account_balance</span>
+<span class="font-label-caps text-label-caps">Portfolio</span>
+</div>
+<div class="flex items-center gap-3 p-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-bright/10 transition-all cursor-pointer group">
+<span class="material-symbols-outlined text-[20px]" data-icon="lock">lock</span>
+<span class="font-label-caps text-label-caps">Vaults</span>
+</div>
+<div class="flex items-center gap-3 p-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-bright/10 transition-all cursor-pointer group">
+<span class="material-symbols-outlined text-[20px]" data-icon="gavel">gavel</span>
+<span class="font-label-caps text-label-caps">Governance</span>
+</div>
+<div class="flex items-center gap-3 p-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-bright/10 transition-all cursor-pointer group">
+<span class="material-symbols-outlined text-[20px]" data-icon="help_outline">help_outline</span>
+<span class="font-label-caps text-label-caps">Support</span>
+</div>
+</nav>
+<div class="mt-auto pt-4 border-t border-outline-variant/10 space-y-1">
+<div class="flex items-center gap-3 p-3 text-on-surface-variant hover:text-on-surface cursor-pointer">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+<span class="font-label-caps text-label-caps">Settings</span>
+</div>
+<div class="flex items-center gap-3 p-3 text-on-surface-variant hover:text-on-surface cursor-pointer">
+<span class="material-symbols-outlined text-[20px]" data-icon="description">description</span>
+<span class="font-label-caps text-label-caps">Docs</span>
+</div>
+<div class="mt-4 p-3 bg-surface-container-high rounded border border-outline-variant/10">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-primary-container animate-pulse shadow-[0_0_8px_rgba(0,219,233,1)]"></div>
+<div>
+<p class="font-label-caps text-[10px] text-primary">ARC TESTNET</p>
+<p class="font-data-sm text-[11px] text-on-surface-variant">ARC-W1 Node Active</p>
+</div>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-[264px] mr-[380px] pt-32 p-8 min-h-screen">
+<header class="mb-10 flex items-end justify-between">
+<div>
+<h1 class="font-display-lg text-[32px] text-primary tracking-tight mb-2">LIVE MARKETS</h1>
+<div class="flex gap-6">
+<div class="flex items-center gap-2">
+<span class="font-data-lg text-data-lg text-primary">12</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">Active AI Agents</span>
+</div>
+<div class="w-px h-8 bg-outline-variant/30"></div>
+<div class="flex items-center gap-2">
+<span class="font-data-lg text-data-lg text-primary">$2.4M</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">Total Volume</span>
+</div>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="bg-surface-container-high border border-outline-variant/30 px-3 py-1 font-label-caps text-[10px] text-on-surface hover:border-primary/60 transition-all">ALL</button>
+<button class="bg-primary-container/10 border border-primary/60 px-3 py-1 font-label-caps text-[10px] text-primary">SPORTS</button>
+<button class="bg-surface-container-high border border-outline-variant/30 px-3 py-1 font-label-caps text-[10px] text-on-surface hover:border-primary/60 transition-all">CRYPTO</button>
+</div>
+</header>
+<!-- Market Grid -->
+<div class="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-gutter">
+<!-- Market Card 1: Football -->
+<div class="glass-card scanline-effect relative overflow-hidden p-5 flex flex-col group transition-all duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]" data-icon="sports_soccer">sports_soccer</span>
+<span class="font-label-caps text-label-caps bg-primary/10 text-primary px-2 py-0.5 rounded">Football</span>
+</div>
+<span class="font-data-sm text-[11px] text-on-surface-variant">Ends in 2h 45m</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-6 leading-tight">Man City vs Real Madrid</h3>
+<div class="flex items-center justify-between mb-6 p-4 bg-surface-container-highest/40 border border-outline-variant/20 rounded">
+<div class="text-center flex-1">
+<p class="font-label-caps text-[9px] text-on-surface-variant mb-1">AI AGENT X-1</p>
+<p class="font-label-caps text-label-caps text-primary">PREDICTS CALL</p>
+</div>
+<div class="w-px h-8 bg-outline-variant/20 mx-4"></div>
+<div class="text-center flex-1">
+<p class="font-label-caps text-[9px] text-on-surface-variant mb-1">CONFIDENCE</p>
+<p class="font-data-lg text-data-lg text-primary">78%</p>
+</div>
+</div>
+<div class="space-y-4 mb-6">
+<div class="flex justify-between items-end mb-1">
+<span class="font-label-caps text-[10px] text-primary">CALL (CITY)</span>
+<span class="font-data-sm text-[12px] text-on-surface">1.45x</span>
+</div>
+<div class="w-full h-1 bg-surface-container-high overflow-hidden">
+<div class="bg-primary h-full shadow-[0_0_10px_rgba(0,219,233,0.8)]" style="width: 78%"></div>
+</div>
+</div>
+<div class="mt-auto grid grid-cols-2 gap-3">
+<button class="bg-primary text-on-primary p-3 font-label-caps text-label-caps font-bold transition-all hover:shadow-[0_0_15px_rgba(0,219,233,0.5)]">FOLLOW AI</button>
+<button class="border border-on-tertiary-container text-on-tertiary-container p-3 font-label-caps text-label-caps font-bold hover:bg-on-tertiary-container/10 transition-all">FADE AI</button>
+</div>
+</div>
+<!-- Market Card 2: Crypto -->
+<div class="glass-card scanline-effect relative overflow-hidden p-5 flex flex-col group transition-all duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]" data-icon="currency_bitcoin">currency_bitcoin</span>
+<span class="font-label-caps text-label-caps bg-primary/10 text-primary px-2 py-0.5 rounded">Crypto</span>
+</div>
+<span class="font-data-sm text-[11px] text-on-surface-variant">Ends in 6h 12m</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-6 leading-tight">BTC Price &gt; $65,000 by EOD</h3>
+<div class="flex items-center justify-between mb-6 p-4 bg-surface-container-highest/40 border border-outline-variant/20 rounded">
+<div class="text-center flex-1">
+<p class="font-label-caps text-[9px] text-on-surface-variant mb-1">AI AGENT Q-BIT</p>
+<p class="font-label-caps text-label-caps text-primary">PREDICTS CALL</p>
+</div>
+<div class="w-px h-8 bg-outline-variant/20 mx-4"></div>
+<div class="text-center flex-1">
+<p class="font-label-caps text-[9px] text-on-surface-variant mb-1">CONFIDENCE</p>
+<p class="font-data-lg text-data-lg text-primary">62%</p>
+</div>
+</div>
+<div class="space-y-4 mb-6">
+<div class="flex justify-between items-end mb-1">
+<span class="font-label-caps text-[10px] text-primary">YES (ABOVE)</span>
+<span class="font-data-sm text-[12px] text-on-surface">1.82x</span>
+</div>
+<div class="w-full h-1 bg-surface-container-high overflow-hidden">
+<div class="bg-primary h-full shadow-[0_0_10px_rgba(0,219,233,0.8)]" style="width: 62%"></div>
+</div>
+</div>
+<div class="mt-auto grid grid-cols-2 gap-3">
+<button class="bg-primary text-on-primary p-3 font-label-caps text-label-caps font-bold transition-all hover:shadow-[0_0_15px_rgba(0,219,233,0.5)]">FOLLOW AI</button>
+<button class="border border-on-tertiary-container text-on-tertiary-container p-3 font-label-caps text-label-caps font-bold hover:bg-on-tertiary-container/10 transition-all">FADE AI</button>
+</div>
+</div>
+<!-- Market Card 3: Football (Fade Case) -->
+<div class="glass-card scanline-effect relative overflow-hidden p-5 flex flex-col group transition-all duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[20px]" data-icon="sports_soccer">sports_soccer</span>
+<span class="font-label-caps text-label-caps bg-primary/10 text-primary px-2 py-0.5 rounded">Football</span>
+</div>
+<span class="font-data-sm text-[11px] text-on-surface-variant">Ends in 1h 05m</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-6 leading-tight">Liverpool vs Chelsea</h3>
+<div class="flex items-center justify-between mb-6 p-4 bg-surface-container-highest/40 border border-outline-variant/20 rounded">
+<div class="text-center flex-1">
+<p class="font-label-caps text-[9px] text-on-surface-variant mb-1">AI AGENT STRIKE</p>
+<p class="font-label-caps text-label-caps text-on-tertiary-container">PREDICTS FADE</p>
+</div>
+<div class="w-px h-8 bg-outline-variant/20 mx-4"></div>
+<div class="text-center flex-1">
+<p class="font-label-caps text-[9px] text-on-surface-variant mb-1">CONFIDENCE</p>
+<p class="font-data-lg text-data-lg text-on-tertiary-container">45%</p>
+</div>
+</div>
+<div class="space-y-4 mb-6">
+<div class="flex justify-between items-end mb-1">
+<span class="font-label-caps text-[10px] text-on-tertiary-container">FADE (LFC)</span>
+<span class="font-data-sm text-[12px] text-on-surface">2.25x</span>
+</div>
+<div class="w-full h-1 bg-surface-container-high overflow-hidden">
+<div class="bg-on-tertiary-container h-full shadow-[0_0_10px_rgba(193,0,24,0.8)]" style="width: 45%"></div>
+</div>
+</div>
+<div class="mt-auto grid grid-cols-2 gap-3">
+<button class="bg-surface-container-high border border-outline-variant text-on-surface p-3 font-label-caps text-label-caps font-bold transition-all">FOLLOW AI</button>
+<button class="bg-on-tertiary-container text-white p-3 font-label-caps text-label-caps font-bold hover:shadow-[0_0_15px_rgba(193,0,24,0.5)] transition-all">FADE AI</button>
+</div>
+</div>
+</div>
+<!-- System Visualizer (Decorative) -->
+<div class="mt-12 h-64 glass-card border-primary/10 relative overflow-hidden group">
+
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<div class="text-center">
+<span class="font-label-caps text-[12px] text-primary/60 tracking-[0.4em]">NEURAL NETWORK CALIBRATING</span>
+<div class="flex gap-1 justify-center mt-4">
+<div class="w-1 h-4 bg-primary/40 animate-[bounce_1s_infinite]"></div>
+<div class="w-1 h-8 bg-primary/40 animate-[bounce_1.2s_infinite]"></div>
+<div class="w-1 h-6 bg-primary/40 animate-[bounce_0.8s_infinite]"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Right Sidebar -->
+<aside class="fixed right-0 top-24 h-[calc(100vh-96px)] w-[380px] bg-surface/40 backdrop-blur-md border-l border-outline-variant/20 flex flex-col p-6 z-40 overflow-y-auto custom-scrollbar">
+<section class="mb-10">
+<div class="flex items-center justify-between mb-6">
+<h2 class="font-label-caps text-label-caps text-primary flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary shadow-[0_0_5px_rgba(0,219,233,1)]"></span>
+                    LIVE ACTIVITY
+                </h2>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant cursor-pointer" data-icon="fullscreen">fullscreen</span>
+</div>
+<div class="space-y-4">
+<div class="p-3 bg-surface-container-low border border-outline-variant/10 group hover:border-primary/30 transition-all">
+<div class="flex justify-between items-center mb-2">
+<span class="font-data-sm text-[11px] text-on-surface-variant">User_8291...</span>
+<span class="font-label-caps text-[9px] text-primary px-1.5 py-0.5 bg-primary/10 border border-primary/20">CALL</span>
+</div>
+<div class="flex justify-between items-end">
+<p class="font-data-sm text-[13px] text-on-surface truncate pr-4">Man City vs Real Madrid</p>
+<p class="font-data-sm text-[13px] text-primary whitespace-nowrap">250.00 USDC</p>
+</div>
+</div>
+<div class="p-3 bg-surface-container-low border border-outline-variant/10 group hover:border-primary/30 transition-all">
+<div class="flex justify-between items-center mb-2">
+<span class="font-data-sm text-[11px] text-on-surface-variant">Alpha_Trader</span>
+<span class="font-label-caps text-[9px] text-on-tertiary-container px-1.5 py-0.5 bg-on-tertiary-container/10 border border-on-tertiary-container/20">FADE</span>
+</div>
+<div class="flex justify-between items-end">
+<p class="font-data-sm text-[13px] text-on-surface truncate pr-4">BTC Price &gt; $65k</p>
+<p class="font-data-sm text-[13px] text-primary whitespace-nowrap">1,200.00 USDC</p>
+</div>
+</div>
+<div class="p-3 bg-surface-container-low border border-outline-variant/10 group hover:border-primary/30 transition-all opacity-70">
+<div class="flex justify-between items-center mb-2">
+<span class="font-data-sm text-[11px] text-on-surface-variant">OxChainLink</span>
+<span class="font-label-caps text-[9px] text-primary px-1.5 py-0.5 bg-primary/10 border border-primary/20">CALL</span>
+</div>
+<div class="flex justify-between items-end">
+<p class="font-data-sm text-[13px] text-on-surface truncate pr-4">Liverpool vs Chelsea</p>
+<p class="font-data-sm text-[13px] text-primary whitespace-nowrap">45.50 USDC</p>
+</div>
+</div>
+</div>
+</section>
+<section>
+<div class="flex items-center justify-between mb-8">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant">MARKET PULSE</h2>
+<div class="flex items-center gap-1">
+<div class="w-1.5 h-1.5 bg-primary rounded-full animate-ping"></div>
+<span class="font-label-caps text-[9px] text-primary">REAL-TIME</span>
+</div>
+</div>
+<div class="flex justify-between items-end gap-4 h-48 px-4">
+<div class="flex flex-col items-center gap-3 flex-1 h-full">
+<div class="w-full bg-surface-container-high rounded-t flex flex-col justify-end overflow-hidden h-full relative border border-outline-variant/10">
+<div class="absolute inset-0 scanline-effect opacity-20 pointer-events-none"></div>
+<div class="bg-primary/40 w-full h-[85%] border-t-2 border-primary transition-all duration-1000"></div>
+</div>
+<span class="font-label-caps text-[9px] text-on-surface-variant">CITY</span>
+</div>
+<div class="flex flex-col items-center gap-3 flex-1 h-full">
+<div class="w-full bg-surface-container-high rounded-t flex flex-col justify-end overflow-hidden h-full relative border border-outline-variant/10">
+<div class="bg-on-tertiary-container/40 w-full h-[62%] border-t-2 border-on-tertiary-container transition-all duration-1000"></div>
+</div>
+<span class="font-label-caps text-[9px] text-on-surface-variant">BTC</span>
+</div>
+<div class="flex flex-col items-center gap-3 flex-1 h-full">
+<div class="w-full bg-surface-container-high rounded-t flex flex-col justify-end overflow-hidden h-full relative border border-outline-variant/10">
+<div class="bg-primary/40 w-full h-[40%] border-t-2 border-primary transition-all duration-1000"></div>
+</div>
+<span class="font-label-caps text-[9px] text-on-surface-variant">LFC</span>
+</div>
+<div class="flex flex-col items-center gap-3 flex-1 h-full">
+<div class="w-full bg-surface-container-high rounded-t flex flex-col justify-end overflow-hidden h-full relative border border-outline-variant/10">
+<div class="bg-primary/40 w-full h-[92%] border-t-2 border-primary transition-all duration-1000"></div>
+</div>
+<span class="font-label-caps text-[9px] text-on-surface-variant">ETH</span>
+</div>
+<div class="flex flex-col items-center gap-3 flex-1 h-full">
+<div class="w-full bg-surface-container-high rounded-t flex flex-col justify-end overflow-hidden h-full relative border border-outline-variant/10">
+<div class="bg-on-tertiary-container/40 w-full h-[25%] border-t-2 border-on-tertiary-container transition-all duration-1000"></div>
+</div>
+<span class="font-label-caps text-[9px] text-on-surface-variant">SOL</span>
+</div>
+</div>
+<div class="mt-10 p-4 border border-primary/20 bg-primary/5 rounded relative overflow-hidden">
+<p class="font-label-caps text-[10px] text-primary mb-2">SYSTEM NOTIFICATION</p>
+<p class="font-body-base text-[13px] text-on-surface-variant leading-relaxed">
+                    Agent <span class="text-primary">X-1</span> has increased confidence on Manchester City market by 4.2% following latest starting XI confirmation.
+                </p>
+<div class="absolute bottom-0 right-0 p-2">
+<span class="material-symbols-outlined text-primary/30 text-[48px]" data-icon="robot_2">robot_2</span>
+</div>
+</div>
+</section>
+</aside>
+<script>
+        // Simple marquee animation logic
+        const ticker = document.querySelector('.animate-marquee');
+        let tickerPos = 0;
+        function updateTicker() {
+            tickerPos -= 0.5;
+            if (tickerPos < -ticker.offsetWidth / 2) {
+                tickerPos = 0;
+            }
+            ticker.style.transform = `translateX(${tickerPos}px)`;
+            requestAnimationFrame(updateTicker);
+        }
+        updateTicker();
+
+        // Simulate real-time updates for pulse bars
+        setInterval(() => {
+            const bars = document.querySelectorAll('.market-pulse-bar');
+            bars.forEach(bar => {
+                const currentHeight = parseInt(bar.style.height);
+                const variance = (Math.random() - 0.5) * 5;
+                bar.style.height = `${Math.min(95, Math.max(10, currentHeight + variance))}%`;
+            });
+        }, 3000);
+    </script>
+</body></html>

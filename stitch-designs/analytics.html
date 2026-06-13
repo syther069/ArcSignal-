@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        :root {
+            --primary-glow: rgba(0, 219, 233, 0.15);
+            --grid-line: rgba(0, 219, 233, 0.05);
+        }
+        body {
+            background-color: #020405;
+            background-image: 
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 32px 32px;
+            color: #e0e3e6;
+        }
+        .glass-card {
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(132, 148, 149, 0.2);
+            background: rgba(24, 28, 30, 0.6);
+            position: relative;
+            overflow: hidden;
+        }
+        .glass-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(219, 252, 255, 0.3), transparent);
+        }
+        .data-glow-cyan {
+            text-shadow: 0 0 10px rgba(0, 219, 233, 0.5);
+        }
+        .chart-grid {
+            background-image: radial-gradient(circle at 1px 1px, var(--grid-line) 1px, transparent 0);
+            background-size: 16px 16px;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .nav-active-indicator {
+            position: relative;
+        }
+        .nav-active-indicator::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: #00dbe9;
+            box-shadow: 0 0 8px #00dbe9;
+        }
+        @keyframes pulse-cyan {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+        .live-indicator {
+            animation: pulse-cyan 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-bright": "#363a3c",
+                        "on-secondary-fixed-variant": "#6b00b0",
+                        "on-tertiary-container": "#c10018",
+                        "secondary-fixed-dim": "#dfb7ff",
+                        "on-error-container": "#ffdad6",
+                        "inverse-surface": "#e0e3e6",
+                        "surface-variant": "#313538",
+                        "on-primary-container": "#006970",
+                        "secondary-container": "#9d05ff",
+                        "on-primary": "#00363a",
+                        "surface-container-high": "#272a2d",
+                        "inverse-on-surface": "#2d3133",
+                        "on-background": "#e0e3e6",
+                        "on-secondary-fixed": "#2d004f",
+                        "primary-fixed": "#7df4ff",
+                        "on-tertiary-fixed-variant": "#930010",
+                        "surface-container": "#1c2022",
+                        "tertiary-fixed": "#ffdad6",
+                        "surface-container-highest": "#313538",
+                        "on-surface-variant": "#b9cacb",
+                        "tertiary-container": "#ffcec9",
+                        "on-secondary-container": "#f7e6ff",
+                        "primary-fixed-dim": "#00dbe9",
+                        "tertiary": "#fff3f2",
+                        "on-secondary": "#4b007e",
+                        "on-primary-fixed": "#002022",
+                        "secondary": "#dfb7ff",
+                        "primary-container": "#00f0ff",
+                        "surface-container-low": "#181c1e",
+                        "on-error": "#690005",
+                        "on-primary-fixed-variant": "#004f54",
+                        "surface": "#101416",
+                        "surface-tint": "#00dbe9",
+                        "outline-variant": "#3b494b",
+                        "background": "#101416",
+                        "surface-container-lowest": "#0b0f11",
+                        "inverse-primary": "#006970",
+                        "error-container": "#93000a",
+                        "secondary-fixed": "#f1daff",
+                        "error": "#ffb4ab",
+                        "primary": "#dbfcff",
+                        "tertiary-fixed-dim": "#ffb3ac",
+                        "on-surface": "#e0e3e6",
+                        "outline": "#849495",
+                        "surface-dim": "#101416",
+                        "on-tertiary-fixed": "#410003",
+                        "on-tertiary": "#680008"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "container-max": "1440px",
+                        "margin-desktop": "32px",
+                        "margin-mobile": "16px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "data-sm": ["JetBrains Mono"],
+                        "label-caps": ["JetBrains Mono"],
+                        "body-base": ["Inter"],
+                        "data-lg": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800"}],
+                        "headline-md": ["24px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "data-sm": ["13px", {"lineHeight": "1.2", "letterSpacing": "0.02em", "fontWeight": "400"}],
+                        "label-caps": ["11px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700"}],
+                        "body-base": ["16px", {"lineHeight": "1.5", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "data-lg": ["20px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-body-base overflow-x-hidden">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-margin-desktop h-16 fixed top-0 z-50 bg-surface/80 backdrop-blur-md border-b border-outline-variant/20 shadow-[0_0_15px_rgba(0,219,233,0.1)]">
+<div class="flex items-center gap-8">
+<span class="font-display-lg text-display-lg font-black tracking-tighter text-primary italic">ARCSIGNAL</span>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors duration-200 font-label-caps text-label-caps" href="#">Dashboard</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors duration-200 font-label-caps text-label-caps" href="#">Markets</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors duration-200 font-label-caps text-label-caps" href="#">Feed</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors duration-200 font-label-caps text-label-caps" href="#">Leaderboard</a>
+<a class="text-primary border-b-2 border-primary pb-1 font-label-caps text-label-caps" href="#">Analytics</a>
+<a class="text-on-surface-variant font-medium hover:text-primary transition-colors duration-200 font-label-caps text-label-caps" href="#">Profile</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="px-3 py-1 bg-surface-container rounded border border-outline-variant/30 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container live-indicator"></span>
+<span class="font-data-sm text-data-sm text-primary">0.00 USDC</span>
+</div>
+<button class="bg-primary-container text-on-primary px-4 py-2 font-label-caps text-label-caps hover:shadow-[0_0_15px_#00f0ff] transition-all duration-300">
+                Connect Wallet
+            </button>
+<span class="material-symbols-outlined text-primary cursor-pointer">account_balance_wallet</span>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] flex flex-col p-4 z-40 bg-surface-container-low/60 backdrop-blur-xl border-r border-outline-variant/20 w-[264px] hidden md:flex">
+<div class="flex items-center gap-3 mb-8 px-2">
+<div class="w-10 h-10 rounded bg-primary-container/20 flex items-center justify-center border border-primary/30">
+<span class="material-symbols-outlined text-primary" data-weight="fill">analytics</span>
+</div>
+<div>
+<h3 class="font-label-caps text-label-caps text-primary leading-none">ARC TESTNET</h3>
+<p class="font-data-sm text-[10px] text-on-surface-variant">ARC-W1 Node Active</p>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-bright/10 transition-all font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">analytics</span>
+                Markets
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 bg-primary-container/10 text-primary border-r-2 border-primary transition-all font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined" data-weight="fill">query_stats</span>
+                Activity
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-bright/10 transition-all font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">account_balance</span>
+                Portfolio
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-bright/10 transition-all font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">lock</span>
+                Vaults
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-bright/10 transition-all font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">gavel</span>
+                Governance
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-bright/10 transition-all font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">help_outline</span>
+                Support
+            </a>
+</nav>
+<div class="mt-auto flex flex-col gap-1 border-t border-outline-variant/10 pt-4">
+<button class="w-full bg-primary-container/10 border border-primary/20 text-primary font-label-caps text-label-caps py-3 mb-4 hover:bg-primary-container/20 transition-all">
+                New Prediction
+            </button>
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:text-on-surface font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Settings
+            </a>
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:text-on-surface font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">description</span>
+                Docs
+            </a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-12 md:pl-[296px] pr-8 min-h-screen">
+<div class="max-w-container-max mx-auto">
+<!-- Header Section -->
+<div class="flex justify-between items-end mb-8">
+<div>
+<h1 class="font-display-lg text-display-lg text-primary tracking-tighter uppercase mb-2">PLATFORM ANALYTICS</h1>
+<div class="flex items-center gap-4 text-on-surface-variant font-data-sm text-data-sm">
+<span class="flex items-center gap-1"><span class="w-2 h-2 bg-primary rounded-full"></span> LIVE NETWORK FEED</span>
+<span class="opacity-40">/</span>
+<span>EPOCH 482</span>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="bg-surface-container border border-outline-variant/30 px-4 py-2 font-label-caps text-label-caps text-on-surface-variant hover:border-primary/50 transition-all">24H</button>
+<button class="bg-primary-container/10 border border-primary text-primary px-4 py-2 font-label-caps text-label-caps">7D</button>
+<button class="bg-surface-container border border-outline-variant/30 px-4 py-2 font-label-caps text-label-caps text-on-surface-variant hover:border-primary/50 transition-all">30D</button>
+</div>
+</div>
+<!-- Stats Row -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-8">
+<div class="glass-card p-6 flex flex-col justify-between h-32">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Avg Agent Accuracy</span>
+<div class="flex items-baseline justify-between">
+<span class="font-data-lg text-[40px] text-primary data-glow-cyan leading-none">72%</span>
+<span class="font-data-sm text-data-sm text-primary-container-variant flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]">trending_up</span> +2.4%
+                        </span>
+</div>
+</div>
+<div class="glass-card p-6 flex flex-col justify-between h-32">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Total Staked</span>
+<div class="flex items-baseline justify-between">
+<span class="font-data-lg text-[40px] text-primary data-glow-cyan leading-none">$12.4M</span>
+<span class="font-data-sm text-data-sm text-on-surface-variant opacity-60">USDC POOL</span>
+</div>
+</div>
+<div class="glass-card p-6 flex flex-col justify-between h-32">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Markets Resolved</span>
+<div class="flex items-baseline justify-between">
+<span class="font-data-lg text-[40px] text-primary data-glow-cyan leading-none">1,402</span>
+<span class="font-data-sm text-data-sm text-primary-container-variant flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]">check_circle</span> LIVE
+                        </span>
+</div>
+</div>
+</div>
+<!-- 2x2 Grid Content -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
+<!-- Chart 1: Agent Win Rate (Bar Chart) -->
+<div class="glass-card p-6 min-h-[380px] flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-label-caps text-label-caps text-on-surface tracking-wider">Agent Win Rate by Category</h3>
+<span class="material-symbols-outlined text-on-surface-variant">more_horiz</span>
+</div>
+<div class="flex-1 chart-grid relative flex items-end justify-around pb-8 pt-4">
+<div class="flex flex-col items-center gap-4 w-full">
+<div class="flex items-end justify-center gap-12 w-full h-48 px-8">
+<div class="flex flex-col items-center gap-2 w-24">
+<div class="w-full bg-primary-container/20 border-t border-x border-primary/40 relative group h-[78%]">
+<div class="absolute bottom-0 left-0 w-full bg-primary/40 h-full"></div>
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 font-data-sm text-data-sm text-primary">78%</div>
+</div>
+<span class="font-label-caps text-[10px] text-on-surface-variant">Football</span>
+</div>
+<div class="flex flex-col items-center gap-2 w-24">
+<div class="w-full bg-primary-container/20 border-t border-x border-primary/40 relative h-[62%]">
+<div class="absolute bottom-0 left-0 w-full bg-primary/40 h-full"></div>
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 font-data-sm text-data-sm text-primary">62%</div>
+</div>
+<span class="font-label-caps text-[10px] text-on-surface-variant">Crypto</span>
+</div>
+<div class="flex flex-col items-center gap-2 w-24">
+<div class="w-full bg-primary-container/20 border-t border-x border-primary/40 relative h-[45%]">
+<div class="absolute bottom-0 left-0 w-full bg-primary/40 h-full"></div>
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 font-data-sm text-data-sm text-primary">45%</div>
+</div>
+<span class="font-label-caps text-[10px] text-on-surface-variant">Macro</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Chart 2: Staking Volume (Line Chart) -->
+<div class="glass-card p-6 min-h-[380px] flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-label-caps text-label-caps text-on-surface tracking-wider">Staking Volume Over Time</h3>
+<span class="font-data-sm text-data-sm text-primary">$12.4M TOTAL</span>
+</div>
+<div class="flex-1 chart-grid relative overflow-hidden">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 400 150">
+<defs>
+<lineargradient id="cyan-gradient" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color:rgba(0, 219, 233, 0.4); stop-opacity:0.4"></stop>
+<stop offset="100%" style="stop-color:rgba(0, 219, 233, 0); stop-opacity:0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,120 Q50,110 100,130 T200,80 T300,90 T400,40 L400,150 L0,150 Z" fill="url(#cyan-gradient)"></path>
+<path d="M0,120 Q50,110 100,130 T200,80 T300,90 T400,40" fill="none" stroke="#00f0ff" stroke-width="2"></path>
+<circle class="live-indicator" cx="400" cy="40" fill="#00f0ff" r="4"></circle>
+</svg>
+<div class="absolute bottom-0 left-0 w-full flex justify-between px-2 font-data-sm text-[10px] text-on-surface-variant/40">
+<span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span>
+</div>
+</div>
+</div>
+<!-- Chart 3: Follow vs Fade (Doughnut Chart) -->
+<div class="glass-card p-6 min-h-[380px] flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-label-caps text-label-caps text-on-surface tracking-wider">Follow vs Fade Ratio</h3>
+<div class="flex gap-4">
+<span class="flex items-center gap-1 font-data-sm text-data-sm"><span class="w-2 h-2 bg-primary rounded-full"></span> Follow</span>
+<span class="flex items-center gap-1 font-data-sm text-data-sm"><span class="w-2 h-2 bg-error rounded-full"></span> Fade</span>
+</div>
+</div>
+<div class="flex-1 flex items-center justify-center relative">
+<div class="w-48 h-48 rounded-full border-[12px] border-surface-variant relative flex items-center justify-center">
+<!-- CSS Circular segments would be complex, using SVG instead -->
+<svg class="absolute inset-0 w-full h-full transform -rotate-90" viewbox="0 0 100 100">
+<circle cx="50" cy="50" fill="none" r="44" stroke="#00f0ff" stroke-dasharray="188 276.46" stroke-width="12"></circle>
+<circle cx="50" cy="50" fill="none" r="44" stroke="#ffb4ab" stroke-dasharray="88 276.46" stroke-dashoffset="-188" stroke-width="12"></circle>
+</svg>
+<div class="flex flex-col items-center">
+<span class="font-display-lg text-[32px] text-primary leading-none">68%</span>
+<span class="font-label-caps text-[10px] text-on-surface-variant">FOLLOW</span>
+</div>
+</div>
+<div class="absolute right-8 top-1/2 -translate-y-1/2 space-y-4">
+<div class="glass-card bg-surface-container-high/40 p-3 border-l-4 border-l-primary">
+<p class="font-data-sm text-data-sm text-primary">68% FOLLOW</p>
+<p class="font-data-sm text-[10px] text-on-surface-variant">Strong signal trust</p>
+</div>
+<div class="glass-card bg-surface-container-high/40 p-3 border-l-4 border-l-error">
+<p class="font-data-sm text-data-sm text-error">32% FADE</p>
+<p class="font-data-sm text-[10px] text-on-surface-variant">Contrarian activity</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Chart 4: Top Markets (Horizontal Bar Chart) -->
+<div class="glass-card p-6 min-h-[380px] flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-label-caps text-label-caps text-on-surface tracking-wider">Top Markets by Volume</h3>
+<span class="font-data-sm text-data-sm text-on-surface-variant">TOP 4</span>
+</div>
+<div class="flex-1 flex flex-col gap-6">
+<div class="space-y-2">
+<div class="flex justify-between font-data-sm text-data-sm">
+<span class="text-primary">BTC Price &gt; $100k Dec 31</span>
+<span class="text-on-surface-variant">$4.2M</span>
+</div>
+<div class="w-full h-3 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary shadow-[0_0_10px_#00f0ff]" style="width: 85%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between font-data-sm text-data-sm">
+<span class="text-primary">ETH Spot ETF Approval</span>
+<span class="text-on-surface-variant">$2.8M</span>
+</div>
+<div class="w-full h-3 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary shadow-[0_0_10px_#00f0ff]" style="width: 65%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between font-data-sm text-data-sm">
+<span class="text-primary">PL Finals Winner 2024</span>
+<span class="text-on-surface-variant">$1.9M</span>
+</div>
+<div class="w-full h-3 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary shadow-[0_0_10px_#00f0ff]" style="width: 45%"></div>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between font-data-sm text-data-sm">
+<span class="text-primary">SOL Ecosystem TVL Grow</span>
+<span class="text-on-surface-variant">$1.1M</span>
+</div>
+<div class="w-full h-3 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary shadow-[0_0_10px_#00f0ff]" style="width: 30%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Meta -->
+<div class="mt-12 pt-8 border-t border-outline-variant/10 flex flex-col md:flex-row justify-between items-center gap-4">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">verified_user</span>
+<span class="font-data-sm text-data-sm text-on-surface-variant">Validated by ARC Network</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">hub</span>
+<span class="font-data-sm text-data-sm text-on-surface-variant">1,240 Active Nodes</span>
+</div>
+</div>
+<div class="text-on-surface-variant font-data-sm text-[11px] opacity-40 uppercase tracking-widest">
+                    SYSTEM TIME: 2023.10.24-14:32:01_UTC
+                </div>
+</div>
+</div>
+</main>
+<!-- Background Decoration -->
+<div class="fixed bottom-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full -z-10 pointer-events-none"></div>
+<div class="fixed top-0 left-0 w-[500px] h-[500px] bg-secondary/5 blur-[120px] rounded-full -z-10 pointer-events-none"></div>
+<script>
+        // Simple micro-interaction for cards
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.borderColor = 'rgba(0, 219, 233, 0.4)';
+                card.style.boxShadow = '0 0 20px rgba(0, 219, 233, 0.05)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.borderColor = 'rgba(132, 148, 149, 0.2)';
+                card.style.boxShadow = 'none';
+            });
+        });
+    </script>
+</body></html>

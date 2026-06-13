@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ARCSIGNAL | Stake USDC</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-bright": "#363a3c",
+            "on-secondary-fixed-variant": "#6b00b0",
+            "on-tertiary-container": "#c10018",
+            "secondary-fixed-dim": "#dfb7ff",
+            "on-error-container": "#ffdad6",
+            "inverse-surface": "#e0e3e6",
+            "surface-variant": "#313538",
+            "on-primary-container": "#006970",
+            "secondary-container": "#9d05ff",
+            "on-primary": "#00363a",
+            "surface-container-high": "#272a2d",
+            "inverse-on-surface": "#2d3133",
+            "on-background": "#e0e3e6",
+            "on-secondary-fixed": "#2d004f",
+            "primary-fixed": "#7df4ff",
+            "on-tertiary-fixed-variant": "#930010",
+            "surface-container": "#1c2022",
+            "tertiary-fixed": "#ffdad6",
+            "surface-container-highest": "#313538",
+            "on-surface-variant": "#b9cacb",
+            "tertiary-container": "#ffcec9",
+            "on-secondary-container": "#f7e6ff",
+            "primary-fixed-dim": "#00dbe9",
+            "tertiary": "#fff3f2",
+            "on-secondary": "#4b007e",
+            "on-primary-fixed": "#002022",
+            "secondary": "#dfb7ff",
+            "primary-container": "#00f0ff",
+            "surface-container-low": "#181c1e",
+            "on-error": "#690005",
+            "on-primary-fixed-variant": "#004f54",
+            "surface": "#101416",
+            "surface-tint": "#00dbe9",
+            "outline-variant": "#3b494b",
+            "background": "#101416",
+            "surface-container-lowest": "#0b0f11",
+            "inverse-primary": "#006970",
+            "error-container": "#93000a",
+            "secondary-fixed": "#f1daff",
+            "error": "#ffb4ab",
+            "primary": "#dbfcff",
+            "tertiary-fixed-dim": "#ffb3ac",
+            "on-surface": "#e0e3e6",
+            "outline": "#849495",
+            "surface-dim": "#101416",
+            "on-tertiary-fixed": "#410003",
+            "on-tertiary": "#680008"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "unit": "4px",
+            "container-max": "1440px",
+            "margin-desktop": "32px",
+            "margin-mobile": "16px",
+            "gutter": "16px"
+          },
+          "fontFamily": {
+            "display-lg": ["Inter"],
+            "headline-md": ["Inter"],
+            "data-sm": ["JetBrains Mono"],
+            "label-caps": ["JetBrains Mono"],
+            "body-base": ["Inter"],
+            "data-lg": ["JetBrains Mono"]
+          },
+          "fontSize": {
+            "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800"}],
+            "headline-md": ["24px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+            "data-sm": ["13px", {"lineHeight": "1.2", "letterSpacing": "0.02em", "fontWeight": "400"}],
+            "label-caps": ["11px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700"}],
+            "body-base": ["16px", {"lineHeight": "1.5", "letterSpacing": "0em", "fontWeight": "400"}],
+            "data-lg": ["20px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "500"}]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .glass-modal {
+      backdrop-filter: blur(24px);
+      background: rgba(16, 20, 22, 0.85);
+      border: 1px solid rgba(0, 219, 233, 0.2);
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 219, 233, 0.05);
+    }
+    .grid-bg {
+      background-image: linear-gradient(to right, rgba(0, 219, 233, 0.05) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(0, 219, 233, 0.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .cut-corner {
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background font-body-base selection:bg-primary-container selection:text-on-primary-container overflow-hidden">
+<!-- BACKGROUND DASHBOARD (Blurred) -->
+<div class="fixed inset-0 z-0 grid-bg opacity-40 blur-sm pointer-events-none"></div>
+<!-- DASHBOARD MOCKUP CONTENT -->
+<div class="fixed inset-0 z-10 flex flex-col blur-md pointer-events-none p-margin-desktop">
+<header class="flex justify-between items-center mb-8">
+<div class="font-display-lg text-display-lg font-black tracking-tighter text-primary italic">ARCSIGNAL</div>
+<div class="flex gap-4">
+<div class="bg-surface-container h-10 w-32 rounded border border-outline-variant/20"></div>
+<div class="bg-surface-container h-10 w-48 rounded border border-outline-variant/20"></div>
+</div>
+</header>
+<div class="grid grid-cols-12 gap-gutter flex-1">
+<div class="col-span-3 bg-surface-container-low rounded-lg border border-outline-variant/20 p-4"></div>
+<div class="col-span-6 space-y-4">
+<div class="h-64 bg-surface-container rounded-lg border border-outline-variant/20"></div>
+<div class="grid grid-cols-2 gap-4 h-full">
+<div class="bg-surface-container rounded-lg border border-outline-variant/20"></div>
+<div class="bg-surface-container rounded-lg border border-outline-variant/20"></div>
+</div>
+</div>
+<div class="col-span-3 bg-surface-container-low rounded-lg border border-outline-variant/20 p-4"></div>
+</div>
+</div>
+<!-- STAKE MODAL OVERLAY -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-sm p-4">
+<!-- Modal Container -->
+<div class="glass-modal w-full max-w-md overflow-hidden relative animate-in fade-in zoom-in duration-300">
+<!-- Top Decorative Accent -->
+<div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary-fixed-dim/50 to-transparent"></div>
+<!-- Header -->
+<div class="p-6 border-b border-outline-variant/20 flex justify-between items-center">
+<div class="space-y-1">
+<span class="font-label-caps text-label-caps text-primary tracking-widest block">STAKE PROTOCOL</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">STAKE USDC</h2>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Market Info -->
+<div class="p-6 bg-surface-container-low/40">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant">MARKET</span>
+<div class="flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 border border-primary/20 rounded">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+<span class="font-label-caps text-[9px] text-primary">LIVE NETWORK</span>
+</div>
+</div>
+<div class="flex items-center gap-4 mb-4">
+<div class="w-10 h-10 bg-surface-bright rounded-full flex items-center justify-center border border-outline-variant">
+<span class="material-symbols-outlined text-primary">sports_soccer</span>
+</div>
+<div>
+<div class="font-headline-md text-sm text-on-surface">Man City vs Real Madrid</div>
+<div class="font-data-sm text-data-sm text-on-surface-variant">UEFA Champions League</div>
+</div>
+</div>
+<div class="flex items-center justify-between p-3 bg-surface/60 border border-outline-variant/10 rounded">
+<span class="font-label-caps text-label-caps text-on-surface-variant">POSITION</span>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps text-primary">FOLLOW AI</span>
+<span class="px-2 py-0.5 bg-primary-container/20 text-primary-container text-[10px] font-bold border border-primary-container/30 rounded">BULLISH</span>
+</div>
+</div>
+</div>
+<!-- Input Section -->
+<div class="p-6 space-y-6">
+<div class="space-y-2">
+<div class="flex justify-between items-end">
+<label class="font-label-caps text-label-caps text-on-surface-variant">AMOUNT TO STAKE</label>
+<div class="text-right">
+<span class="font-label-caps text-[10px] text-on-surface-variant block">Balance: 1,240.50 USDC</span>
+</div>
+</div>
+<div class="relative group">
+<input class="w-full bg-surface-container-highest border-2 border-outline-variant/30 focus:border-primary-fixed-dim/60 focus:ring-0 text-3xl font-data-lg p-4 pt-6 text-primary tracking-tight transition-all rounded-sm" type="text" value="500.00"/>
+<span class="absolute top-2 left-4 font-label-caps text-[10px] text-primary/60">USDC</span>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 font-label-caps text-label-caps text-primary hover:text-white transition-colors bg-primary/10 px-3 py-1.5 rounded">MAX</button>
+</div>
+</div>
+<!-- Numeric Keypad Simulation -->
+<div class="grid grid-cols-3 gap-2">
+<button class="p-3 bg-surface-container hover:bg-surface-bright font-data-lg text-lg border border-outline-variant/20 transition-all active:scale-95">1</button>
+<button class="p-3 bg-surface-container hover:bg-surface-bright font-data-lg text-lg border border-outline-variant/20 transition-all active:scale-95">2</button>
+<button class="p-3 bg-surface-container hover:bg-surface-bright font-data-lg text-lg border border-outline-variant/20 transition-all active:scale-95">3</button>
+<button class="p-3 bg-surface-container hover:bg-surface-bright font-data-lg text-lg border border-outline-variant/20 transition-all active:scale-95">4</button>
+<button class="p-3 bg-surface-container hover:bg-surface-bright font-data-lg text-lg border border-outline-variant/20 transition-all active:scale-95">5</button>
+<button class="p-3 bg-surface-container hover:bg-surface-bright font-data-lg text-lg border border-outline-variant/20 transition-all active:scale-95">6</button>
+<button class="p-3 bg-surface-container hover:bg-surface-bright font-data-lg text-lg border border-outline-variant/20 transition-all active:scale-95">7</button>
+<button class="p-3 bg-surface-container hover:bg-surface-bright font-data-lg text-lg border border-outline-variant/20 transition-all active:scale-95">8</button>
+<button class="p-3 bg-surface-container hover:bg-surface-bright font-data-lg text-lg border border-outline-variant/20 transition-all active:scale-95">9</button>
+<button class="p-3 bg-surface-container hover:bg-surface-bright font-data-lg text-lg border border-outline-variant/20 transition-all active:scale-95">.</button>
+<button class="p-3 bg-surface-container hover:bg-surface-bright font-data-lg text-lg border border-outline-variant/20 transition-all active:scale-95">0</button>
+<button class="p-3 bg-surface-container hover:bg-surface-bright font-data-lg text-lg border border-outline-variant/20 transition-all active:scale-95 flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant">backspace</span>
+</button>
+</div>
+<!-- Metrics -->
+<div class="space-y-3 pt-2">
+<div class="flex justify-between items-center text-data-sm font-data-sm">
+<span class="text-on-surface-variant">Estimated Pool Share</span>
+<span class="text-primary">4.2%</span>
+</div>
+<div class="flex justify-between items-center text-data-sm font-data-sm">
+<span class="text-on-surface-variant">Protocol Fee (0.1%)</span>
+<span class="text-on-surface">0.50 USDC</span>
+</div>
+<div class="h-px bg-outline-variant/20 w-full"></div>
+<div class="flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Potential Payout</span>
+<span class="font-data-lg text-xl text-primary">842.12 USDC</span>
+</div>
+</div>
+</div>
+<!-- Actions -->
+<div class="p-6 pt-0 space-y-3">
+<button class="w-full bg-primary text-black font-label-caps text-label-caps py-4 tracking-widest hover:shadow-[0_0_20px_rgba(0,219,233,0.4)] transition-all active:scale-[0.98] flex items-center justify-center gap-2" id="approveBtn">
+          APPROVE USDC
+          <span class="material-symbols-outlined text-sm">verified_user</span>
+</button>
+<button class="w-full bg-surface-container-highest text-on-surface-variant/40 font-label-caps text-label-caps py-4 tracking-widest cursor-not-allowed border border-outline-variant/10" disabled="">
+          CONFIRM STAKE
+        </button>
+</div>
+<!-- Transaction Footer -->
+<div class="px-6 py-4 bg-surface-container-lowest flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-surface-bright"></span>
+<span class="font-data-sm text-[10px] text-on-surface-variant">TX HASH: <span class="text-on-surface/60">0x4a2...9b1c</span></span>
+</div>
+<a class="text-[10px] font-label-caps text-primary/60 hover:text-primary transition-colors flex items-center gap-1" href="#">
+          VIEW ON EXPLORER
+          <span class="material-symbols-outlined text-[12px]">open_in_new</span>
+</a>
+</div>
+</div>
+</div>
+<!-- Decorative Corner Elements -->
+<div class="fixed top-4 left-4 z-[60] w-24 h-24 pointer-events-none border-t border-l border-primary/20"></div>
+<div class="fixed bottom-4 right-4 z-[60] w-24 h-24 pointer-events-none border-b border-r border-primary/20"></div>
+<script>
+    // Micro-interaction for the Approve Button
+    const approveBtn = document.getElementById('approveBtn');
+    approveBtn.addEventListener('click', function() {
+      const originalText = this.innerHTML;
+      this.innerHTML = '<span class="animate-spin material-symbols-outlined">sync</span> PROCESSING...';
+      this.classList.add('opacity-80');
+      
+      setTimeout(() => {
+        this.innerHTML = '<span class="material-symbols-outlined">check_circle</span> APPROVED';
+        this.classList.remove('bg-primary');
+        this.classList.add('bg-surface-bright', 'text-primary');
+        
+        // Enable second button
+        const confirmBtn = this.nextElementSibling;
+        confirmBtn.disabled = false;
+        confirmBtn.classList.remove('bg-surface-container-highest', 'text-on-surface-variant/40', 'cursor-not-allowed');
+        confirmBtn.classList.add('bg-transparent', 'border-primary', 'text-primary', 'hover:bg-primary/5');
+      }, 1500);
+    });
+  </script>
+</body></html>

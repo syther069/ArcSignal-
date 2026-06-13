@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        :root {
+            --cyan-glow: 0 0 10px rgba(0, 240, 255, 0.4);
+            --obsidian-glass: rgba(11, 15, 17, 0.85);
+        }
+        body {
+            background-color: #020405;
+            background-image: radial-gradient(rgba(132, 148, 149, 0.05) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .frosted-obsidian {
+            background: var(--obsidian-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .scanning-line {
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #00F0FF, transparent);
+            position: absolute;
+            animation: scan 4s linear infinite;
+            opacity: 0.3;
+        }
+        @keyframes scan {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+        .terminal-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 2px;
+            background-color: #00F0FF;
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+        .active-glow {
+            box-shadow: var(--cyan-glow);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#ffb59e",
+                        "outline-variant": "#3b494b",
+                        "surface": "#101416",
+                        "inverse-on-surface": "#2d3133",
+                        "on-secondary-fixed-variant": "#3a494a",
+                        "tertiary": "#fff4f1",
+                        "on-error": "#690005",
+                        "surface-tint": "#00dbe9",
+                        "on-primary-container": "#006970",
+                        "primary-container": "#00f0ff",
+                        "surface-variant": "#313538",
+                        "surface-dim": "#101416",
+                        "background": "#101416",
+                        "error": "#ffb4ab",
+                        "surface-container": "#1c2022",
+                        "inverse-primary": "#006970",
+                        "on-secondary": "#243334",
+                        "primary-fixed": "#7df4ff",
+                        "on-background": "#e0e3e5",
+                        "on-tertiary-fixed": "#3a0b00",
+                        "primary-fixed-dim": "#00dbe9",
+                        "on-primary": "#00363a",
+                        "surface-container-low": "#181c1e",
+                        "primary": "#dbfcff",
+                        "surface-container-highest": "#313538",
+                        "surface-container-high": "#272b2d",
+                        "on-secondary-fixed": "#0f1e1f",
+                        "secondary-fixed-dim": "#b9cacb",
+                        "on-surface-variant": "#b9cacb",
+                        "on-primary-fixed": "#002022",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed": "#d5e6e7",
+                        "secondary-container": "#3d4c4d",
+                        "on-secondary-container": "#abbbbc",
+                        "secondary": "#b9cacb",
+                        "inverse-surface": "#e0e3e5",
+                        "on-tertiary-container": "#af3200",
+                        "on-primary-fixed-variant": "#004f54",
+                        "surface-container-lowest": "#0b0f11",
+                        "tertiary-container": "#ffcfc1",
+                        "outline": "#849495",
+                        "surface-bright": "#363a3c",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#ffdbd0",
+                        "on-tertiary": "#5e1700",
+                        "on-surface": "#e0e3e5",
+                        "on-tertiary-fixed-variant": "#852400"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "gutter": "16px",
+                        "margin": "24px",
+                        "container-padding": "12px"
+                    },
+                    "fontFamily": {
+                        "data-md": ["JetBrains Mono"],
+                        "body-md": ["Inter"],
+                        "label-sm": ["JetBrains Mono"],
+                        "data-lg": ["JetBrains Mono"],
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "data-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "1.5", "letterSpacing": "0", "fontWeight": "400"}],
+                        "label-sm": ["11px", {"lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "500"}],
+                        "data-lg": ["18px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-body-md text-on-surface min-h-screen flex items-center justify-center p-gutter overflow-hidden">
+<!-- Top Navigation Bar (Mockup for Context) -->
+<header class="fixed top-0 left-0 w-full h-12 flex justify-between items-center px-margin z-50 bg-surface border-b border-outline-variant/20">
+<div class="font-headline-md text-headline-md font-bold tracking-tighter text-primary">ARCSIGNAL</div>
+<div class="hidden md:flex gap-margin">
+<span class="text-primary border-b-2 border-primary-container pb-1 cursor-pointer">Markets</span>
+<span class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors duration-200 cursor-pointer">Stats</span>
+<span class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors duration-200 cursor-pointer">Docs</span>
+</div>
+<button class="bg-primary-container text-on-primary-container px-4 py-1 font-bold text-label-sm active:scale-95 transition-all">Connect Wallet</button>
+</header>
+<!-- Background Content Mock (Blurred) -->
+<div class="fixed inset-0 z-0 opacity-20 pointer-events-none flex flex-col items-center justify-center">
+<div class="w-full max-w-4xl h-96 border border-outline-variant/20 relative overflow-hidden bg-surface-container">
+<div class="scanning-line"></div>
+<div class="p-8 grid grid-cols-12 gap-gutter h-full">
+<div class="col-span-8 h-full bg-surface-container-highest/20 border border-outline-variant/10"></div>
+<div class="col-span-4 h-full flex flex-col gap-unit">
+<div class="h-1/3 bg-surface-container-highest/20 border border-outline-variant/10"></div>
+<div class="h-2/3 bg-surface-container-highest/20 border border-outline-variant/10"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Stake Modal Overlay -->
+<div class="relative z-50 w-full max-w-[480px] frosted-obsidian border border-primary-container active-glow transition-all duration-500 transform scale-100 opacity-100" id="stakeModal">
+<!-- Technical Header -->
+<div class="p-margin border-b border-outline-variant/30 flex justify-between items-center relative overflow-hidden">
+<div class="scanning-line opacity-10"></div>
+<div>
+<div class="font-label-sm text-label-sm text-primary mb-1 tracking-widest">STAKE_PROTOCOL // [ETH_VOLATILITY_24H]</div>
+<div class="font-headline-md text-headline-md text-on-surface font-bold">ARC-V1 TERMINAL</div>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors" onclick="closeModal()">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Content Body -->
+<div class="p-margin space-y-margin" id="modalContent">
+<!-- Market Recap Chip -->
+<div class="grid grid-cols-2 gap-unit">
+<div class="bg-surface-container-high p-4 border border-outline-variant/20">
+<span class="block font-label-sm text-label-sm text-on-surface-variant uppercase mb-2">Selected Side</span>
+<div class="flex items-center gap-unit text-primary">
+<span class="material-symbols-outlined" data-weight="fill">trending_up</span>
+<span class="font-data-lg text-data-lg font-bold">FOLLOW</span>
+</div>
+</div>
+<div class="bg-surface-container-high p-4 border border-outline-variant/20">
+<span class="block font-label-sm text-label-sm text-on-surface-variant uppercase mb-2">Live Odds</span>
+<div class="flex items-center gap-unit">
+<span class="font-data-lg text-data-lg text-on-surface font-mono">1.84x</span>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="space-y-unit">
+<div class="flex justify-between items-end mb-1">
+<label class="font-label-sm text-label-sm text-on-surface-variant uppercase">Stake Amount</label>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Bal: 12,450.00 USDC</span>
+</div>
+<div class="relative group">
+<input class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface font-data-lg text-data-lg p-6 focus:ring-1 focus:ring-primary-container focus:border-primary-container transition-all outline-none text-right pr-24" placeholder="0.00" type="number"/>
+<div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+<span class="font-data-md text-data-md text-on-surface-variant font-bold">USDC</span>
+<button class="bg-secondary-container/20 text-primary font-label-sm text-label-sm px-2 py-1 border border-primary/20 hover:bg-primary/10 transition-colors">MAX</button>
+</div>
+</div>
+</div>
+<!-- Pool Analysis List -->
+<div class="bg-surface-container-low p-margin border-t border-b border-outline-variant/10">
+<ul class="space-y-4">
+<li class="flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">pie_chart</span>
+                            ESTIMATED_SHARE
+                        </span>
+<span class="font-data-md text-data-md text-on-surface font-mono">0.042%</span>
+</li>
+<li class="flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">toll</span>
+                            PROTOCOL_FEE
+                        </span>
+<span class="font-data-md text-data-md text-on-surface font-mono">0.50 USDC</span>
+</li>
+<li class="flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">payments</span>
+                            POTENTIAL_PAYOUT
+                        </span>
+<span class="font-data-md text-data-md text-primary font-bold font-mono">+92.00 USDC</span>
+</li>
+</ul>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col gap-unit" id="actionStep">
+<button class="w-full bg-primary-container text-on-primary-container h-14 font-bold uppercase tracking-widest flex items-center justify-center gap-unit hover:brightness-110 active:scale-95 transition-all" onclick="nextStep()">
+<span>APPROVE USDC</span>
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+<div class="flex justify-center mt-2 gap-unit">
+<div class="w-2 h-2 bg-primary-container active-glow"></div>
+<div class="w-2 h-2 bg-outline-variant"></div>
+</div>
+</div>
+</div>
+<!-- Success View (Hidden by Default) -->
+<div class="hidden p-margin flex flex-col items-center text-center space-y-margin" id="successContent">
+<div class="w-16 h-16 bg-primary/10 border border-primary-container rounded-full flex items-center justify-center active-glow mb-margin">
+<span class="material-symbols-outlined text-primary text-4xl">check_circle</span>
+</div>
+<div class="space-y-2">
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface">STAKE_SUCCESS</h3>
+<p class="font-body-md text-on-surface-variant">Your liquidity has been successfully locked into the protocol pool.</p>
+</div>
+<div class="w-full bg-surface-container-lowest border border-outline-variant p-4 text-left font-mono">
+<span class="block text-label-sm text-on-surface-variant mb-2">TX_HASH</span>
+<span class="text-data-md text-primary break-all">0x74e...89a2f1c84e12c</span>
+</div>
+<a class="flex items-center gap-unit text-primary font-label-sm text-label-sm hover:underline uppercase tracking-widest" href="#">
+                VIEW_ON_EXPLORER <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+</a>
+<button class="w-full border border-outline text-on-surface h-12 font-bold uppercase tracking-widest hover:bg-on-surface/5 transition-all" onclick="resetModal()">
+                RETURN TO MARKET
+            </button>
+</div>
+<!-- Footer / CLI Area -->
+<div class="bg-surface-container-highest p-3 border-t border-outline-variant/30 flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm">terminal</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">READY_FOR_INPUT<span class="terminal-cursor ml-1"></span></span>
+</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase">NETWORK: ARC_MAINNET</div>
+</div>
+</div>
+<script>
+        function nextStep() {
+            const btn = document.querySelector('#actionStep button');
+            const dots = document.querySelectorAll('#actionStep div div');
+            
+            if (btn.innerText.includes('APPROVE')) {
+                // Mock transition from Approve to Confirm
+                btn.classList.add('opacity-50');
+                btn.disabled = true;
+                btn.innerHTML = '<span>TRANSACTION_PROCESSING...</span>';
+                
+                setTimeout(() => {
+                    btn.classList.remove('opacity-50');
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>CONFIRM STAKE</span> <span class="material-symbols-outlined">bolt</span>';
+                    dots[0].classList.replace('bg-primary-container', 'bg-outline-variant');
+                    dots[0].classList.remove('active-glow');
+                    dots[1].classList.replace('bg-outline-variant', 'bg-primary-container');
+                    dots[1].classList.add('active-glow');
+                }, 800);
+            } else {
+                // Transition to success state
+                document.getElementById('modalContent').classList.add('hidden');
+                document.getElementById('successContent').classList.remove('hidden');
+                document.getElementById('stakeModal').classList.add('active-glow');
+            }
+        }
+
+        function resetModal() {
+            window.location.reload();
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('stakeModal');
+            modal.style.opacity = '0';
+            modal.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+    </script>
+</body></html>

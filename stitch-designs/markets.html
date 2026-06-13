@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ARCSIGNAL | Markets</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        @layer base {
+            body {
+                @apply bg-background text-on-background font-body-base overflow-x-hidden;
+                background-image: 
+                    linear-gradient(rgba(0, 219, 233, 0.03) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(0, 219, 233, 0.03) 1px, transparent 1px);
+                background-size: 32px 32px;
+            }
+        }
+        .glass-card {
+            @apply backdrop-blur-md bg-surface-container-low/60 border border-outline-variant/20;
+            box-shadow: inset 0 1px 1px rgba(219, 252, 255, 0.05);
+        }
+        .data-glow-cyan {
+            text-shadow: 0 0 8px rgba(0, 219, 233, 0.4);
+        }
+        .btn-glow:hover {
+            box-shadow: 0 0 12px rgba(0, 219, 233, 0.3);
+        }
+        .cut-corner {
+            clip-path: polygon(0 0, 95% 0, 100% 20%, 100% 100%, 5% 100%, 0 80%);
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-bright": "#363a3c",
+                      "on-secondary-fixed-variant": "#6b00b0",
+                      "on-tertiary-container": "#c10018",
+                      "secondary-fixed-dim": "#dfb7ff",
+                      "on-error-container": "#ffdad6",
+                      "inverse-surface": "#e0e3e6",
+                      "surface-variant": "#313538",
+                      "on-primary-container": "#006970",
+                      "secondary-container": "#9d05ff",
+                      "on-primary": "#00363a",
+                      "surface-container-high": "#272a2d",
+                      "inverse-on-surface": "#2d3133",
+                      "on-background": "#e0e3e6",
+                      "on-secondary-fixed": "#2d004f",
+                      "primary-fixed": "#7df4ff",
+                      "on-tertiary-fixed-variant": "#930010",
+                      "surface-container": "#1c2022",
+                      "tertiary-fixed": "#ffdad6",
+                      "surface-container-highest": "#313538",
+                      "on-surface-variant": "#b9cacb",
+                      "tertiary-container": "#ffcec9",
+                      "on-secondary-container": "#f7e6ff",
+                      "primary-fixed-dim": "#00dbe9",
+                      "tertiary": "#fff3f2",
+                      "on-secondary": "#4b007e",
+                      "on-primary-fixed": "#002022",
+                      "secondary": "#dfb7ff",
+                      "primary-container": "#00f0ff",
+                      "surface-container-low": "#181c1e",
+                      "on-error": "#690005",
+                      "on-primary-fixed-variant": "#004f54",
+                      "surface": "#101416",
+                      "surface-tint": "#00dbe9",
+                      "outline-variant": "#3b494b",
+                      "background": "#101416",
+                      "surface-container-lowest": "#0b0f11",
+                      "inverse-primary": "#006970",
+                      "error-container": "#93000a",
+                      "secondary-fixed": "#f1daff",
+                      "error": "#ffb4ab",
+                      "primary": "#dbfcff",
+                      "tertiary-fixed-dim": "#ffb3ac",
+                      "on-surface": "#e0e3e6",
+                      "outline": "#849495",
+                      "surface-dim": "#101416",
+                      "on-tertiary-fixed": "#410003",
+                      "on-tertiary": "#680008"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "container-max": "1440px",
+                      "margin-desktop": "32px",
+                      "margin-mobile": "16px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "display-lg": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "data-sm": ["JetBrains Mono"],
+                      "label-caps": ["JetBrains Mono"],
+                      "body-base": ["Inter"],
+                      "data-lg": ["JetBrains Mono"]
+              },
+              "fontSize": {
+                      "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "800"}],
+                      "headline-md": ["24px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "data-sm": ["13px", {"lineHeight": "1.2", "letterSpacing": "0.02em", "fontWeight": "400"}],
+                      "label-caps": ["11px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700"}],
+                      "body-base": ["16px", {"lineHeight": "1.5", "letterSpacing": "0em", "fontWeight": "400"}],
+                      "data-lg": ["20px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "500"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="dark bg-background text-on-background">
+<!-- TopNavBar -->
+<nav class="flex justify-between items-center w-full px-margin-desktop h-16 fixed top-0 z-50 bg-surface/80 backdrop-blur-md border-b border-outline-variant/20 shadow-[0_0_15px_rgba(0,219,233,0.1)]">
+<div class="flex items-center gap-12">
+<span class="font-display-lg text-display-lg font-black tracking-tighter text-primary italic">ARCSIGNAL</span>
+<div class="hidden md:flex gap-8">
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Dashboard</a>
+<a class="font-label-caps text-label-caps text-primary border-b-2 border-primary pb-1 transition-colors duration-200" href="#">Markets</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Feed</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Leaderboard</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Analytics</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Profile</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="px-3 py-1 bg-surface-container rounded border border-outline-variant/20">
+<span class="font-data-sm text-data-sm text-primary">0.00 USDC</span>
+</div>
+<button class="bg-primary-fixed-dim text-on-primary-fixed px-4 py-2 font-label-caps text-label-caps rounded font-bold btn-glow transition-all active:scale-95">
+                Connect Wallet
+            </button>
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] flex flex-col p-4 z-40 bg-surface-container-low/60 backdrop-blur-xl border-r border-outline-variant/20 w-[264px] hidden md:flex">
+<div class="flex items-center gap-3 mb-8 p-2">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<div>
+<div class="font-label-caps text-label-caps text-primary">ARC TESTNET</div>
+<div class="font-data-sm text-data-sm text-on-surface-variant">ARC-W1 Node Active</div>
+</div>
+</div>
+<nav class="flex-1 space-y-2">
+<button class="w-full flex items-center gap-3 px-4 py-3 bg-primary-container/10 text-primary border-r-2 border-primary transition-all translate-x-1">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-caps text-label-caps">Markets</span>
+</button>
+<button class="w-full flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-bright/10 transition-all">
+<span class="material-symbols-outlined">query_stats</span>
+<span class="font-label-caps text-label-caps">Activity</span>
+</button>
+<button class="w-full flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-bright/10 transition-all">
+<span class="material-symbols-outlined">account_balance</span>
+<span class="font-label-caps text-label-caps">Portfolio</span>
+</button>
+<button class="w-full flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-bright/10 transition-all">
+<span class="material-symbols-outlined">lock</span>
+<span class="font-label-caps text-label-caps">Vaults</span>
+</button>
+<button class="w-full flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-bright/10 transition-all">
+<span class="material-symbols-outlined">gavel</span>
+<span class="font-label-caps text-label-caps">Governance</span>
+</button>
+<button class="w-full flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-bright/10 transition-all">
+<span class="material-symbols-outlined">help_outline</span>
+<span class="font-label-caps text-label-caps">Support</span>
+</button>
+</nav>
+<div class="mt-auto pt-4 border-t border-outline-variant/10 space-y-2">
+<button class="w-full bg-primary text-on-primary py-3 font-label-caps text-label-caps font-bold mb-4">New Prediction</button>
+<div class="flex flex-col gap-2">
+<button class="flex items-center gap-2 text-on-surface-variant px-4 py-2 hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+<span class="font-label-caps text-label-caps">Settings</span>
+</button>
+<button class="flex items-center gap-2 text-on-surface-variant px-4 py-2 hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">description</span>
+<span class="font-label-caps text-label-caps">Docs</span>
+</button>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="md:ml-[264px] pt-24 px-margin-mobile md:px-margin-desktop pb-12">
+<!-- Header & Filters -->
+<header class="mb-10">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<h1 class="font-headline-md text-headline-md text-primary mb-2">LIVE MARKETS</h1>
+<div class="flex flex-wrap gap-2" id="primary-filters">
+<button class="filter-btn active px-6 py-2 border border-primary bg-primary/10 text-primary font-label-caps text-label-caps" onclick="toggleMarkets('all')">ALL</button>
+<button class="filter-btn px-6 py-2 border border-outline-variant/30 text-on-surface-variant font-label-caps text-label-caps hover:border-primary/50" onclick="toggleMarkets('football')">FOOTBALL</button>
+<button class="filter-btn px-6 py-2 border border-outline-variant/30 text-on-surface-variant font-label-caps text-label-caps hover:border-primary/50" onclick="toggleMarkets('crypto')">CRYPTO</button>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<select class="appearance-none bg-surface-container border border-outline-variant/30 text-on-surface font-label-caps text-label-caps px-4 py-2 pr-10 focus:outline-none focus:border-primary cursor-pointer">
+<option>SORT: NEWEST</option>
+<option>SORT: HIGHEST LIQUIDITY</option>
+<option>SORT: EXPIRING SOON</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-on-surface-variant text-[18px]">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Sub-filters (Conditional) -->
+<div class="mt-4 flex gap-4 hidden" id="crypto-subfilters">
+<span class="font-label-caps text-[10px] text-on-surface-variant self-center">CRYPTO SPECIFIC:</span>
+<button class="px-4 py-1 border border-outline-variant/30 text-on-surface-variant font-data-sm text-[11px] hover:text-primary">PRICE</button>
+<button class="px-4 py-1 border border-outline-variant/30 text-on-surface-variant font-data-sm text-[11px] hover:text-primary">LISTINGS</button>
+<button class="px-4 py-1 border border-outline-variant/30 text-on-surface-variant font-data-sm text-[11px] hover:text-primary" onclick="showEmptyState()">ON-CHAIN</button>
+</div>
+</header>
+<!-- Markets Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-gutter" id="markets-grid">
+<!-- Card 1 -->
+<div class="glass-card p-4 flex flex-col group hover:border-primary/40 transition-all duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="flex gap-2">
+<span class="px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary font-label-caps text-[9px]">[L1]</span>
+<span class="px-2 py-0.5 bg-surface-bright/20 border border-outline-variant/20 text-on-surface-variant font-label-caps text-[9px]">CRYPTO</span>
+</div>
+<div class="flex items-center gap-1">
+<div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+<span class="font-data-sm text-[11px] text-primary">LIVE</span>
+</div>
+</div>
+<h3 class="font-headline-md text-[18px] text-on-surface mb-3 group-hover:text-primary transition-colors">ETH exceeds $4,200 by end of March?</h3>
+<div class="mb-4 h-24 overflow-hidden relative rounded-sm">
+<img class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" data-alt="A cinematic, high-detail visualization of Ethereum's crystalized logo floating amidst a complex web of glowing blue and cyan data lines. The background is a deep, void-like black with subtle industrial grid patterns and light-leaks that match a futuristic cyber-finance aesthetic. Sharp focus and volumetric lighting emphasize the precision of the market data." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtgridGZseRH_4Hr1j48ikZyjR2KAS_EbbFsvk02s-tRcC_LEK4MqwMJbY-9PxbvT-w0tlIPwRxcJAJ--JE9xMlnbtW0BtoWC1NkBVDFOJ3y_VdwWXT1tO5Xq_gciLMgk_YEDrfd-IaAxl6nE5n6mZfXilIhraw8w3pxavKuEh8qRj2pw_fNfVMAM9tQa-66PZpSM4NnkeS03OP-GWR7Ry0-M3PAchAWNjr7G3Xh_--IB69NTNKia6l2QXeLfWCX3TsdDpXtJ2nTPF"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-low to-transparent"></div>
+</div>
+<div class="bg-surface-container-highest/30 p-3 mb-4 rounded-sm border-l-2 border-primary/40">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-[14px] text-primary">psychology</span>
+<span class="font-label-caps text-[10px] text-primary">AI REASONING</span>
+</div>
+<p class="font-body-base text-[12px] text-on-surface-variant italic">Strong bullish divergence on 4H charts; Whale accumulation increasing at support levels.</p>
+</div>
+<div class="mt-auto space-y-4">
+<div class="flex justify-between font-data-sm text-[12px]">
+<span class="text-on-surface-variant">Volume: <span class="text-on-surface">$1.2M</span></span>
+<span class="text-on-surface-variant">Prob: <span class="text-primary">64%</span></span>
+</div>
+<div class="flex gap-2">
+<input class="flex-1 bg-surface-container-lowest border border-outline-variant/30 px-3 py-2 font-data-sm text-sm focus:border-primary focus:ring-0 text-primary" placeholder="Stake Amount" type="number"/>
+<button class="bg-primary text-on-primary px-4 py-2 font-label-caps text-label-caps font-bold btn-glow">CALL</button>
+<button class="border border-error text-error px-4 py-2 font-label-caps text-label-caps font-bold hover:bg-error/10">FADE</button>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="glass-card p-4 flex flex-col group hover:border-primary/40 transition-all duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="flex gap-2">
+<span class="px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary font-label-caps text-[9px]">[PREMIER]</span>
+<span class="px-2 py-0.5 bg-surface-bright/20 border border-outline-variant/20 text-on-surface-variant font-label-caps text-[9px]">FOOTBALL</span>
+</div>
+<span class="font-data-sm text-[11px] text-on-surface-variant">2d 14h left</span>
+</div>
+<h3 class="font-headline-md text-[18px] text-on-surface mb-3 group-hover:text-primary transition-colors">Manchester City vs Liverpool: Both Teams Score?</h3>
+<div class="mb-4 h-24 overflow-hidden relative rounded-sm">
+<img class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" data-alt="A high-octane wide-angle shot of a futuristic football stadium at night, illuminated by intense cyan and white floodlights that cast long, dramatic shadows. The grass is an impossible vibrant green, and the atmosphere is thick with electric mist. The aesthetic is industrial and ultra-modern, emphasizing the high-stakes competitive environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCyArRJmg4Hv4Eh6jZ8ojuDX9T5lj83xLdXw_Yku-ue-FK4FzcJdz-_d6ePukaies6JSuJfEQi_YBGOMXQWES1Ing5Lv6djz1cf1LFxMxwhIyv5U5-5WT5uNmGTidwX7VvEmvl2jYFXr1mBrhTR0NFuTmQMC35QhvUr3LzNS4iCONtVZLk18Jmi_0YR1tg34rm2u9fMp9fn81CltwkE3Zp89FvVG4EOYI2TUskcl7XtIAKMqwKqmHBcuHtSD5KXCj1dVVNfH8WAO4ht"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-low to-transparent"></div>
+</div>
+<div class="bg-surface-container-highest/30 p-3 mb-4 rounded-sm border-l-2 border-primary/40">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-[14px] text-primary">psychology</span>
+<span class="font-label-caps text-[10px] text-primary">AI REASONING</span>
+</div>
+<p class="font-body-base text-[12px] text-on-surface-variant italic">Both sides showing defensive fragility in recent transitions; top scorers are fully fit.</p>
+</div>
+<div class="mt-auto space-y-4">
+<div class="flex justify-between font-data-sm text-[12px]">
+<span class="text-on-surface-variant">Liquidity: <span class="text-on-surface">$450k</span></span>
+<span class="text-on-surface-variant">Prob: <span class="text-primary">78%</span></span>
+</div>
+<div class="flex gap-2">
+<input class="flex-1 bg-surface-container-lowest border border-outline-variant/30 px-3 py-2 font-data-sm text-sm focus:border-primary focus:ring-0 text-primary" placeholder="Stake" type="number"/>
+<button class="bg-primary text-on-primary px-4 py-2 font-label-caps text-label-caps font-bold btn-glow">CALL</button>
+<button class="border border-error text-error px-4 py-2 font-label-caps text-label-caps font-bold hover:bg-error/10">FADE</button>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="glass-card p-4 flex flex-col group hover:border-primary/40 transition-all duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="flex gap-2">
+<span class="px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary font-label-caps text-[9px]">[ETF]</span>
+<span class="px-2 py-0.5 bg-surface-bright/20 border border-outline-variant/20 text-on-surface-variant font-label-caps text-[9px]">CRYPTO</span>
+</div>
+<span class="font-data-sm text-[11px] text-on-surface-variant">4h left</span>
+</div>
+<h3 class="font-headline-md text-[18px] text-on-surface mb-3 group-hover:text-primary transition-colors">Bitcoin ETF Inflows exceed $500M today?</h3>
+<div class="mb-4 h-24 overflow-hidden relative rounded-sm">
+<img class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" data-alt="A sleek representation of financial flows, showing golden light streams representing capital entering a stylized digital vault. The environment is dark and industrial, with glass-like textures reflecting sparks of cyan data. The composition is focused and architectural, suggesting institutional-grade security and precision." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDesIATkgmSQYbBq9jlQKDC3OQlDKrlnQM47I2i03kpdGzKl_4960oSmpZifiwq20YpDuGCOxR6AqajRLrzY_JIr8Nd5nVe70seN79ECG3w642suUr9DHI0RVLLeHpNs1MM9RqKg0j9FeWrO0x1qUNhtgxxAksEZYt6sIIQje8shWtQJ_hhywrXEvup6hBOOvb4vFDOyomo8zea24tVoBRqzlAROCQ5Rigx4uSNxOIzN74YigmUf6wK7LSH4pzZDY7s2PK-HcLukH33"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-low to-transparent"></div>
+</div>
+<div class="bg-surface-container-highest/30 p-3 mb-4 rounded-sm border-l-2 border-primary/40">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-[14px] text-primary">psychology</span>
+<span class="font-label-caps text-[10px] text-primary">AI REASONING</span>
+</div>
+<p class="font-body-base text-[12px] text-on-surface-variant italic">Early session volume from IBKR and Fidelity indicate massive buy-side momentum.</p>
+</div>
+<div class="mt-auto space-y-4">
+<div class="flex justify-between font-data-sm text-[12px]">
+<span class="text-on-surface-variant">Volume: <span class="text-on-surface">$2.8M</span></span>
+<span class="text-on-surface-variant">Prob: <span class="text-primary">42%</span></span>
+</div>
+<div class="flex gap-2">
+<input class="flex-1 bg-surface-container-lowest border border-outline-variant/30 px-3 py-2 font-data-sm text-sm focus:border-primary focus:ring-0 text-primary" placeholder="Stake" type="number"/>
+<button class="bg-primary text-on-primary px-4 py-2 font-label-caps text-label-caps font-bold btn-glow">CALL</button>
+<button class="border border-error text-error px-4 py-2 font-label-caps text-label-caps font-bold hover:bg-error/10">FADE</button>
+</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="glass-card p-4 flex flex-col group hover:border-primary/40 transition-all duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="flex gap-2">
+<span class="px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary font-label-caps text-[9px]">[MEME]</span>
+<span class="px-2 py-0.5 bg-surface-bright/20 border border-outline-variant/20 text-on-surface-variant font-label-caps text-[9px]">CRYPTO</span>
+</div>
+<span class="font-data-sm text-[11px] text-on-surface-variant">12h left</span>
+</div>
+<h3 class="font-headline-md text-[18px] text-on-surface mb-3 group-hover:text-primary transition-colors">PEPE to hit new ATH in next 24 hours?</h3>
+<div class="mb-4 h-24 overflow-hidden relative rounded-sm">
+<img class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" data-alt="Abstract cyber-hacker aesthetic featuring green glitch effects and cascading binary code in vibrant neon green and black. The scene looks like a high-end surveillance terminal with multiple flickering data windows, reflecting a volatile and high-energy crypto trading environment. The lighting is dark with sharp neon accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAec1AV_3jKtusgFsRI0ZJR9SoasmGSqz-EREu5t09eypN9_6bq4hQof61ASui7dzNDSd9pKPbT44BlgVRfa_3s2mubKAdCzTYjeFNzsRGsigVJ5wS1rzZ2lwmBSrCiBrIPG_IOBVHkb8fj-VMrBmMlrpmRiCCIpbxbPR4giSl39ivgBLi2wnAtQbS-UabV561NtMLbGFBg5KGKtBoYBAmXHCSNFRPMkqn0skfiViwrj4a9eB6BbREyvTJAy5IgfPJgI5SzKtoUscNW"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-low to-transparent"></div>
+</div>
+<div class="bg-surface-container-highest/30 p-3 mb-4 rounded-sm border-l-2 border-primary/40">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-[14px] text-primary">psychology</span>
+<span class="font-label-caps text-[10px] text-primary">AI REASONING</span>
+</div>
+<p class="font-body-base text-[12px] text-on-surface-variant italic">Social sentiment is peaking; significant liquidations on short positions imminent.</p>
+</div>
+<div class="mt-auto space-y-4">
+<div class="flex justify-between font-data-sm text-[12px]">
+<span class="text-on-surface-variant">Volume: <span class="text-on-surface">$8.1M</span></span>
+<span class="text-on-surface-variant">Prob: <span class="text-primary">55%</span></span>
+</div>
+<div class="flex gap-2">
+<input class="flex-1 bg-surface-container-lowest border border-outline-variant/30 px-3 py-2 font-data-sm text-sm focus:border-primary focus:ring-0 text-primary" placeholder="Stake" type="number"/>
+<button class="bg-primary text-on-primary px-4 py-2 font-label-caps text-label-caps font-bold btn-glow">CALL</button>
+<button class="border border-error text-error px-4 py-2 font-label-caps text-label-caps font-bold hover:bg-error/10">FADE</button>
+</div>
+</div>
+</div>
+<!-- Card 5 -->
+<div class="glass-card p-4 flex flex-col group hover:border-primary/40 transition-all duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="flex gap-2">
+<span class="px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary font-label-caps text-[9px]">[BUNDES]</span>
+<span class="px-2 py-0.5 bg-surface-bright/20 border border-outline-variant/20 text-on-surface-variant font-label-caps text-[9px]">FOOTBALL</span>
+</div>
+<span class="font-data-sm text-[11px] text-on-surface-variant">1d 0h left</span>
+</div>
+<h3 class="font-headline-md text-[18px] text-on-surface mb-3 group-hover:text-primary transition-colors">Bayern Munich to score 3+ goals vs BVB?</h3>
+<div class="mb-4 h-24 overflow-hidden relative rounded-sm">
+<img class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" data-alt="A moody, high-contrast shot of a football goal from behind the net, with the mesh creating a geometric grid pattern. The background is a blur of intense stadium lights and dark atmospheric clouds. The palette is dominated by deep blues, blacks, and sharp white highlights, evoking a high-stakes competitive tension." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-Ii8VvhzkMJSjPc_gRD0KwSAlAp4cbqUT7F-IbZFggCi-xs8PLFmKNUl6-I3fvcJ3QmIEhbC67AFpsDaIqn0pQ4GLkBFpKZt9VUkzKiSZciQBVJSDzo0q1AonS0TX0t8_0D0N3ZJcT7WtuYQhSM4iL_hri9InYk1V3yeERkfL4kiS2eheMAQ-14TXzAGOKGINtG0srj2Tro4IRZwp_oEOzxJpIBZXcbZpAdZCEjJGo0GBt9DgebBeuxTJcrVvOBzo-6TNhw-7YGrR"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-low to-transparent"></div>
+</div>
+<div class="bg-surface-container-highest/30 p-3 mb-4 rounded-sm border-l-2 border-primary/40">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-[14px] text-primary">psychology</span>
+<span class="font-label-caps text-[10px] text-primary">AI REASONING</span>
+</div>
+<p class="font-body-base text-[12px] text-on-surface-variant italic">BVB starting center-back ruled out; Munich offense averaging 2.8 goals at home.</p>
+</div>
+<div class="mt-auto space-y-4">
+<div class="flex justify-between font-data-sm text-[12px]">
+<span class="text-on-surface-variant">Volume: <span class="text-on-surface">$120k</span></span>
+<span class="text-on-surface-variant">Prob: <span class="text-primary">31%</span></span>
+</div>
+<div class="flex gap-2">
+<input class="flex-1 bg-surface-container-lowest border border-outline-variant/30 px-3 py-2 font-data-sm text-sm focus:border-primary focus:ring-0 text-primary" placeholder="Stake" type="number"/>
+<button class="bg-primary text-on-primary px-4 py-2 font-label-caps text-label-caps font-bold btn-glow">CALL</button>
+<button class="border border-error text-error px-4 py-2 font-label-caps text-label-caps font-bold hover:bg-error/10">FADE</button>
+</div>
+</div>
+</div>
+<!-- Card 6 -->
+<div class="glass-card p-4 flex flex-col group hover:border-primary/40 transition-all duration-300">
+<div class="flex justify-between items-start mb-4">
+<div class="flex gap-2">
+<span class="px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary font-label-caps text-[9px]">[DEX]</span>
+<span class="px-2 py-0.5 bg-surface-bright/20 border border-outline-variant/20 text-on-surface-variant font-label-caps text-[9px]">CRYPTO</span>
+</div>
+<span class="font-data-sm text-[11px] text-on-surface-variant">3d 22h left</span>
+</div>
+<h3 class="font-headline-md text-[18px] text-on-surface mb-3 group-hover:text-primary transition-colors">Uniswap v4 to launch on mainnet this week?</h3>
+<div class="mb-4 h-24 overflow-hidden relative rounded-sm">
+<img class="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity duration-500" data-alt="Macro photography of a high-tech circuit board with glowing neon cyan traces and futuristic components. The lighting is cinematic, focusing on the intricate details of the technology. The style is industrial-cyber, with deep shadows and vibrant data glows that suggest high-speed processing and on-chain activity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxe3lol1KcDZ4Sr6WggZdW6PTyxa3v3Nrnh3LuGrHTWJWPN1NXdb_IKV6VcM2DK7S-OF2n9rdpV_fih_2-_REwkK3J-V1Z10OYxrotoEzSDczV15btX6z4K6kdMXTgwDRqK45HHOyMKYwiA1Ij1vxGk4wGhqJ-H20LRDjK7bYDh0WPP9kVrJlb3X_y6Hnayu9zIm_ZfrQk6ySV_yUY5B5ko9m3cdRNNoYhmog8QLNrO3h4aB7xuMOHAFsjrcMxED7sTSnnMFn2Q7K7"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-low to-transparent"></div>
+</div>
+<div class="bg-surface-container-highest/30 p-3 mb-4 rounded-sm border-l-2 border-primary/40">
+<div class="flex items-center gap-2 mb-1">
+<span class="material-symbols-outlined text-[14px] text-primary">psychology</span>
+<span class="font-label-caps text-[10px] text-primary">AI REASONING</span>
+</div>
+<p class="font-body-base text-[12px] text-on-surface-variant italic">Dev activity on Github repository has stalled; likely pending final audit signatures.</p>
+</div>
+<div class="mt-auto space-y-4">
+<div class="flex justify-between font-data-sm text-[12px]">
+<span class="text-on-surface-variant">Volume: <span class="text-on-surface">$5.5M</span></span>
+<span class="text-on-surface-variant">Prob: <span class="text-primary">15%</span></span>
+</div>
+<div class="flex gap-2">
+<input class="flex-1 bg-surface-container-lowest border border-outline-variant/30 px-3 py-2 font-data-sm text-sm focus:border-primary focus:ring-0 text-primary" placeholder="Stake" type="number"/>
+<button class="bg-primary text-on-primary px-4 py-2 font-label-caps text-label-caps font-bold btn-glow">CALL</button>
+<button class="border border-error text-error px-4 py-2 font-label-caps text-label-caps font-bold hover:bg-error/10">FADE</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Empty State (Hidden by default) -->
+<div class="hidden flex-col items-center justify-center py-32 glass-card" id="empty-state">
+<div class="relative w-24 h-24 mb-6">
+<div class="absolute inset-0 border-2 border-primary/20 rounded-full animate-ping"></div>
+<div class="absolute inset-4 border border-primary/40 rounded-full animate-spin duration-[3s]"></div>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[48px] animate-pulse">search_spark</span>
+</div>
+</div>
+<h2 class="font-headline-md text-headline-md text-primary mb-2">SCANNING ON-CHAIN DATA</h2>
+<p class="font-body-base text-on-surface-variant max-w-md text-center">No active on-chain markets found matching your current parameters. Our AI is indexing new smart contracts...</p>
+<button class="mt-8 border border-primary text-primary px-8 py-3 font-label-caps text-label-caps hover:bg-primary/10 transition-all" onclick="resetFilters()">RETURN TO ALL MARKETS</button>
+</div>
+</main>
+<script>
+        function toggleMarkets(category) {
+            const grid = document.getElementById('markets-grid');
+            const empty = document.getElementById('empty-state');
+            const subfilters = document.getElementById('crypto-subfilters');
+            const buttons = document.querySelectorAll('.filter-btn');
+
+            buttons.forEach(btn => {
+                btn.classList.remove('active', 'bg-primary/10', 'text-primary', 'border-primary');
+                btn.classList.add('border-outline-variant/30', 'text-on-surface-variant');
+            });
+
+            const activeBtn = Array.from(buttons).find(b => b.innerText.toLowerCase() === category);
+            if (activeBtn) {
+                activeBtn.classList.add('active', 'bg-primary/10', 'text-primary', 'border-primary');
+                activeBtn.classList.remove('border-outline-variant/30', 'text-on-surface-variant');
+            }
+
+            if (category === 'crypto') {
+                subfilters.classList.remove('hidden');
+            } else {
+                subfilters.classList.add('hidden');
+            }
+
+            grid.classList.remove('hidden');
+            empty.classList.add('hidden');
+        }
+
+        function showEmptyState() {
+            const grid = document.getElementById('markets-grid');
+            const empty = document.getElementById('empty-state');
+            grid.classList.add('hidden');
+            empty.classList.remove('hidden');
+            empty.classList.add('flex');
+        }
+
+        function resetFilters() {
+            toggleMarkets('all');
+        }
+    </script>
+</body></html>

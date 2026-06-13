@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ARCSIGNAL | Global Leaderboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: #020405;
+            background-image: 
+                linear-gradient(rgba(0, 219, 233, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 219, 233, 0.03) 1px, transparent 1px);
+            background-size: 32px 32px;
+            color: #e0e3e6;
+        }
+        .glass-card {
+            background: rgba(24, 28, 30, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 219, 233, 0.15);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            border-color: rgba(0, 219, 233, 0.4);
+            box-shadow: 0 0 20px rgba(0, 219, 233, 0.05);
+        }
+        .gold-glow { border-color: rgba(255, 215, 0, 0.4); box-shadow: 0 0 20px rgba(255, 215, 0, 0.1); }
+        .silver-glow { border-color: rgba(192, 192, 192, 0.4); box-shadow: 0 0 20px rgba(192, 192, 192, 0.1); }
+        .bronze-glow { border-color: rgba(205, 127, 50, 0.4); box-shadow: 0 0 20px rgba(205, 127, 50, 0.1); }
+        
+        .cut-corner {
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "surface-bright": "#363a3c",
+                "on-secondary-fixed-variant": "#6b00b0",
+                "on-tertiary-container": "#c10018",
+                "secondary-fixed-dim": "#dfb7ff",
+                "on-error-container": "#ffdad6",
+                "inverse-surface": "#e0e3e6",
+                "surface-variant": "#313538",
+                "on-primary-container": "#006970",
+                "secondary-container": "#9d05ff",
+                "on-primary": "#00363a",
+                "surface-container-high": "#272a2d",
+                "inverse-on-surface": "#2d3133",
+                "on-background": "#e0e3e6",
+                "on-secondary-fixed": "#2d004f",
+                "primary-fixed": "#7df4ff",
+                "on-tertiary-fixed-variant": "#930010",
+                "surface-container": "#1c2022",
+                "tertiary-fixed": "#ffdad6",
+                "surface-container-highest": "#313538",
+                "on-surface-variant": "#b9cacb",
+                "tertiary-container": "#ffcec9",
+                "on-secondary-container": "#f7e6ff",
+                "primary-fixed-dim": "#00dbe9",
+                "tertiary": "#fff3f2",
+                "on-secondary": "#4b007e",
+                "on-primary-fixed": "#002022",
+                "secondary": "#dfb7ff",
+                "primary-container": "#00f0ff",
+                "surface-container-low": "#181c1e",
+                "on-error": "#690005",
+                "on-primary-fixed-variant": "#004f54",
+                "surface": "#101416",
+                "surface-tint": "#00dbe9",
+                "outline-variant": "#3b494b",
+                "background": "#101416",
+                "surface-container-lowest": "#0b0f11",
+                "inverse-primary": "#006970",
+                "error-container": "#93000a",
+                "secondary-fixed": "#f1daff",
+                "error": "#ffb4ab",
+                "primary": "#dbfcff",
+                "tertiary-fixed-dim": "#ffb3ac",
+                "on-surface": "#e0e3e6",
+                "outline": "#849495",
+                "surface-dim": "#101416",
+                "on-tertiary-fixed": "#410003",
+                "on-tertiary": "#680008"
+            },
+            "fontFamily": {
+                "display-lg": ["Inter"],
+                "headline-md": ["Inter"],
+                "data-sm": ["JetBrains Mono"],
+                "label-caps": ["JetBrains Mono"],
+                "body-base": ["Inter"],
+                "data-lg": ["JetBrains Mono"]
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="overflow-x-hidden font-body-base selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar -->
+<nav class="flex justify-between items-center w-full px-margin-desktop h-16 fixed top-0 z-50 bg-surface/80 backdrop-blur-md border-b border-outline-variant/20 shadow-[0_0_15px_rgba(0,219,233,0.1)]">
+<div class="flex items-center gap-8">
+<span class="font-display-lg text-display-lg font-black tracking-tighter text-primary italic">ARCSIGNAL</span>
+<div class="hidden md:flex gap-6">
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Dashboard</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Markets</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Feed</a>
+<a class="font-label-caps text-label-caps text-primary border-b-2 border-primary pb-1" href="#">Leaderboard</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Analytics</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant font-medium hover:text-primary transition-colors duration-200" href="#">Profile</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden lg:flex items-center px-3 py-1 bg-surface-container-highest rounded border border-outline-variant/30">
+<span class="font-data-sm text-data-sm text-on-surface">0.00 USDC</span>
+</div>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary-container text-on-primary-container font-label-caps text-label-caps font-bold transition-all hover:shadow-[0_0_12px_rgba(0,240,255,0.4)] active:scale-95">
+<span class="material-symbols-outlined text-[18px]">account_balance_wallet</span>
+                Connect Wallet
+            </button>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px)] flex flex-col p-4 z-40 bg-surface-container-low/60 backdrop-blur-xl border-r border-outline-variant/20 w-[264px] hidden md:flex">
+<div class="flex items-center gap-3 p-3 mb-6 bg-primary-container/5 rounded-lg border border-primary/10">
+<div class="w-10 h-10 rounded bg-primary/20 flex items-center justify-center border border-primary/40">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">terminal</span>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-primary">ARC TESTNET</div>
+<div class="font-data-sm text-data-sm text-on-surface-variant/70">ARC-W1 Node Active</div>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-3 rounded text-on-surface-variant hover:bg-surface-bright/10 hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-caps text-label-caps">Markets</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded bg-primary-container/10 text-primary border-r-2 border-primary translate-x-1 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">query_stats</span>
+<span class="font-label-caps text-label-caps">Activity</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded text-on-surface-variant hover:bg-surface-bright/10 hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined">account_balance</span>
+<span class="font-label-caps text-label-caps">Portfolio</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded text-on-surface-variant hover:bg-surface-bright/10 hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined">lock</span>
+<span class="font-label-caps text-label-caps">Vaults</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded text-on-surface-variant hover:bg-surface-bright/10 hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined">gavel</span>
+<span class="font-label-caps text-label-caps">Governance</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-3 rounded text-on-surface-variant hover:bg-surface-bright/10 hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined">help_outline</span>
+<span class="font-label-caps text-label-caps">Support</span>
+</a>
+</nav>
+<div class="mt-auto flex flex-col gap-1 pt-4 border-t border-outline-variant/10">
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-on-surface" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span class="font-label-caps text-[10px]">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:text-on-surface" href="#">
+<span class="material-symbols-outlined text-[20px]">description</span>
+<span class="font-label-caps text-[10px]">Docs</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="md:ml-[264px] pt-24 pb-32 px-margin-desktop max-w-container-max mx-auto min-h-screen">
+<header class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<div class="w-2 h-2 rounded-full bg-primary-fixed-dim animate-pulse"></div>
+<span class="font-label-caps text-label-caps text-primary uppercase tracking-[0.2em]">Live Ranking</span>
+</div>
+<h1 class="font-display-lg text-display-lg uppercase italic text-primary">GLOBAL LEADERBOARD</h1>
+</div>
+<div class="flex flex-wrap gap-2">
+<button class="px-4 py-2 bg-primary-container text-on-primary-container font-label-caps text-label-caps border border-primary/30">ALL TIME</button>
+<button class="px-4 py-2 bg-surface-container hover:bg-surface-bright text-on-surface-variant font-label-caps text-label-caps border border-outline-variant/30 transition-colors">THIS WEEK</button>
+<button class="px-4 py-2 bg-surface-container hover:bg-surface-bright text-on-surface-variant font-label-caps text-label-caps border border-outline-variant/30 transition-colors">FOOTBALL</button>
+<button class="px-4 py-2 bg-surface-container hover:bg-surface-bright text-on-surface-variant font-label-caps text-label-caps border border-outline-variant/30 transition-colors">CRYPTO</button>
+</div>
+</header>
+<!-- Top 3 Podium -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-12 items-end">
+<!-- Silver - Rank 2 -->
+<div class="order-2 md:order-1 glass-card silver-glow p-6 cut-corner relative overflow-hidden group">
+
+<div class="relative z-10 flex flex-col items-center text-center">
+<span class="font-display-lg text-headline-md text-on-surface-variant mb-4">#2</span>
+<div class="w-20 h-20 rounded-full border-2 border-secondary/50 mb-4 p-1 overflow-hidden">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A pixel-art style cyber-trader avatar with purple neon glasses and a mechanical eye. The style is consistent with high-frequency finance, featuring dark tech textures and sharp, high-contrast digital artifacts against a deep space black background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6d2oOEq1t6hP7EyAjOnLWylU6ZNZLiSI5lVeV-gg3cg7doC1jKwO-X9kh8dMBQ9abWQg4u_MLI6HOB8fcH_Ko__xlrvHI84D8g49R1xfiTF3XtF533fWSIuWO1t57W25ok-JaZBRwQWSGAMjHU0RB3TfKI00eZSKp0oZHp7j-Fb3gPCrrk1TDNWnvLIbfn35DrcCuC5fc3Y1Ysl7m0V4c3UbqDUIDNR_1hzx_tQl5NJJRzXdS8ZCX4-5kiZqI4Kw_7KynOS1YpYFW"/>
+</div>
+<div class="font-data-lg text-data-lg text-secondary mb-1">0x8B...F421</div>
+<div class="font-label-caps text-label-caps text-on-surface-variant opacity-60 mb-4">CRYPTO_PUNK_99</div>
+<div class="grid grid-cols-2 gap-4 w-full pt-4 border-t border-outline-variant/20">
+<div>
+<div class="font-label-caps text-[10px] text-on-surface-variant uppercase">Staked</div>
+<div class="font-data-sm text-on-surface font-bold">142,500 USDC</div>
+</div>
+<div>
+<div class="font-label-caps text-[10px] text-on-secondary-fixed-variant uppercase">Win Rate</div>
+<div class="font-data-sm text-secondary font-bold">78.4%</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Gold - Rank 1 -->
+<div class="order-1 md:order-2 glass-card gold-glow p-8 cut-corner relative overflow-hidden transform md:-translate-y-6 group">
+<div class="absolute -top-12 -right-12 w-24 h-24 bg-primary/20 blur-3xl rounded-full"></div>
+
+<div class="relative z-10 flex flex-col items-center text-center">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary animate-bounce" style="font-variation-settings: 'FILL' 1;">military_tech</span>
+<span class="font-display-lg text-display-lg text-primary">#1</span>
+</div>
+<div class="w-24 h-24 rounded-full border-4 border-primary mb-4 p-1 overflow-hidden ring-4 ring-primary/20">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A high-detail pixel art portrait of a digital whale wearing a golden cybernetic visor. The background is a dense matrix of glowing cyan data streams. The visual style is institutional yet hacker-inspired, with deep shadows and vibrant luminance that suggests extreme digital wealth." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYnEp3ML2tOtr4cUGXjC_foeQzP14wZT_zlA0PqbBOd0UfFANYZYLGnE2kk4ntbEk9iB7i7mLelCtKU8eYIa3vc-yhvo0stkyvp3nUSlBJWAYf2qDdeK-u5Wg8-BZ7mKtIeETn3Yx8uBiV_S7nDzZeh46IOu3z6zmw0r21zjr0s8Kd2LUeekYFz2Eh6Ib5g-kepyR2kRd4IQGuzBblQEG-loNuLzaOUlOyNr1cH-tXa1u1XrJUYsFNSNRJh-rkSES7SUu9WwWjbHEu"/>
+</div>
+<div class="font-data-lg text-display-lg text-primary mb-1">0xFC...992E</div>
+<div class="font-label-caps text-label-caps text-primary/80 mb-6 tracking-[0.2em]">ARC_WHALE_SYSTEM</div>
+<div class="grid grid-cols-2 gap-8 w-full pt-6 border-t border-primary/20">
+<div>
+<div class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">Total Profit</div>
+<div class="font-data-lg text-on-surface font-bold">+842,102 USDC</div>
+</div>
+<div>
+<div class="font-label-caps text-label-caps text-primary-fixed-dim uppercase mb-1">Staked</div>
+<div class="font-data-lg text-primary font-bold">1.2M USDC</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bronze - Rank 3 -->
+<div class="order-3 glass-card bronze-glow p-6 cut-corner relative overflow-hidden group">
+
+<div class="relative z-10 flex flex-col items-center text-center">
+<span class="font-display-lg text-headline-md text-on-surface-variant mb-4">#3</span>
+<div class="w-20 h-20 rounded-full border-2 border-outline/50 mb-4 p-1 overflow-hidden">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A dark-themed pixel art avatar of a mysterious figure in a white cybernetic cowl. Minimalist lighting with stark white highlights against deep space black. The aesthetic is clean and industrial, evoking the feeling of a professional, high-stakes prediction market participant." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKYgZTZj6K_NqSIwEVZHl4ipvtKSgUDs8UZFtSKUE17d85fPaBeEXG7hr29JlaSPWjxJb2283YnsjUPEYmY2BSp6wJ-RrTzk9cixrIqdL2ccee_2ZjKBAh6xspw4S8Q5Hppt03jiE8UdRT-QIHeFXez0zTPLGVIPVJAJQoy8TS_6X_4A_HJRSuiJZf2bidse_3iEIKy3v9YMMSpO1hAeiysc4rPv-XXwbHcxq7of6-Vgu5rKAeWHu3HXO1vlNx0rPpgovd-33v9drG"/>
+</div>
+<div class="font-data-lg text-data-lg text-on-surface mb-1">0x31...2A11</div>
+<div class="font-label-caps text-label-caps text-on-surface-variant opacity-60 mb-4">VOID_REVENANT</div>
+<div class="grid grid-cols-2 gap-4 w-full pt-4 border-t border-outline-variant/20">
+<div>
+<div class="font-label-caps text-[10px] text-on-surface-variant uppercase">Staked</div>
+<div class="font-data-sm text-on-surface font-bold">98,200 USDC</div>
+</div>
+<div>
+<div class="font-label-caps text-[10px] text-on-surface-variant uppercase">Win Rate</div>
+<div class="font-data-sm text-on-surface font-bold">71.2%</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Main Table Container -->
+<div class="glass-card overflow-hidden border-outline-variant/20">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-highest/50 border-b border-outline-variant/20">
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Rank</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Wallet</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Total Staked</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Win Rate</th>
+<th class="px-6 py-4 font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Net Profit</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<!-- Rank 4 -->
+<tr class="hover:bg-surface-bright/20 transition-colors">
+<td class="px-6 py-4 font-data-sm text-on-surface">#4</td>
+<td class="px-6 py-4 font-data-sm text-on-surface flex items-center gap-2">
+<span class="w-6 h-6 rounded-sm bg-surface-container border border-outline-variant/30 overflow-hidden">
+<img alt="Avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCJytR1tOhXLjyhsIEeexvcc7T6AqVs2TTXQftrpC3FcCzj8gBvDidN2jdc3thEjl9DmdJp-_77fK8KCeVAK_2hnMoX-Rqxmfzvol_4eSSlswRorbj3VDQSb7QN_7ZGTA6VozlM-8eK8pL-XN4_hXNCgwbI3dcK21IMu8rghw4T5dWNNtiBYrcFV3tpTLR6AZ8n63C_4Pqksn58ccjhKVDl6E8-i5Mh-O4jv5DEUYywSaDEt6CZzL3N3GcXgQVjXzW98QnXiJzc_wpM"/>
+</span>
+                                0x4a...c901
+                            </td>
+<td class="px-6 py-4 font-data-sm text-on-surface">45,120 USDC</td>
+<td class="px-6 py-4 font-data-sm text-on-surface">
+<div class="flex items-center gap-2">
+<div class="w-16 h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 68%;"></div>
+</div>
+                                    68.2%
+                                </div>
+</td>
+<td class="px-6 py-4 font-data-sm text-primary">+12,440 USDC</td>
+</tr>
+<!-- Rank 5 -->
+<tr class="hover:bg-surface-bright/20 transition-colors">
+<td class="px-6 py-4 font-data-sm text-on-surface">#5</td>
+<td class="px-6 py-4 font-data-sm text-on-surface flex items-center gap-2">
+<span class="w-6 h-6 rounded-sm bg-surface-container border border-outline-variant/30 overflow-hidden">
+<img alt="Avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-s4BeMRAVEuZr4L9W5q7D8IzeSuscQ0-BusRbWkM9trF98WVaxhX0po919G78buOWskk-q-JwIhz4LcG5kgwmjTivHQbfxdcLwWzPqNJ0-R0uHau-2jWOvuxdLS6SbUou05VVu6Nk2fBMhhoB94gj8XnSoSqCYPb3M3Eds4InVt4CgSK_fhK-frkbqQ9oUFKzZqZdCSibzVQBLK8EnvjzvxK-3-R1SnCGJXxFIFwA8ileBRi3Hai6eC1zbYmdmfdOMfOn4PSAwlF9"/>
+</span>
+                                0x92...ef32
+                            </td>
+<td class="px-6 py-4 font-data-sm text-on-surface">32,800 USDC</td>
+<td class="px-6 py-4 font-data-sm text-on-surface">
+<div class="flex items-center gap-2">
+<div class="w-16 h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 65%;"></div>
+</div>
+                                    65.4%
+                                </div>
+</td>
+<td class="px-6 py-4 font-data-sm text-primary">+8,210 USDC</td>
+</tr>
+<!-- More Rows... -->
+<tr class="hover:bg-surface-bright/20 transition-colors">
+<td class="px-6 py-4 font-data-sm text-on-surface">#6</td>
+<td class="px-6 py-4 font-data-sm text-on-surface flex items-center gap-2">
+<span class="w-6 h-6 rounded-sm bg-surface-container border border-outline-variant/30 overflow-hidden">
+<img alt="Avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDipElAjr_3YChpZjWc_aGZdmFs8KhXHjEW_tTDcsjGkkvtbu9IT9jTc2yDH7i8ywX6N6gkAVbaq1dyvEsNCahcFzvRZKWb8AGRFSQ00fAJxQXxWMavPJP9SSbpEPB96FJWgp77KmoZ6srYxAK3d3W5ApDr3ET1E5QEFip33WkWXLMi0SRWTwqwthTQXJXmqE-bde02dWDHcr238ddx42ONyEU-m_A6_y2o1LGHoPBgGSp7M1gCp9hkVHIDJEI6tf43pxj-fHZFngJI"/>
+</span>
+                                0x11...bb67
+                            </td>
+<td class="px-6 py-4 font-data-sm text-on-surface">29,150 USDC</td>
+<td class="px-6 py-4 font-data-sm text-on-surface">
+<div class="flex items-center gap-2">
+<div class="w-16 h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 62%;"></div>
+</div>
+                                    62.1%
+                                </div>
+</td>
+<td class="px-6 py-4 font-data-sm text-primary">+5,930 USDC</td>
+</tr>
+<tr class="hover:bg-surface-bright/20 transition-colors">
+<td class="px-6 py-4 font-data-sm text-on-surface">#7</td>
+<td class="px-6 py-4 font-data-sm text-on-surface flex items-center gap-2">
+<span class="w-6 h-6 rounded-sm bg-surface-container border border-outline-variant/30 overflow-hidden">
+<img alt="Avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzDlCtsJQglSDKlxbUhIENTbfz20bjxAAoqQK7282LlZn1XCf6XGehDcVWfGYhpMVPP83BQziRuvB5neYZ01URtaKXxa8qB9Fgx_qaw5C0MBt-k-LOWRZFuOV8nLZl--76nIgv8H5nEd1YSrID0ZDG0Yz9i_z0_HByMIlbxs1rsBlmBbU-_w-MCXP3psVRRelb87ycjWnu1GTX4acmgdXei8RRLrBv91mCQd_jxnnXmv20fz9wkQdqzoYV-Ah5oUsQsr4rUYFKfOrw"/>
+</span>
+                                0x76...da9a
+                            </td>
+<td class="px-6 py-4 font-data-sm text-on-surface">22,000 USDC</td>
+<td class="px-6 py-4 font-data-sm text-on-surface">
+<div class="flex items-center gap-2">
+<div class="w-16 h-1.5 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary" style="width: 59%;"></div>
+</div>
+                                    59.8%
+                                </div>
+</td>
+<td class="px-6 py-4 font-data-sm text-on-tertiary-container">-2,100 USDC</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination-like spacer -->
+<div class="p-6 text-center border-t border-outline-variant/10">
+<button class="font-label-caps text-label-caps text-on-surface-variant hover:text-primary transition-colors">Load More Ranked Participants</button>
+</div>
+</div>
+</main>
+<!-- User Position Sticky Row -->
+<div class="fixed bottom-0 left-0 md:left-[264px] right-0 z-50 bg-primary-container text-on-primary-container px-margin-desktop py-4 shadow-[0_-4px_20px_rgba(0,240,255,0.2)] border-t border-primary/30 flex items-center justify-between">
+<div class="flex items-center gap-8">
+<div class="flex flex-col">
+<span class="font-label-caps text-[10px] uppercase opacity-70">Your Rank</span>
+<span class="font-display-lg text-headline-md font-black">#142</span>
+</div>
+<div class="h-8 w-[1px] bg-on-primary-container/20"></div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full border border-on-primary-container/30 overflow-hidden">
+<img alt="Your Avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQx5D6WfIZHHfzMGvrpZzb6t7emXAuFxT0Z96BTjUycGgXFqthIDMR1cYLnDK9EuAiD5ViPgBcGDC2cc21ikqlRw8JQcZQ-n27gO4qptFhPRCLlq6dRCYrZd86aQ4YAVkq_qDQ23RU-_J8PwdPSsU_urqMOg-NAfpbPbvdeXvq8tJvoSejWQuUNeYe3KZd-9tLCl0uZdvVUNn4L6-wD6eJH00xrA2D1VGGw6q0JH2mLBh9ZgJpzqHAbzacLk7lcSanqu68PWYaFwA_"/>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps font-bold">YOU (0x7e...8b1a)</span>
+<span class="font-data-sm text-[11px] opacity-70">Active Strategy: Neural-Delta</span>
+</div>
+</div>
+</div>
+<div class="flex gap-12 text-right">
+<div>
+<div class="font-label-caps text-[10px] uppercase opacity-70">Staked</div>
+<div class="font-data-sm text-data-sm font-bold">1,500 USDC</div>
+</div>
+<div>
+<div class="font-label-caps text-[10px] uppercase opacity-70">Win Rate</div>
+<div class="font-data-sm text-data-sm font-bold">64.0%</div>
+</div>
+<div>
+<div class="font-label-caps text-[10px] uppercase opacity-70">Net Profit</div>
+<div class="font-data-sm text-data-sm font-bold">+240 USDC</div>
+</div>
+</div>
+</div>
+<script>
+        // Simple micro-interaction for podium hover effects
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = card.classList.contains('md:-translate-y-6') 
+                    ? 'translateY(-28px) scale(1.02)' 
+                    : 'translateY(-4px) scale(1.02)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = card.classList.contains('md:-translate-y-6') 
+                    ? 'translateY(-24px) scale(1)' 
+                    : 'translateY(0) scale(1)';
+            });
+        });
+    </script>
+</body></html>

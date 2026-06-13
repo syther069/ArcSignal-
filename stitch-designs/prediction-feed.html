@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        :root {
+            --obsidian-base: #020405;
+            --obsidian-panel: #0B0F11;
+            --cyan-accent: #00F0FF;
+        }
+        body {
+            background-color: var(--obsidian-base);
+            background-image: 
+                linear-gradient(rgba(132, 148, 149, 0.05) 1px, transparent 1px),
+                linear-gradient(90px, rgba(132, 148, 149, 0.05) 1px, transparent 1px);
+            background-size: 24px 24px;
+            color: #e0e3e5;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            background: rgba(0, 240, 255, 0.3);
+            top: 0;
+            left: 0;
+            animation: scan 8s linear infinite;
+            pointer-events: none;
+            z-index: 10;
+        }
+        @keyframes scan {
+            0% { transform: translateY(0vh); opacity: 0; }
+            5% { opacity: 1; }
+            95% { opacity: 1; }
+            100% { transform: translateY(100vh); opacity: 0; }
+        }
+        .terminal-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 2px;
+            background-color: var(--cyan-accent);
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-fixed-dim": "#ffb59e",
+                      "outline-variant": "#3b494b",
+                      "surface": "#101416",
+                      "inverse-on-surface": "#2d3133",
+                      "on-secondary-fixed-variant": "#3a494a",
+                      "tertiary": "#fff4f1",
+                      "on-error": "#690005",
+                      "surface-tint": "#00dbe9",
+                      "on-primary-container": "#006970",
+                      "primary-container": "#00f0ff",
+                      "surface-variant": "#313538",
+                      "surface-dim": "#101416",
+                      "background": "#101416",
+                      "error": "#ffb4ab",
+                      "surface-container": "#1c2022",
+                      "inverse-primary": "#006970",
+                      "on-secondary": "#243334",
+                      "primary-fixed": "#7df4ff",
+                      "on-background": "#e0e3e5",
+                      "on-tertiary-fixed": "#3a0b00",
+                      "primary-fixed-dim": "#00dbe9",
+                      "on-primary": "#00363a",
+                      "surface-container-low": "#181c1e",
+                      "primary": "#dbfcff",
+                      "surface-container-highest": "#313538",
+                      "surface-container-high": "#272b2d",
+                      "on-secondary-fixed": "#0f1e1f",
+                      "secondary-fixed-dim": "#b9cacb",
+                      "on-surface-variant": "#b9cacb",
+                      "on-primary-fixed": "#002022",
+                      "on-error-container": "#ffdad6",
+                      "secondary-fixed": "#d5e6e7",
+                      "secondary-container": "#3d4c4d",
+                      "on-secondary-container": "#abbbbc",
+                      "secondary": "#b9cacb",
+                      "inverse-surface": "#e0e3e5",
+                      "on-tertiary-container": "#af3200",
+                      "on-primary-fixed-variant": "#004f54",
+                      "surface-container-lowest": "#0b0f11",
+                      "tertiary-container": "#ffcfc1",
+                      "outline": "#849495",
+                      "surface-bright": "#363a3c",
+                      "error-container": "#93000a",
+                      "tertiary-fixed": "#ffdbd0",
+                      "on-tertiary": "#5e1700",
+                      "on-surface": "#e0e3e5",
+                      "on-tertiary-fixed-variant": "#852400"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "gutter": "16px",
+                      "margin": "24px",
+                      "container-padding": "12px"
+              },
+              "fontFamily": {
+                      "data-md": ["JetBrains Mono"],
+                      "body-md": ["Inter"],
+                      "label-sm": ["JetBrains Mono"],
+                      "data-lg": ["JetBrains Mono"],
+                      "headline-lg": ["Inter"],
+                      "headline-md": ["Inter"]
+              },
+              "fontSize": {
+                      "data-md": ["14px", {"lineHeight": "1.4", "letterSpacing": "0", "fontWeight": "400"}],
+                      "body-md": ["14px", {"lineHeight": "1.5", "letterSpacing": "0", "fontWeight": "400"}],
+                      "label-sm": ["11px", {"lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "500"}],
+                      "data-lg": ["18px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+                      "headline-lg": ["32px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "headline-md": ["24px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+<div class="scan-line"></div>
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-margin h-12 z-50 bg-surface border-b border-outline-variant/20 fixed top-0">
+<div class="flex items-center gap-margin">
+<span class="font-headline-md text-headline-md font-bold tracking-tighter text-primary">ARCSIGNAL</span>
+<nav class="hidden md:flex gap-gutter">
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors duration-200" href="#">Markets</a>
+<a class="text-primary border-b-2 border-primary-container pb-1" href="#">Stats</a>
+<a class="text-on-surface-variant font-body-md text-body-md hover:text-primary transition-colors duration-200" href="#">Docs</a>
+</nav>
+</div>
+<div class="flex items-center gap-gutter">
+<div class="flex items-center bg-surface-container-lowest border border-outline-variant/20 px-3 py-1 rounded-sm">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 font-label-sm text-label-sm text-on-surface placeholder-on-surface-variant/40 w-48" placeholder="CMD+K TO SEARCH" type="text"/>
+</div>
+<button class="bg-primary-container text-on-primary-container px-4 py-1 font-label-sm text-label-sm font-bold active:scale-95 transition-transform">Connect Wallet</button>
+</div>
+</header>
+<div class="flex flex-1 pt-12">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-12 h-[calc(100vh-48px)] flex flex-col z-40 bg-surface-container-low border-r border-outline-variant/20 w-64 hidden lg:flex">
+<div class="p-margin border-b border-outline-variant/10">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-primary/20 flex items-center justify-center border border-primary/40">
+<span class="material-symbols-outlined text-primary text-[18px]">terminal</span>
+</div>
+<div>
+<div class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Terminal Alpha</div>
+<div class="font-data-md text-[10px] text-primary/60">Network: ARC Testnet</div>
+</div>
+</div>
+</div>
+<nav class="flex-1 mt-unit">
+<a class="flex items-center gap-unit text-on-surface-variant px-4 py-3 hover:bg-surface-variant/30 hover:text-on-surface transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-label-sm text-label-sm">Markets</span>
+</a>
+<a class="flex items-center gap-unit bg-secondary-container/10 text-primary border-l-4 border-primary px-4 py-3 shadow-[0_0_10px_#00F0FF] transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="font-label-sm text-label-sm">Activity</span>
+</a>
+<a class="flex items-center gap-unit text-on-surface-variant px-4 py-3 hover:bg-surface-variant/30 hover:text-on-surface transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-label-sm text-label-sm">Portfolio</span>
+</a>
+<a class="flex items-center gap-unit text-on-surface-variant px-4 py-3 hover:bg-surface-variant/30 hover:text-on-surface transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-sm text-label-sm">Settings</span>
+</a>
+</nav>
+<div class="p-margin mt-auto">
+<button class="w-full bg-surface-container-highest border border-outline/30 text-on-surface py-2 font-label-sm text-label-sm hover:border-primary/50 transition-colors">
+                    New Prediction
+                </button>
+</div>
+<div class="border-t border-outline-variant/10 p-4 flex flex-col gap-2">
+<div class="flex items-center gap-2 text-on-surface-variant opacity-60">
+<span class="material-symbols-outlined text-[14px]">sensors</span>
+<span class="font-label-sm text-[10px]">Network Status: <span class="text-primary">Nominal</span></span>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 lg:ml-64 p-gutter overflow-y-auto bg-surface-container-lowest">
+<!-- Header Section -->
+<div class="flex justify-between items-end mb-gutter">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-primary tracking-tight mb-unit">Live Activity Feed</h1>
+<p class="font-data-md text-on-surface-variant opacity-70">Real-time platform execution log and oracle verification stream.</p>
+</div>
+<div class="flex gap-2">
+<div class="bg-surface-container-high border border-outline-variant/30 px-3 py-1 flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<span class="font-label-sm text-label-sm">LIVE FEED</span>
+</div>
+<div class="bg-surface-container-high border border-outline-variant/30 px-3 py-1 flex items-center gap-2">
+<span class="font-label-sm text-label-sm">EVENTS: <span class="font-bold">4,129</span></span>
+</div>
+</div>
+</div>
+<!-- Activity Log Table -->
+<div class="bg-surface-container-lowest border border-outline-variant/20">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant/40 bg-surface-container-low">
+<th class="p-4 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest w-24">Timestamp</th>
+<th class="p-4 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest w-32">Event Type</th>
+<th class="p-4 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest">Description</th>
+<th class="p-4 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest w-32">AI Pick</th>
+<th class="p-4 font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest text-right w-32">Volume (USDC)</th>
+</tr>
+</thead>
+<tbody class="font-data-md text-data-md">
+<!-- Row 1 -->
+<tr class="border-b border-outline-variant/10 hover:border-primary transition-all duration-100 group cursor-pointer hover:bg-primary/5">
+<td class="p-4 text-on-surface-variant">14:02:21</td>
+<td class="p-4">
+<span class="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[10px] font-bold">PREDICTION</span>
+</td>
+<td class="p-4 text-on-surface">
+                                User <span class="text-primary-fixed-dim">0x8a...4f21</span> entered "BTC &gt; $70k by EOW" contract.
+                            </td>
+<td class="p-4">
+<span class="bg-secondary-container/20 text-on-secondary-container border border-outline-variant px-2 py-0.5 text-[10px]">BULLISH</span>
+</td>
+<td class="p-4 text-right font-bold text-primary">12,450.00</td>
+</tr>
+<!-- Row 2 -->
+<tr class="border-b border-outline-variant/10 hover:border-primary transition-all duration-100 group cursor-pointer hover:bg-primary/5">
+<td class="p-4 text-on-surface-variant">14:01:55</td>
+<td class="p-4">
+<span class="bg-tertiary-container/10 text-on-tertiary-container border border-tertiary-container/20 px-2 py-0.5 text-[10px] font-bold text-orange-400">ALERT</span>
+</td>
+<td class="p-4 text-on-surface">
+                                Oracle drift detected on <span class="text-primary-fixed-dim">ETH/USDC</span>. Re-syncing data shards...
+                            </td>
+<td class="p-4">
+<span class="text-on-surface-variant/40">—</span>
+</td>
+<td class="p-4 text-right text-on-surface-variant">0.00</td>
+</tr>
+<!-- Row 3 -->
+<tr class="border-b border-outline-variant/10 hover:border-primary transition-all duration-100 group cursor-pointer hover:bg-primary/5">
+<td class="p-4 text-on-surface-variant">14:01:03</td>
+<td class="p-4">
+<span class="bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 text-[10px] font-bold">RESULT</span>
+</td>
+<td class="p-4 text-on-surface">
+                                Contract <span class="text-primary-fixed-dim">ID_882</span> settled. 412 participants distributed 4.2 ETH.
+                            </td>
+<td class="p-4">
+<span class="bg-primary-container/20 text-primary border border-primary/20 px-2 py-0.5 text-[10px]">CORRECT</span>
+</td>
+<td class="p-4 text-right font-bold text-primary">89,201.12</td>
+</tr>
+<!-- Row 4 -->
+<tr class="border-b border-outline-variant/10 hover:border-primary transition-all duration-100 group cursor-pointer hover:bg-primary/5">
+<td class="p-4 text-on-surface-variant">13:58:44</td>
+<td class="p-4">
+<span class="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[10px] font-bold">PREDICTION</span>
+</td>
+<td class="p-4 text-on-surface">
+                                Large position (whale) detected in <span class="text-primary-fixed-dim">NVDA earnings</span> market.
+                            </td>
+<td class="p-4">
+<span class="bg-secondary-container/20 text-on-secondary-container border border-outline-variant px-2 py-0.5 text-[10px]">BEARISH</span>
+</td>
+<td class="p-4 text-right font-bold text-primary">250,000.00</td>
+</tr>
+<!-- Row 5 -->
+<tr class="border-b border-outline-variant/10 hover:border-primary transition-all duration-100 group cursor-pointer hover:bg-primary/5">
+<td class="p-4 text-on-surface-variant">13:55:12</td>
+<td class="p-4">
+<span class="bg-surface-variant text-on-surface-variant border border-outline-variant/20 px-2 py-0.5 text-[10px] font-bold">NEWS</span>
+</td>
+<td class="p-4 text-on-surface">
+                                SEC filing update for Spot Ethereum ETF. Sentience model updating weights.
+                            </td>
+<td class="p-4">
+<span class="bg-primary/20 text-primary border border-primary/20 px-2 py-0.5 text-[10px] animate-pulse">ANALYZING</span>
+</td>
+<td class="p-4 text-right text-on-surface-variant">0.00</td>
+</tr>
+<!-- Row 6 -->
+<tr class="border-b border-outline-variant/10 hover:border-primary transition-all duration-100 group cursor-pointer hover:bg-primary/5">
+<td class="p-4 text-on-surface-variant">13:52:09</td>
+<td class="p-4">
+<span class="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[10px] font-bold">PREDICTION</span>
+</td>
+<td class="p-4 text-on-surface">
+                                Order filled: "SOL Flip ETH Market Cap" — Buy <span class="text-primary-fixed-dim">NO</span>.
+                            </td>
+<td class="p-4">
+<span class="bg-secondary-container/20 text-on-secondary-container border border-outline-variant px-2 py-0.5 text-[10px]">BULLISH</span>
+</td>
+<td class="p-4 text-right font-bold text-primary">5,400.00</td>
+</tr>
+<!-- Row 7 -->
+<tr class="border-b border-outline-variant/10 hover:border-primary transition-all duration-100 group cursor-pointer hover:bg-primary/5">
+<td class="p-4 text-on-surface-variant">13:50:33</td>
+<td class="p-4">
+<span class="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[10px] font-bold">PREDICTION</span>
+</td>
+<td class="p-4 text-on-surface">
+                                New market created: <span class="text-primary-fixed-dim">FED Rate Cut</span> - Sept Meeting.
+                            </td>
+<td class="p-4">
+<span class="bg-secondary-container/20 text-on-secondary-container border border-outline-variant px-2 py-0.5 text-[10px]">NEUTRAL</span>
+</td>
+<td class="p-4 text-right font-bold text-primary">1,200.00</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Terminal Component -->
+<div class="mt-gutter bg-surface-container-lowest border border-outline-variant/20 p-4 font-data-md text-data-md">
+<div class="flex items-center gap-2 mb-2 text-on-surface-variant opacity-50">
+<span class="material-symbols-outlined text-[14px]">terminal</span>
+<span class="font-label-sm">OPERATOR TERMINAL</span>
+</div>
+<div class="flex gap-2 text-primary">
+<span class="opacity-50">ARCSIGNAL_OS:~$</span>
+<span id="terminal-text">tail -f activity_stream.log --filter="prediction"</span>
+<span class="terminal-cursor"></span>
+</div>
+</div>
+</main>
+</div>
+<!-- Mobile Bottom NavBar -->
+<nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface border-t border-outline-variant/20 z-50 flex items-center justify-around px-margin">
+<a class="flex flex-col items-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-[10px] font-label-sm">Markets</span>
+</a>
+<a class="flex flex-col items-center text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+<span class="text-[10px] font-label-sm">Activity</span>
+</a>
+<a class="flex flex-col items-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="text-[10px] font-label-sm">Wallet</span>
+</a>
+<a class="flex flex-col items-center text-on-surface-variant" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-label-sm">Settings</span>
+</a>
+</nav>
+<script>
+        // Micro-interaction for terminal text simulation
+        const terminalText = document.getElementById('terminal-text');
+        const commands = [
+            'tail -f activity_stream.log --filter="prediction"',
+            'query --market=BTC --status=open',
+            'oracle --status-check',
+            'arcsignal --version'
+        ];
+        let commandIndex = 0;
+
+        setInterval(() => {
+            commandIndex = (commandIndex + 1) % commands.length;
+            terminalText.textContent = commands[commandIndex];
+        }, 5000);
+
+        // Add visual glitch/flicker to primary text occasionally
+        setInterval(() => {
+            const headline = document.querySelector('h1');
+            headline.classList.add('opacity-80');
+            setTimeout(() => headline.classList.remove('opacity-80'), 50);
+        }, 3000);
+    </script>
+</body></html>
