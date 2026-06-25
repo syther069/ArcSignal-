@@ -1,25 +1,6 @@
-import { createPublicClient, http, parseUnits, type Address, type WalletClient } from 'viem';
-import { arcTestnet, arcTestnetConfig } from './arc';
-import { approveUSDC, MATCHMIND_ADDRESS, USDC_ABI, USDC_ADDRESS } from './usdc';
-
-const MATCHMIND_ABI = [
-  {
-    type: 'function',
-    name: 'stake',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'marketId', type: 'string' },
-      { name: 'side', type: 'uint8' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    outputs: [],
-  },
-] as const;
-
-const publicClient = createPublicClient({
-  chain: arcTestnet,
-  transport: http(arcTestnetConfig.rpcUrl),
-});
+import { parseUnits, type Address, type WalletClient } from 'viem';
+import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS, publicClient, USDC_ABI, USDC_ADDRESS } from './contracts';
+import { approveUSDC } from './usdc';
 
 export async function stakeOnMarket(
   marketId: bigint | number | string,
@@ -45,7 +26,7 @@ export async function stakeOnMarket(
     address: USDC_ADDRESS,
     abi: USDC_ABI,
     functionName: 'allowance',
-    args: [userAddress, MATCHMIND_ADDRESS],
+    args: [userAddress, ARCSIGNAL_ADDRESS],
   });
 
   if (allowance < amount) {
@@ -54,10 +35,10 @@ export async function stakeOnMarket(
   }
 
   return walletClient.writeContract({
-    address: MATCHMIND_ADDRESS,
-    abi: MATCHMIND_ABI,
+    address: ARCSIGNAL_ADDRESS,
+    abi: ARCSIGNAL_ABI,
     functionName: 'stake',
-    args: [marketId.toString(), side, amount],
+    args: [BigInt(marketId), side, amount],
     account: userAddress,
     chain: arcTestnet,
   });

@@ -1,77 +1,109 @@
-export interface LiveMatch {
+export interface Fixture {
+  fixtureId: number;
   homeTeam: string;
   awayTeam: string;
-  homeScore: number;
-  awayScore: number;
-  minute: number;
+  homeTeamLogo: string;
+  awayTeamLogo: string;
+  kickoffTime: number;
+  status: 'NS' | '1H' | 'HT' | '2H' | 'FT' | 'AET' | 'PEN' | 'CANC' | 'PST';
+  homeScore: number | null;
+  awayScore: number | null;
+  round: string;
+  leagueName: string;
 }
 
-const FALLBACK_MATCHES: LiveMatch[] = [
-  { homeTeam: 'Man City', awayTeam: 'Real Madrid', homeScore: 2, awayScore: 1, minute: 72 },
-  { homeTeam: 'Chelsea', awayTeam: 'Arsenal', homeScore: 0, awayScore: 0, minute: 15 },
-  { homeTeam: 'Barcelona', awayTeam: 'Bayern Munich', homeScore: 3, awayScore: 2, minute: 88 },
-];
+const BASE_URL = 'https://v3.football.api-sports.io';
 
-export async function fetchLiveMatches(): Promise<LiveMatch[]> {
-  const apiKey = process.env.API_FOOTBALL_KEY || process.env.NEXT_PUBLIC_API_FOOTBALL_KEY;
+type ApiFootballStatus = Fixture['status'];
+
+interface ApiFootballFixtureResponse {
+  fixture: {
+    id: number;
+    date: string;
+    status: {
+      short: ApiFootballStatus;
+    };
+  };
+  teams: {
+    home: {
+      name: string;
+      logo: string;
+    };
+    away: {
+      name: string;
+      logo: string;
+    };
+  };
+  goals: {
+    home: number | null;
+    away: number | null;
+  };
+  league: {
+    round: string;
+    name: string;
+  };
+}
+
+function getHeaders() {
+  const apiKey = process.env.API_FOOTBALL_KEY;
   if (!apiKey) {
-    // Return high quality mock live football matches that simulate progress
-    return getSimulatedMatches();
+    throw new Error('API_FOOTBALL_KEY is not configured');
   }
 
-  try {
-    // API-Football endpoint: e.g., v3.football.api-sports.io or api-football-v1.p.rapidapi.com
-    const res = await fetch('https://v3.football.api-sports.io/fixtures?live=all', {
-      headers: {
-        'x-apisports-key': apiKey,
-      },
-      next: { revalidate: 30 }
-    });
-    if (!res.ok) {
-      throw new Error('API-Football fetch failed');
-    }
-    const json = await res.json();
-    if (!json.response || !Array.isArray(json.response)) {
-      throw new Error('Invalid API-Football response format');
-    }
-
-    return json.response.slice(0, 5).map((item: any) => ({
-      homeTeam: item.teams.home.name,
-      awayTeam: item.teams.away.name,
-      homeScore: item.goals.home ?? 0,
-      awayScore: item.goals.away ?? 0,
-      minute: item.fixture.status.elapsed ?? 0,
-    }));
-  } catch (error) {
-    console.warn('Failed to fetch live matches from API-Football, using fallback', error);
-    return getSimulatedMatches();
-  }
+  return { 'x-apisports-key': apiKey };
 }
 
-function getSimulatedMatches(): LiveMatch[] {
-  // Let's simulate minute and occasionally scores changing based on current time
-  const seconds = Math.floor(Date.now() / 1000);
-  return [
-    {
-      homeTeam: 'Man City',
-      awayTeam: 'Real Madrid',
-      homeScore: 2 + (seconds % 300 > 250 ? 1 : 0),
-      awayScore: 1,
-      minute: 70 + Math.floor((seconds % 1200) / 60),
-    },
-    {
-      homeTeam: 'Chelsea',
-      awayTeam: 'Arsenal',
-      homeScore: 1,
-      awayScore: 1 + (seconds % 400 > 350 ? 1 : 0),
-      minute: 35 + Math.floor((seconds % 1800) / 60),
-    },
-    {
-      homeTeam: 'Barcelona',
-      awayTeam: 'Bayern Munich',
-      homeScore: 3,
-      awayScore: 2,
-      minute: 80 + Math.floor((seconds % 600) / 60),
-    },
-  ];
+function mapFixture(item: ApiFootballFixtureResponse): Fixture {
+  return {
+    fixtureId: item.fixture.id,
+    homeTeam: item.teams.home.name,
+    awayTeam: item.teams.away.name,
+    homeTeamLogo: item.teams.home.logo,
+    awayTeamLogo: item.teams.away.logo,
+    kickoffTime: Math.floor(new Date(item.fixture.date).getTime() / 1000),
+    status: item.fixture.status.short,
+    homeScore: item.goals.home,
+    awayScore: item.goals.away,
+    round: item.league.round,
+    leagueName: item.league.name,
+  };
+}
+
+async function fetchFixtures(url: string): Promise<Fixture[]> {
+  const response = await fetch(url, {
+    headers: getHeaders(),
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error(`API-Football fetch failed with status ${response.status}`);
+  }
+
+  const json = (await response.json()) as { response?: ApiFootballFixtureResponse[] };
+  if (!Array.isArray(json.response)) {
+    throw new Error('Invalid API-Football response format');
+  }
+
+  return json.response.map(mapFixture);
+}
+
+export async function fetchUpcomingFixtures(
+  leagueId: number,
+  season: number,
+): Promise<Fixture[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  return fetchFixtures(
+    `${BASE_URL}/fixtures?league=${leagueId}&season=${season}&from=${today}&to=${season}-12-31&status=NS`,
+  );
+}
+
+export async function fetchCompletedFixtures(
+  leagueId: number,
+  season: number,
+  fromDate: string,
+  toDate: string,
+): Promise<Fixture[]> {
+  return fetchFixtures(
+    `${BASE_URL}/fixtures?league=${leagueId}&season=${season}&from=${fromDate}&to=${toDate}&status=FT`,
+  );
 }

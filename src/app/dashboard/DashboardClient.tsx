@@ -13,9 +13,10 @@ type FilterCategory = 'all' | 'football' | 'crypto';
 
 interface DashboardClientProps {
   initialMarkets: Market[];
+  aiAccuracy: any[];
 }
 
-export default function DashboardClient({ initialMarkets }: DashboardClientProps) {
+export default function DashboardClient({ initialMarkets, aiAccuracy }: DashboardClientProps) {
   const [filter, setFilter] = useState<FilterCategory>('all');
   const [stakeModal, setStakeModal] = useState<{
     market: Market;
@@ -38,7 +39,7 @@ export default function DashboardClient({ initialMarkets }: DashboardClientProps
       <Sidebar />
 
       {/* Main Content */}
-      <main className="ml-[264px] mr-[380px] pt-28 px-8 pb-12 flex-1 min-w-0">
+      <main className="lg:ml-[264px] xl:mr-[380px] pt-28 px-8 pb-12 flex-1 min-w-0">
         {/* Page Header */}
         <header className="mb-8 flex items-end justify-between">
           <div>
@@ -93,9 +94,9 @@ export default function DashboardClient({ initialMarkets }: DashboardClientProps
             changePositive={true}
           />
           <StatCard
-            label="ACTIVE MARKETS"
-            value={String(initialMarkets.filter((m) => !m.resolved).length)}
-            change="+3 today"
+            label="AI ACCURACY"
+            value={`${aiAccuracy?.find(a => a.category === 'overall')?.totalMarkets > 0 ? Math.round((aiAccuracy?.find(a => a.category === 'overall')?.correctPredictions / aiAccuracy?.find(a => a.category === 'overall')?.totalMarkets) * 100) : 0}%`}
+            change="Overall"
             changePositive={true}
           />
           <StatCard

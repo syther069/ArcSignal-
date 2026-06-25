@@ -1,6 +1,6 @@
 export type MarketCategory = 'football' | 'crypto';
 export type CryptoSubType = 'price' | 'listing' | 'onchain';
-export type StakeSide = 0 | 1; // 0 = Follow, 1 = Fade
+export type StakeSide = 0 | 1;
 
 export interface Market {
   id: string;
@@ -11,12 +11,22 @@ export interface Market {
   agentPick: string;
   agentId: string;
   confidence: number;
+  probability?: number;
+  summary?: string;
+  bull_case?: string;
+  bear_case?: string;
   keyFactors: string[];
+  data_sources?: string[];
+  volume?: number;
+  participants?: number;
   followPool: number;
   fadePool: number;
   resolutionTime: number;
   resolved: boolean;
   outcome?: string;
+  resolution_source?: string;
+  resolution_price?: number;
+  resolution_timestamp?: number;
   league?: string;
   homeTeam?: string;
   awayTeam?: string;

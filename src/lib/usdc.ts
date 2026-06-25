@@ -1,57 +1,8 @@
 import { formatUnits, parseUnits, type Address, type PublicClient, type WalletClient } from 'viem';
+import { ARCSIGNAL_ADDRESS, USDC_ABI, USDC_ADDRESS } from './contracts';
 
-export const USDC_ABI = [
-  {
-    type: 'function',
-    name: 'approve',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'spender', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-  {
-    type: 'function',
-    name: 'allowance',
-    stateMutability: 'view',
-    inputs: [
-      { name: 'owner', type: 'address' },
-      { name: 'spender', type: 'address' },
-    ],
-    outputs: [{ name: '', type: 'uint256' }],
-  },
-  {
-    type: 'function',
-    name: 'balanceOf',
-    stateMutability: 'view',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }],
-  },
-  {
-    type: 'function',
-    name: 'decimals',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint8' }],
-  },
-  {
-    type: 'function',
-    name: 'transfer',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'to', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-] as const;
-
-export const USDC_ADDRESS = process.env
-  .NEXT_PUBLIC_USDC_CONTRACT_ADDRESS as Address;
-
-export const MATCHMIND_ADDRESS = process.env
-  .NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDRESS as Address;
+export { ARCSIGNAL_ADDRESS, USDC_ABI, USDC_ADDRESS };
+export const ArcSignal_ADDRESS = ARCSIGNAL_ADDRESS;
 
 export async function getUSDCBalance(
   address: Address,
@@ -82,7 +33,7 @@ export async function approveUSDC(
     address: USDC_ADDRESS,
     abi: USDC_ABI,
     functionName: 'approve',
-    args: [MATCHMIND_ADDRESS, parsedAmount],
+    args: [ARCSIGNAL_ADDRESS, parsedAmount],
     account: walletClient.account,
     chain: walletClient.chain,
   });

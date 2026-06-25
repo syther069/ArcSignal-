@@ -60,7 +60,7 @@ export default function MarketsClient({ initialMarkets }: MarketsClientProps) {
     <div className="flex min-h-screen">
       <Sidebar />
 
-      <main className="ml-[264px] pt-28 px-8 pb-12 flex-1 min-w-0 flex flex-col">
+      <main className="lg:ml-[264px] pt-28 px-8 pb-12 flex-1 min-w-0 flex flex-col">
         {/* Header Section */}
         <header className="mb-8 flex flex-col gap-6">
           <div className="flex items-end justify-between">

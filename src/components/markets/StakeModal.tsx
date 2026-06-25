@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useAccount, useBalance, useReadContract, useWalletClient, usePublicClient } from 'wagmi';
 import { parseUnits } from 'viem';
 import { Market, StakeSide } from '@/types';
-import { USDC_ADDRESS, MATCHMIND_ADDRESS, USDC_ABI, approveUSDC } from '@/lib/usdc';
+import { USDC_ADDRESS, ArcSignal_ADDRESS, USDC_ABI, approveUSDC } from '@/lib/usdc';
 import { stakeOnMarket } from '@/lib/stake';
 
 export interface StakeModalProps {
@@ -38,7 +38,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
     address: USDC_ADDRESS,
     abi: USDC_ABI,
     functionName: 'allowance',
-    args: address ? [address, MATCHMIND_ADDRESS] : undefined,
+    args: address ? [address, ArcSignal_ADDRESS] : undefined,
     query: {
       enabled: !!address,
     }
@@ -49,13 +49,13 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   if (!isOpen) return null;
 
   const isFollow = side === 0;
-  
+
   // Predict payout using basic pari-mutuel math
   const newFollowPool = isFollow ? market.followPool + parsedAmount : market.followPool;
   const newFadePool = !isFollow ? market.fadePool + parsedAmount : market.fadePool;
   const winningPool = isFollow ? newFollowPool : newFadePool;
   const totalPool = newFollowPool + newFadePool;
-  
+
   const poolShare = winningPool > 0 ? (parsedAmount / winningPool) * 100 : 0;
   const payout = winningPool > 0 ? (parsedAmount / winningPool) * totalPool : 0;
 
@@ -80,6 +80,22 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
       setIsProcessing(true);
       setError(null);
       const hash = await stakeOnMarket(market.id, side, amountStr, address, walletClient);
+      
+      // Wait for on-chain confirmation before syncing with backend
+      await publicClient.waitForTransactionReceipt({ hash });
+      
+      // Sync with backend
+      await fetch(`/api/markets/${market.id}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          direction: side === 0 ? 'follow' : 'fade',
+          amount: amountStr,
+          walletAddress: address,
+          txHash: hash
+        })
+      });
+
       setTxHash(hash);
     } catch (err: any) {
       setError(err.message || 'Staking failed');
@@ -90,7 +106,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
 
   const handleClose = () => {
     if (isProcessing) return;
-    
+
     // Defer reset so the user doesn't see UI flashes during close animation
     setTimeout(() => {
       setAmount('50');
@@ -98,7 +114,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
       setTxHash(null);
       setIsProcessing(false);
     }, 300);
-    
+
     onClose();
   };
 
@@ -107,7 +123,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
       <div className="bg-[#0a1628]/95 backdrop-blur-xl border border-[#38bdf8]/20 shadow-[0_0_40px_rgba(0,0,0,0.8),inset_0_0_20px_rgba(56,189,248,0.05)] w-full max-w-md rounded-[6px] relative overflow-hidden">
         {/* Top decorative line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#38bdf8]/50 to-transparent"></div>
-        
+
         {/* Header */}
         <div className="p-6 border-b border-white/10 flex justify-between items-center">
           <div className="flex flex-col gap-1">
@@ -116,8 +132,8 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
             </span>
             <h2 className="text-xl font-bold text-white">STAKE USDC</h2>
           </div>
-          <button 
-            onClick={handleClose} 
+          <button
+            onClick={handleClose}
             disabled={isProcessing}
             className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
           >
@@ -135,10 +151,10 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
             <p className="text-sm text-gray-400">
               Your <strong className={isFollow ? "text-[#34d399]" : "text-[#f87171]"}>{isFollow ? 'FOLLOW' : 'FADE'}</strong> position has been successfully recorded on Arc Testnet.
             </p>
-            
+
             <div className="bg-[#0f1f38] w-full p-4 rounded mt-4 border border-white/5 flex flex-col gap-2">
               <span className="text-[11px] text-gray-400 font-[family-name:var(--font-jetbrains-mono)]">TX HASH</span>
-              <a 
+              <a
                 href={`https://explorer.testnet.arc.network/tx/${txHash}`}
                 target="_blank"
                 rel="noreferrer"
@@ -187,7 +203,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="relative flex items-center bg-[#0f1f38] border-2 border-white/10 focus-within:border-[#38bdf8]/60 rounded p-4 pt-6 transition-all">
                   <span className="absolute top-2 left-4 text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#38bdf8]/60">USDC</span>
                   <span className="text-2xl text-[#38bdf8] mr-3 opacity-60 font-bold">&gt;</span>
@@ -198,7 +214,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                     className="w-full bg-transparent outline-none text-3xl font-[family-name:var(--font-jetbrains-mono)] text-white placeholder:text-white/20"
                     placeholder="0.00"
                   />
-                  <button 
+                  <button
                     onClick={() => setAmount(balanceData ? balanceData.formatted : '0')}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#38bdf8] bg-[#38bdf8]/10 hover:bg-[#38bdf8]/20 border border-[#38bdf8]/20 px-3 py-1.5 rounded transition-colors"
                   >

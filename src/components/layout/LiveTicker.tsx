@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { fetchTickerPrices, TickerPrice } from '@/lib/coincap';
+import { fetchTickerPrices, TickerPrice } from '@/lib/coingecko';
 import { fetchLiveMatches, LiveMatch } from '@/lib/apifootball';
 
 export default function LiveTicker() {

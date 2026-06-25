@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import { StatCard } from '@/components/ui/StatCard';
 import { useAccount } from 'wagmi';
-import { getUserProfile, getUserStakes, updateUserProfile } from '@/lib/supabase';
+import { getUserProfile, getUserStakes, updateUserProfile } from '@/lib/frontend-data';
 import { UserProfile, Stake } from '@/types';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -72,7 +72,6 @@ export default function ProfileClient() {
     }
   };
 
-  // Generate chart data from stakes (Mocking PnL curve for demonstration)
   const chartData = useMemo(() => {
     if (stakes.length === 0) return [];
     
@@ -81,8 +80,7 @@ export default function ProfileClient() {
     let cumulativePnl = 0;
     
     return sorted.map((s, i) => {
-      // Mocking PNL calculation for demo purposes if not present
-      const pnl = s.pnl !== undefined ? s.pnl : (Math.random() > 0.5 ? s.amountUsdc * 0.8 : -s.amountUsdc);
+      const pnl = s.pnl || 0; // Use actual PnL or 0 if unresolved
       cumulativePnl += pnl;
       return {
         name: `T+${i+1}`,
@@ -93,10 +91,9 @@ export default function ProfileClient() {
 
   const filteredHistory = useMemo(() => {
     return stakes.filter(s => {
-      // Mock win/loss if pnl not defined
-      const isWin = s.pnl !== undefined ? s.pnl > 0 : Math.random() > 0.5;
+      const isWin = (s.pnl || 0) > 0;
       if (historyTab === 'WINS') return isWin;
-      if (historyTab === 'LOSSES') return !isWin;
+      if (historyTab === 'LOSSES') return !isWin && s.pnl !== null && s.pnl !== undefined;
       return true;
     });
   }, [stakes, historyTab]);
@@ -281,16 +278,17 @@ export default function ProfileClient() {
                       <tbody className="font-mono text-xs">
                         {filteredHistory.length > 0 ? (
                           filteredHistory.map((stake) => {
-                            const isWin = stake.pnl !== undefined ? stake.pnl > 0 : Math.random() > 0.5;
-                            const pnlValue = stake.pnl !== undefined ? stake.pnl : (isWin ? stake.amountUsdc * 0.8 : -stake.amountUsdc);
+                            const isWin = (stake.pnl || 0) > 0;
+                            const isResolved = stake.pnl !== null && stake.pnl !== undefined;
+                            const pnlValue = stake.pnl || 0;
                             
                             return (
                               <tr key={stake.id} className="border-b border-white/5 hover:bg-white/[0.02]">
                                 <td className="py-3 text-slate-500">{new Date(stake.createdAt).toLocaleDateString()}</td>
                                 <td className="py-3 text-white truncate max-w-[200px]">Market #{stake.marketId.substring(0, 8)}</td>
                                 <td className="py-3 text-right text-slate-300">${stake.amountUsdc.toLocaleString()}</td>
-                                <td className={`py-3 text-right font-bold ${isWin ? 'text-[#34d399]' : 'text-[#f87171]'}`}>
-                                  {isWin ? '+' : '-'}${Math.abs(pnlValue).toLocaleString()}
+                                <td className={`py-3 text-right font-bold ${isResolved ? (isWin ? 'text-[#34d399]' : 'text-[#f87171]') : 'text-slate-400'}`}>
+                                  {isResolved ? `${isWin ? '+' : '-'}$${Math.abs(pnlValue).toLocaleString()}` : 'Pending'}
                                 </td>
                               </tr>
                             );

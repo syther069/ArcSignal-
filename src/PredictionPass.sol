@@ -10,7 +10,7 @@ contract PredictionPass is ERC721, Ownable {
 
     event PassMinted(address indexed user, uint256 indexed tokenId);
 
-    constructor() ERC721("MatchMind Prediction Pass", "MMPASS") Ownable(msg.sender) {}
+    constructor() ERC721("ArcSignal Prediction Pass", "MMPASS") Ownable(msg.sender) {}
 
     function mint() external returns (uint256) {
         require(!hasMinted[msg.sender], "Already minted a pass");

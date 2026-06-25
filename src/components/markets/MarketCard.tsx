@@ -1,10 +1,11 @@
-import React from 'react';
-import { Market } from '@/types';
-import { Badge } from '@/components/ui/Badge';
-import { GlassCard } from '@/components/ui/GlassCard';
-import { ConfidenceBar } from '@/components/ui/ConfidenceBar';
+'use client';
+
+import { useState } from 'react';
+import { formatUnits } from 'viem';
+import { useReadContract } from 'wagmi';
+import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import type { Market } from '@/lib/types';
 import { CountdownTimer } from './CountdownTimer';
-import { PoolBar } from './PoolBar';
 
 export interface MarketCardProps {
   market: Market;
@@ -12,109 +13,127 @@ export interface MarketCardProps {
   onFade: () => void;
 }
 
+function toPoolDisplay(value: bigint) {
+  return Number(formatUnits(value, 6)).toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+  });
+}
+
 export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
-  // Glow color depending on category
-  const glowColor =
-    market.category === 'football'
-      ? 'rgba(56,189,248,0.05)'
-      : 'rgba(129,140,248,0.05)';
+  const [expanded, setExpanded] = useState(false);
+  const { data } = useReadContract({
+    address: ARCSIGNAL_ADDRESS,
+    abi: ARCSIGNAL_ABI,
+    functionName: 'getMarket',
+    args: [BigInt(market.id)],
+    query: {
+      enabled: /^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS),
+    },
+  });
+
+  const liveFollowPool = data?.followPool ?? market.followPool;
+  const liveFadePool = data?.fadePool ?? market.fadePool;
+  const totalPool = liveFollowPool + liveFadePool;
+  const followShare = totalPool > 0n
+    ? Number((liveFollowPool * 10_000n) / totalPool) / 100
+    : 0;
 
   return (
-    <GlassCard
-      className="scanline relative p-5 flex flex-col group transition-all duration-300 w-full h-full"
-      glow={true}
-      glowColor={glowColor}
-    >
-      {/* Top bar */}
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant={market.category} label={market.category} />
-          {market.league && (
-            <span className="text-[11px] uppercase text-gray-400 font-[family-name:var(--font-jetbrains-mono)] tracking-wider">
-              {market.league}
-            </span>
-          )}
-          {market.subType && !market.league && (
-            <span className="text-[11px] uppercase text-gray-400 font-[family-name:var(--font-jetbrains-mono)] tracking-wider">
-              {market.subType}
-            </span>
-          )}
+    <article className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-5 transition-colors duration-150 hover:bg-[#1a1a1a]">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <span className="text-xs text-zinc-500 uppercase tracking-wider">
+            {market.category} / {market.subType}
+          </span>
+          <h3 className="mt-2 text-base font-medium text-white">{market.question}</h3>
         </div>
-        <div className="flex flex-col items-end gap-1.5">
-          <Badge
-            variant={market.resolved ? 'resolved' : 'live'}
-            label={market.resolved ? 'RESOLVED' : 'LIVE'}
-          />
-          {!market.resolved && (
-            <CountdownTimer resolutionTime={market.resolutionTime} />
-          )}
+        <span className="rounded-full border border-[#1f1f1f] px-2 py-0.5 text-xs text-zinc-400">
+          {market.outcome}
+        </span>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <div className="mb-2 flex items-center justify-between text-xs text-zinc-500 uppercase tracking-wider">
+            <span>AI probability</span>
+            <span>{market.analysis.probability}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-zinc-800">
+            <div
+              className="h-full rounded-full bg-[#22c55e]"
+              style={{ width: `${market.analysis.probability}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg border border-[#1f1f1f] bg-[#111111] p-3">
+            <p className="text-xs text-zinc-500 uppercase tracking-wider">Follow pool</p>
+            <p className="mt-1 font-mono text-lg font-semibold text-white">
+              {toPoolDisplay(liveFollowPool)} USDC
+            </p>
+          </div>
+          <div className="rounded-lg border border-[#1f1f1f] bg-[#111111] p-3">
+            <p className="text-xs text-zinc-500 uppercase tracking-wider">Fade pool</p>
+            <p className="mt-1 font-mono text-lg font-semibold text-white">
+              {toPoolDisplay(liveFadePool)} USDC
+            </p>
+          </div>
+        </div>
+
+        <div className="h-1.5 overflow-hidden rounded-full bg-[#ef4444]">
+          <div className="h-full bg-[#22c55e]" style={{ width: `${followShare}%` }} />
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-zinc-500">
+          <CountdownTimer resolutionTime={market.resolutionTime} />
+          <span>Confidence {market.analysis.confidence}%</span>
         </div>
       </div>
 
-      {/* Title / Teams row */}
-      {market.category === 'football' ? (
-        <div className="mb-6">
-          <h3 className="text-lg font-bold text-white mb-4 leading-tight">{market.title}</h3>
-          <div className="flex items-center justify-center gap-4 text-sm font-bold text-white font-[family-name:var(--font-jetbrains-mono)] uppercase">
-            <span className="flex-1 text-right truncate">{market.homeTeam}</span>
-            <span className="text-[#38bdf8] bg-[#38bdf8]/10 border border-[#38bdf8]/20 px-3 py-1 rounded text-lg shrink-0">
-              {market.homeScore ?? '-'} : {market.awayScore ?? '-'}
-            </span>
-            <span className="flex-1 text-left truncate">{market.awayTeam}</span>
+      {expanded && (
+        <div className="mt-5 space-y-4 border-t border-[#1f1f1f] pt-5 text-sm text-zinc-300">
+          <p>{market.analysis.summary}</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div>
+              <p className="text-xs text-[#22c55e] uppercase tracking-wider">Bull case</p>
+              <p className="mt-1">{market.analysis.bullCase}</p>
+            </div>
+            <div>
+              <p className="text-xs text-[#ef4444] uppercase tracking-wider">Bear case</p>
+              <p className="mt-1">{market.analysis.bearCase}</p>
+            </div>
           </div>
+          <ul className="space-y-2 text-xs text-zinc-400">
+            {market.analysis.keyFactors.map((factor) => (
+              <li key={factor}>{factor}</li>
+            ))}
+          </ul>
         </div>
-      ) : (
-        <h3 className="text-lg font-bold text-white mb-6 leading-tight">
-          {market.title}
-        </h3>
       )}
 
-      {/* AI agent panel */}
-      <div className="bg-[#0a1628] border border-[rgba(255,255,255,0.06)] p-4 rounded-[6px] mb-6 flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <span className="text-[9px] uppercase tracking-widest text-gray-400">
-            AI AGENT {market.agentId}
-          </span>
-          <span className="text-[12px] uppercase tracking-widest font-bold text-white">
-            PREDICTS <span className="text-[#38bdf8]">{market.agentPick}</span>
-          </span>
-        </div>
-        <ConfidenceBar confidence={market.confidence} label="Confidence" />
-        
-        {market.keyFactors && market.keyFactors.length > 0 && (
-          <div className="flex flex-col gap-1.5 border-t border-[rgba(255,255,255,0.06)] pt-3 mt-1">
-            {market.keyFactors.slice(0, 3).map((factor, idx) => (
-              <div key={idx} className="flex items-start gap-2">
-                <span className="w-1 h-1 rounded-full bg-[#38bdf8] mt-1.5 flex-none shadow-[0_0_5px_rgba(56,189,248,0.5)]"></span>
-                <span className="text-[10px] text-gray-400 leading-tight">
-                  {factor}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* PoolBar */}
-      <div className="mb-6">
-        <PoolBar followPool={market.followPool} fadePool={market.fadePool} />
-      </div>
-
-      {/* Action Buttons */}
-      <div className="mt-auto grid grid-cols-2 gap-3">
+      <div className="mt-5 grid grid-cols-3 gap-3">
+        <button
+          onClick={() => setExpanded((value) => !value)}
+          className="rounded-lg border border-[#1f1f1f] px-3 py-2 text-xs font-semibold text-zinc-300 transition-colors duration-150 hover:bg-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          Analysis
+        </button>
         <button
           onClick={onFollow}
-          className="bg-[#34d399] text-[#020817] p-3 font-[family-name:var(--font-jetbrains-mono)] text-[11px] uppercase tracking-widest font-bold rounded-[4px] hover:shadow-[0_0_15px_rgba(52,211,153,0.3)] transition-all"
+          disabled={market.resolved}
+          className="rounded-lg bg-[#22c55e] px-3 py-2 text-xs font-semibold text-black transition-colors duration-150 hover:bg-[#16a34a] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
-          FOLLOW AI
+          Follow AI
         </button>
         <button
           onClick={onFade}
-          className="bg-transparent border border-[#f87171] text-[#f87171] p-3 font-[family-name:var(--font-jetbrains-mono)] text-[11px] uppercase tracking-widest font-bold rounded-[4px] hover:bg-[#f87171]/10 transition-all"
+          disabled={market.resolved}
+          className="rounded-lg bg-[#ef4444] px-3 py-2 text-xs font-semibold text-white transition-colors duration-150 hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
-          FADE AI
+          Fade AI
         </button>
       </div>
-    </GlassCard>
+    </article>
   );
 }

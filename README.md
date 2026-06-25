@@ -35,7 +35,7 @@ Required variables in `.env.local`:
 - `NEXT_PUBLIC_ARC_APPKIT_PROJECT_ID`: Your AppKit (WalletConnect) Project ID.
 - `NEXT_PUBLIC_ARC_TESTNET_RPC_URL`: RPC URL for the ARC Testnet.
 - `NEXT_PUBLIC_USDC_CONTRACT_ADDRESS`: Address of the USDC token on ARC.
-- `NEXT_PUBLIC_MATCHMIND_CONTRACT_ADDRESS`: Address of the MatchMind contract.
+- `NEXT_PUBLIC_ArcSignal_CONTRACT_ADDRESS`: Address of the ArcSignal contract.
 - `NEXT_PUBLIC_PREDICTIONPASS_CONTRACT_ADDRESS`: Address of the NFT Prediction Pass contract.
 - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key.
@@ -46,8 +46,17 @@ Required variables in `.env.local`:
 
 ### Contract Addresses (ARC Testnet)
 - **USDC**: (Fill in actual address)
-- **MatchMind**: (Fill in actual address)
+- **ArcSignal**: (Fill in actual address)
 - **PredictionPass**: (Fill in actual address)
+
+## Adding Football Data API Key
+
+1. Obtain an API key from [api-football.com](https://www.api-football.com/).
+2. Add it to your `.env.local` file:
+   ```env
+   API_FOOTBALL_KEY=your_key_here
+   ```
+3. Restart the dev server or run `npm run seed` to fetch live data.
 
 ## How to Run Locally
 
