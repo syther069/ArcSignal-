@@ -75,7 +75,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   };
 
   const handleStake = async () => {
-    if (!walletClient || !address) return;
+    if (!walletClient || !address || !publicClient) return;
     try {
       setIsProcessing(true);
       setError(null);

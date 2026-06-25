@@ -9,6 +9,12 @@ export interface CryptoData {
   low_24h: number;
 }
 
+export interface TickerPrice {
+  symbol: string;
+  price: number;
+  change: number;
+}
+
 const BASE_URL = 'https://api.coingecko.com/api/v3';
 const CACHE_TTL_MS = 60_000;
 const MARKET_IDS = 'bitcoin,ethereum,solana,sui,ripple,avalanche-2';
@@ -74,4 +80,13 @@ export async function fetchCryptoMarkets(): Promise<CryptoData[]> {
   cachedCryptoData = data;
   cachedAt = now;
   return data;
+}
+
+export async function fetchTickerPrices(): Promise<TickerPrice[]> {
+  const markets = await fetchCryptoMarkets();
+  return markets.map((market) => ({
+    symbol: market.symbol.toUpperCase(),
+    price: market.current_price,
+    change: market.price_change_percentage_24h,
+  }));
 }

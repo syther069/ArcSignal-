@@ -47,7 +47,7 @@ export const ARCSIGNAL_ABI = parseAbi([
   'function resolveMarket(uint256 marketId, uint8 outcome) external',
   'function cancelMarket(uint256 marketId) external',
   'function claimWinnings(uint256 marketId) external',
-  'function getMarket(uint256 marketId) external view returns (tuple(uint256 id, string question, string category, string subType, uint256 followPool, uint256 fadePool, uint256 resolutionTime, bool resolved, uint8 outcome, string analysisJson))',
+  'function getMarket(uint256 marketId) external view returns ((uint256 id, string question, string category, string subType, uint256 followPool, uint256 fadePool, uint256 resolutionTime, bool resolved, uint8 outcome, string analysisJson))',
   'function getUserStake(uint256 marketId, address user) external view returns (uint256 amount, uint8 side, bool claimed)',
   'function marketCount() external view returns (uint256)',
   'event MarketCreated(uint256 indexed marketId, string question, string category)',

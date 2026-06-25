@@ -12,6 +12,14 @@ export interface Fixture {
   leagueName: string;
 }
 
+export interface LiveMatch {
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number;
+  awayScore: number;
+  minute: number;
+}
+
 const BASE_URL = 'https://v3.football.api-sports.io';
 
 type ApiFootballStatus = Fixture['status'];
@@ -88,8 +96,8 @@ async function fetchFixtures(url: string): Promise<Fixture[]> {
 }
 
 export async function fetchUpcomingFixtures(
-  leagueId: number,
-  season: number,
+  leagueId = 1,
+  season = 2026,
 ): Promise<Fixture[]> {
   const today = new Date().toISOString().slice(0, 10);
   return fetchFixtures(
@@ -106,4 +114,28 @@ export async function fetchCompletedFixtures(
   return fetchFixtures(
     `${BASE_URL}/fixtures?league=${leagueId}&season=${season}&from=${fromDate}&to=${toDate}&status=FT`,
   );
+}
+
+export async function fetchLiveMatches(): Promise<LiveMatch[]> {
+  const response = await fetch(`${BASE_URL}/fixtures?live=all&league=1&season=2026`, {
+    headers: getHeaders(),
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error(`API-Football live fetch failed with status ${response.status}`);
+  }
+
+  const json = (await response.json()) as { response?: ApiFootballFixtureResponse[] };
+  if (!Array.isArray(json.response)) {
+    throw new Error('Invalid API-Football live response format');
+  }
+
+  return json.response.map((fixture) => ({
+    homeTeam: fixture.teams.home.name,
+    awayTeam: fixture.teams.away.name,
+    homeScore: fixture.goals.home ?? 0,
+    awayScore: fixture.goals.away ?? 0,
+    minute: 0,
+  }));
 }

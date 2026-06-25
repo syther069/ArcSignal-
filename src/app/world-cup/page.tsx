@@ -11,11 +11,18 @@ export default async function WorldCupPage() {
   let footballMarkets: Market[] = [];
 
   try {
-    [upcomingFixtures, liveMatches, footballMarkets] = await Promise.all([
+    const [fixtures, live, markets] = await Promise.all([
       fetchUpcomingFixtures(),
       fetchLiveMatches(),
       getMarketsByCategory('football'),
     ]);
+    upcomingFixtures = fixtures.map((fixture) => ({
+      homeTeam: fixture.homeTeam,
+      awayTeam: fixture.awayTeam,
+      league: fixture.leagueName,
+    }));
+    liveMatches = live;
+    footballMarkets = markets;
   } catch (error) {
     console.error('Failed to fetch World Cup data:', error);
   }
