@@ -1,38 +1,91 @@
-import { formatUnits } from 'viem';
-import { getMarketsFromChain } from './markets';
+import { fetchUpcomingFixtures, type Fixture } from './apifootball';
+import { fetchCryptoMarkets, type CryptoData } from './coingecko';
 import type { LeaderboardEntry, Market, MarketCategory, Stake, UserProfile } from '@/types';
 
-function toLegacyCategory(category: 'CRYPTO' | 'FOOTBALL'): MarketCategory {
-  return category === 'CRYPTO' ? 'crypto' : 'football';
+type MarketCategoryFilter = MarketCategory | 'all';
+
+function clampPercent(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function mapCryptoMarket(coin: CryptoData): Market {
+  const symbol = coin.symbol.toUpperCase();
+  const change = coin.price_change_percentage_24h;
+  const direction = change >= 0 ? 'higher' : 'lower';
+  const probability = clampPercent(50 + change);
+  const confidence = clampPercent(
+    Math.min(85, 35 + Math.abs(change) * 4 + (coin.total_volume / Math.max(coin.market_cap, 1)) * 100),
+  );
+  const resolutionTime = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
+
+  return {
+    id: `crypto-${coin.id}`,
+    category: 'crypto',
+    subType: 'price',
+    title: `${symbol} trades ${direction} over the next 24 hours`,
+    description: `${symbol} is trading at $${coin.current_price.toLocaleString()} with a ${change.toFixed(2)}% 24h move.`,
+    agentPick: change >= 0 ? 'Yes' : 'No',
+    agentId: 'coingecko-live',
+    confidence,
+    probability,
+    summary: `${symbol} live market data shows a 24h range of $${coin.low_24h.toLocaleString()} to $${coin.high_24h.toLocaleString()} with $${coin.total_volume.toLocaleString()} in volume.`,
+    bull_case: `Momentum supports a higher close if ${symbol} holds above its current 24h range midpoint and volume remains firm.`,
+    bear_case: `The setup weakens if ${symbol} retraces toward its 24h low or broad crypto volume fades.`,
+    keyFactors: [
+      `Current price: $${coin.current_price.toLocaleString()}`,
+      `24h change: ${change.toFixed(2)}%`,
+      `24h volume: $${coin.total_volume.toLocaleString()}`,
+    ],
+    data_sources: ['CoinGecko markets API'],
+    volume: coin.total_volume,
+    followPool: 0,
+    fadePool: 0,
+    resolutionTime,
+    resolved: false,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+function mapFootballMarket(fixture: Fixture): Market {
+  const hoursUntilKickoff = Math.max(
+    0,
+    (fixture.kickoffTime - Math.floor(Date.now() / 1000)) / 3600,
+  );
+  const confidence = clampPercent(25 + Math.min(35, hoursUntilKickoff / 2));
+
+  return {
+    id: `football-${fixture.fixtureId}`,
+    category: 'football',
+    title: `${fixture.homeTeam} defeats ${fixture.awayTeam}`,
+    description: `${fixture.homeTeam} faces ${fixture.awayTeam} in ${fixture.leagueName}, ${fixture.round}.`,
+    agentPick: fixture.homeTeam,
+    agentId: 'api-football-live',
+    confidence,
+    probability: confidence,
+    summary: `${fixture.leagueName} fixture data lists ${fixture.homeTeam} vs ${fixture.awayTeam} with kickoff at ${new Date(fixture.kickoffTime * 1000).toISOString()}.`,
+    bull_case: `${fixture.homeTeam} has the listed home-side position for this fixture.`,
+    bear_case: `${fixture.awayTeam} can fade the home-side prediction if match conditions or team quality favor the away side.`,
+    keyFactors: [
+      `Fixture ID: ${fixture.fixtureId}`,
+      `Round: ${fixture.round}`,
+      `Status: ${fixture.status}`,
+    ],
+    data_sources: ['API-Football fixtures API'],
+    followPool: 0,
+    fadePool: 0,
+    resolutionTime: fixture.kickoffTime,
+    resolved: false,
+    league: fixture.leagueName,
+    homeTeam: fixture.homeTeam,
+    awayTeam: fixture.awayTeam,
+    homeScore: fixture.homeScore ?? undefined,
+    awayScore: fixture.awayScore ?? undefined,
+    createdAt: new Date().toISOString(),
+  };
 }
 
 export async function getOpenMarkets(): Promise<Market[]> {
-  const markets = await getMarketsFromChain();
-
-  return markets
-    .filter((market) => !market.resolved)
-    .map((market) => ({
-      id: market.id.toString(),
-      category: toLegacyCategory(market.category),
-      subType: market.subType as Market['subType'],
-      title: market.question,
-      description: market.analysis.summary,
-      agentPick: market.analysis.prediction,
-      agentId: 'gemini-2.5-flash',
-      confidence: market.analysis.confidence,
-      probability: market.analysis.probability,
-      summary: market.analysis.summary,
-      bull_case: market.analysis.bullCase,
-      bear_case: market.analysis.bearCase,
-      keyFactors: market.analysis.keyFactors,
-      data_sources: market.analysis.sources,
-      followPool: Number(formatUnits(market.followPool, 6)),
-      fadePool: Number(formatUnits(market.fadePool, 6)),
-      resolutionTime: market.resolutionTime,
-      resolved: market.resolved,
-      outcome: market.outcome,
-      createdAt: market.analysis.generatedAt,
-    }));
+  return getMarketsByCategory('all');
 }
 
 export async function getMarketById(id: string): Promise<Market | null> {
@@ -40,9 +93,30 @@ export async function getMarketById(id: string): Promise<Market | null> {
   return markets.find((market) => market.id === id) ?? null;
 }
 
-export async function getMarketsByCategory(category: MarketCategory): Promise<Market[]> {
-  const markets = await getOpenMarkets();
-  return markets.filter((market) => market.category === category);
+export async function getMarketsByCategory(category: MarketCategoryFilter): Promise<Market[]> {
+  if (category === 'football') {
+    try {
+      const fixtures = await fetchUpcomingFixtures();
+      return fixtures.map(mapFootballMarket);
+    } catch {
+      return [];
+    }
+  }
+
+  if (category === 'crypto') {
+    try {
+      const coins = await fetchCryptoMarkets();
+      return coins.map(mapCryptoMarket);
+    } catch {
+      return [];
+    }
+  }
+
+  const [footballMarkets, cryptoMarkets] = await Promise.all([
+    getMarketsByCategory('football'),
+    getMarketsByCategory('crypto'),
+  ]);
+  return [...footballMarkets, ...cryptoMarkets];
 }
 
 export async function getRecentStakes(_limit = 20): Promise<Stake[]> {
