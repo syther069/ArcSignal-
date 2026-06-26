@@ -1,9 +1,13 @@
 import type { Metadata } from 'next';
+import dynamic from 'next/dynamic';
 import { JetBrains_Mono } from 'next/font/google';
-import LiveTicker from '@/components/layout/LiveTicker';
 import Navbar from '@/components/layout/Navbar';
 import { Web3Provider } from '@/components/layout/Web3Provider';
 import './globals.css';
+
+const LiveTicker = dynamic(() => import('@/components/layout/LiveTicker'), {
+  ssr: false,
+});
 
 const jetBrainsMono = JetBrains_Mono({
   subsets: ['latin'],

@@ -24,6 +24,6 @@ export function CountdownTimer({ resolutionTime }: { resolutionTime: number }) {
     return () => clearInterval(interval);
   }, [resolutionTime]);
 
-  if (timeLeft === null) return <span className="opacity-0">--:--:--</span>;
-  return <span>{timeLeft}</span>;
+  if (timeLeft === null) return <span className="opacity-0" suppressHydrationWarning>--:--:--</span>;
+  return <span suppressHydrationWarning>{timeLeft}</span>;
 }

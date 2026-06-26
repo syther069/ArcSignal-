@@ -21,6 +21,7 @@ export interface LiveMatch {
 }
 
 const BASE_URL = 'https://v3.football.api-sports.io';
+const TOP_LEAGUE_IDS = [39, 140, 135, 78, 61, 2];
 
 type ApiFootballStatus = Fixture['status'];
 
@@ -96,13 +97,25 @@ async function fetchFixtures(url: string): Promise<Fixture[]> {
 }
 
 export async function fetchUpcomingFixtures(
-  leagueId = 1,
-  season = 2026,
+  leagueIds = TOP_LEAGUE_IDS,
+  season = new Date().getFullYear(),
 ): Promise<Fixture[]> {
   const today = new Date().toISOString().slice(0, 10);
-  return fetchFixtures(
-    `${BASE_URL}/fixtures?league=${leagueId}&season=${season}&from=${today}&to=${season}-12-31&status=NS`,
+  const toDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const seasons = [season, season - 1];
+  const fixturesByLeague = await Promise.all(
+    leagueIds.map(async (leagueId) => {
+      for (const leagueSeason of seasons) {
+        const fixtures = await fetchFixtures(
+          `${BASE_URL}/fixtures?league=${leagueId}&season=${leagueSeason}&from=${today}&to=${toDate}&status=NS`,
+        );
+        if (fixtures.length > 0) return fixtures;
+      }
+      return [];
+    }),
   );
+
+  return fixturesByLeague.flat().sort((a, b) => a.kickoffTime - b.kickoffTime);
 }
 
 export async function fetchCompletedFixtures(

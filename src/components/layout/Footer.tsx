@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 const footerLinks = [
@@ -34,6 +34,14 @@ const footerLinks = [
 ];
 
 export default function Footer() {
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
+  const [blockNumber, setBlockNumber] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
+    setBlockNumber(Math.floor(Date.now() / 12000).toLocaleString());
+  }, []);
+
   return (
     <footer className="w-full border-t border-white/5 bg-[#060e1e]">
       <div className="max-w-7xl mx-auto px-8 py-12">
@@ -86,15 +94,15 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="mt-12 pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
-          <span className="text-[10px] text-slate-600 font-mono">
-            © {new Date().getFullYear()} ArcSignal Protocol. All rights reserved.
+          <span className="text-[10px] text-slate-600 font-mono" suppressHydrationWarning>
+            © {currentYear ?? ''} ArcSignal Protocol. All rights reserved.
           </span>
           <div className="flex items-center gap-6">
             <span className="text-[10px] text-slate-600 font-mono">
               Chain ID: 5042002
             </span>
-            <span className="text-[10px] text-slate-600 font-mono">
-              Block: {Math.floor(Date.now() / 12000).toLocaleString()}
+            <span className="text-[10px] text-slate-600 font-mono" suppressHydrationWarning>
+              Block: {blockNumber ?? ''}
             </span>
           </div>
         </div>
