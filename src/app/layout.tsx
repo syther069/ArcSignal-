@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic';
 import { JetBrains_Mono } from 'next/font/google';
 import Navbar from '@/components/layout/Navbar';
 import { Web3Provider } from '@/components/layout/Web3Provider';
+import NetworkSwitcher from '@/components/wallet/NetworkSwitcher';
 import './globals.css';
 
 const LiveTicker = dynamic(() => import('@/components/layout/LiveTicker'), {
@@ -31,6 +32,7 @@ export default function RootLayout({
         <Web3Provider>
           <Navbar />
           <LiveTicker />
+          <NetworkSwitcher />
           {children}
         </Web3Provider>
       </body>

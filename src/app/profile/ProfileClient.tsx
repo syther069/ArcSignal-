@@ -9,6 +9,8 @@ import { UserProfile, Stake } from '@/types';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
+import ConnectWalletButton from '@/components/wallet/ConnectWalletButton';
+import { Pencil, Star, Activity } from 'lucide-react';
 
 export default function ProfileClient() {
   const { address, isConnected } = useAccount();
@@ -102,21 +104,15 @@ export default function ProfileClient() {
     return (
       <div className="flex min-h-screen bg-[#101416]">
         <Sidebar />
-        <main className="flex-1 lg:ml-[264px] pt-32 px-8 flex flex-col items-center justify-center">
-          <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-full flex items-center justify-center mb-6">
-            <span className="material-symbols-outlined text-2xl text-zinc-400">account_balance_wallet</span>
+        <main className="flex-1 lg:ml-[240px] pt-32 px-8 flex flex-col items-center justify-center">
+          <div className="w-16 h-16 bg-[#06b6d4]/10 border border-[#06b6d4]/20 rounded-2xl flex items-center justify-center mb-6">
+            <Activity size={32} className="text-[#06b6d4]" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Wallet Not Connected</h2>
-          <p className="text-zinc-300 font-mono text-sm mb-8 text-center max-w-md">
-            Connect your Web3 wallet to view prediction history, portfolio performance, and staking positions
+          <h2 className="text-2xl font-bold text-white mb-3">Wallet Not Connected</h2>
+          <p className="text-zinc-400 text-sm mb-8 text-center max-w-md leading-relaxed">
+            Connect your Web3 wallet to view prediction history, portfolio performance, and staking positions.
           </p>
-          <div className="relative group">
-            <div className="absolute inset-0 bg-[#06b6d4] rounded-full blur-md opacity-40 group-hover:opacity-70 transition-opacity"></div>
-            <div className="relative [&_w3m-button]:grayscale [&_w3m-button]:contrast-200 [&_w3m-button]:sepia [&_w3m-button]:hue-rotate-180">
-              {/* @ts-ignore */}
-              <w3m-button />
-            </div>
-          </div>
+          <ConnectWalletButton />
         </main>
       </div>
     );
@@ -142,7 +138,7 @@ export default function ProfileClient() {
                   {profile?.avatarUrl ? (
                     <img src={profile.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
-                    <span className="material-symbols-outlined text-4xl text-white">person</span>
+                    <span className="text-4xl font-black text-white">{address?.slice(2, 4).toUpperCase()}</span>
                   )}
                 </div>
                 
@@ -191,7 +187,7 @@ export default function ProfileClient() {
                           onClick={() => setIsEditing(true)}
                           className="flex items-center gap-2 border border-white/10 bg-white/5 px-3 py-1.5 rounded hover:bg-white/10 transition-colors"
                         >
-                          <span className="material-symbols-outlined text-[16px] text-slate-300">edit</span>
+                          <Pencil size={14} className="text-slate-300" />
                           <span className="font-mono text-[10px] tracking-widest font-bold text-slate-300 uppercase">Edit Profile</span>
                         </button>
                       </div>
@@ -222,7 +218,7 @@ export default function ProfileClient() {
                 {/* Portfolio P&L Chart */}
                 <div className="glass-card p-6 bg-[#0a1628]/80 border-white/5">
                   <h3 className="font-mono text-sm font-bold text-white mb-6 tracking-widest uppercase flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[#38bdf8]">monitoring</span>
+                    <Activity size={16} className="text-[#38bdf8]" />
                     Cumulative P&L
                   </h3>
                   <div className="h-[250px] w-full">
@@ -251,7 +247,7 @@ export default function ProfileClient() {
                 <div className="glass-card p-6 bg-[#0a1628]/80 border-white/5">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <h3 className="font-mono text-sm font-bold text-white tracking-widest uppercase flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[#38bdf8]">receipt_long</span>
+                      <Activity size={16} className="text-[#38bdf8]" />
                       Staking History
                     </h3>
                     
@@ -321,7 +317,7 @@ export default function ProfileClient() {
                   <div className="bg-[#020817] p-5 h-full relative z-10 border border-white/5">
                     <div className="flex justify-between items-start mb-4">
                       <div className="w-12 h-12 bg-[#fbbf24]/10 rounded border border-[#fbbf24]/30 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-2xl text-[#fbbf24]">stars</span>
+                        <Star size={22} className="text-[#fbbf24]" />
                       </div>
                       <span className="font-mono text-[9px] font-bold tracking-widest text-[#fbbf24] border border-[#fbbf24]/30 px-2 py-0.5 rounded uppercase">
                         ARC ALPHA PASS
@@ -347,7 +343,7 @@ export default function ProfileClient() {
                 {/* Active Positions */}
                 <div className="glass-card p-6 bg-[#0a1628]/80 border-white/5">
                   <h3 className="font-mono text-sm font-bold text-white mb-6 tracking-widest uppercase flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[#38bdf8]">radar</span>
+                    <Activity size={16} className="text-[#38bdf8]" />
                     Active Positions
                   </h3>
                   

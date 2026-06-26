@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -13,15 +13,10 @@ import {
   Settings, 
   Plus 
 } from 'lucide-react';
+import ConnectWalletButton from '../wallet/ConnectWalletButton';
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [isConnected, setIsConnected] = useState(false);
-  const address = "0x1234567890123456789012345678901234567890";
-
-  const truncateAddress = (addr: string) => {
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
 
   const mainNav = [
     { name: 'Markets', href: '/markets', icon: BarChart2 },
@@ -83,24 +78,7 @@ export default function Sidebar() {
       <div className="mt-auto pb-4 flex flex-col gap-4">
         {/* Wallet Connect Area */}
         <div className="px-4">
-          {!isConnected ? (
-            <button 
-              onClick={() => setIsConnected(true)}
-              className="w-full h-[44px] rounded-lg border border-[#06b6d4] text-[#06b6d4] text-[13px] font-bold uppercase tracking-wider hover:bg-[#06b6d4]/10 transition-colors"
-            >
-              Connect Wallet
-            </button>
-          ) : (
-            <div 
-              onClick={() => setIsConnected(false)}
-              className="w-full h-[44px] rounded-lg border border-[#1f1f1f] bg-[#141414] flex items-center justify-center gap-2 cursor-pointer hover:border-zinc-700 transition-colors"
-            >
-              <div className="w-2 h-2 rounded-full bg-green-500 shrink-0"></div>
-              <span className="text-zinc-300 text-[13px] font-medium font-mono">
-                {truncateAddress(address)}
-              </span>
-            </div>
-          )}
+          <ConnectWalletButton />
         </div>
 
         {/* NEW PREDICTION Button */}

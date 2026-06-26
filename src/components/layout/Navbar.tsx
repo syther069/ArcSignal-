@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAccount, useBalance } from 'wagmi';
 import { USDC_ADDRESS } from '@/lib/usdc';
+import ConnectWalletButton from '../wallet/ConnectWalletButton';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -70,8 +71,7 @@ export default function Navbar() {
                 </span>
               </div>
             )}
-            {/* @ts-ignore */}
-            <w3m-button />
+            <ConnectWalletButton />
           </div>
 
           {/* Mobile Menu Button */}
@@ -123,8 +123,7 @@ export default function Navbar() {
               </div>
             )}
             <div className="w-full flex justify-center">
-              {/* @ts-ignore */}
-              <w3m-button />
+              <ConnectWalletButton />
             </div>
           </div>
         </div>
