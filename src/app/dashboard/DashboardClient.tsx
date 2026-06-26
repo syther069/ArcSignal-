@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAccount } from 'wagmi';
 import Sidebar from '@/components/layout/Sidebar';
 import LiveActivityPanel from '@/components/layout/LiveActivityPanel';
 import Footer from '@/components/layout/Footer';
@@ -32,6 +33,20 @@ export default function DashboardClient({ initialMarkets, aiAccuracy }: Dashboar
     (sum, m) => sum + m.followPool + m.fadePool,
     0
   );
+
+  const { isConnected } = useAccount();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const aiOverall = aiAccuracy?.find((a) => a.category === 'overall');
+  const aiWinRate = aiOverall && aiOverall.totalMarkets > 0 
+    ? Math.round((aiOverall.correctPredictions / aiOverall.totalMarkets) * 100) 
+    : 0;
+
+  const pnlDisplay = !mounted || !isConnected ? '-' : '$0.00';
 
   return (
     <div className="flex min-h-screen">
@@ -94,31 +109,18 @@ export default function DashboardClient({ initialMarkets, aiAccuracy }: Dashboar
             changePositive={true}
           />
           <StatCard
-            label="AI ACCURACY"
-            value={`${aiAccuracy?.find(a => a.category === 'overall')?.totalMarkets > 0 ? Math.round((aiAccuracy?.find(a => a.category === 'overall')?.correctPredictions / aiAccuracy?.find(a => a.category === 'overall')?.totalMarkets) * 100) : 0}%`}
+            label="ACTIVE MARKETS"
+            value={`${initialMarkets.length}`}
+          />
+          <StatCard
+            label="AI WIN RATE"
+            value={`${aiWinRate}%`}
             change="Overall"
             changePositive={true}
           />
           <StatCard
-            label="AVG CONFIDENCE"
-            value={`${Math.round(
-              initialMarkets.reduce((s, m) => s + m.confidence, 0) /
-                (initialMarkets.length || 1) // Prevent division by zero
-            )}%`}
-          />
-          <StatCard
-            label="FOLLOW RATIO"
-            value={`${
-              totalVolume > 0
-                ? Math.round(
-                    (initialMarkets.reduce((s, m) => s + m.followPool, 0) /
-                      totalVolume) *
-                      100
-                  )
-                : 50
-            }%`}
-            change="+2.1%"
-            changePositive={true}
+            label="YOUR PNL"
+            value={pnlDisplay}
           />
         </div>
 

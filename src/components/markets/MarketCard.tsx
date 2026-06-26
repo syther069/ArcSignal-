@@ -29,9 +29,9 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
     address: ARCSIGNAL_ADDRESS,
     abi: ARCSIGNAL_ABI,
     functionName: 'getMarket',
-    args: [BigInt(market.id)],
+    args: [BigInt(/^\d+$/.test(market.id) ? market.id : 0)],
     query: {
-      enabled: /^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS),
+      enabled: /^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS) && /^\d+$/.test(market.id),
     },
   });
 
@@ -110,7 +110,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
             </div>
           </div>
           <ul className="space-y-2 text-xs text-zinc-400">
-            {market.keyFactors.map((factor) => (
+            {market.keyFactors?.map((factor) => (
               <li key={factor}>{factor}</li>
             ))}
           </ul>

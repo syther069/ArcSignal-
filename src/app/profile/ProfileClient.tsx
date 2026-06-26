@@ -103,13 +103,20 @@ export default function ProfileClient() {
       <div className="flex min-h-screen bg-[#101416]">
         <Sidebar />
         <main className="flex-1 lg:ml-[264px] pt-32 px-8 flex flex-col items-center justify-center">
-          <div className="w-20 h-20 bg-white/5 border border-white/10 rounded-full flex items-center justify-center mb-6">
-            <span className="material-symbols-outlined text-4xl text-slate-500">account_balance_wallet</span>
+          <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-full flex items-center justify-center mb-6">
+            <span className="material-symbols-outlined text-2xl text-zinc-400">account_balance_wallet</span>
           </div>
           <h2 className="text-2xl font-bold text-white mb-2">Wallet Not Connected</h2>
-          <p className="text-slate-400 font-mono text-sm mb-6">Please connect your wallet to view your profile.</p>
-          {/* @ts-ignore */}
-          <w3m-button />
+          <p className="text-zinc-300 font-mono text-sm mb-8 text-center max-w-md">
+            Connect your Web3 wallet to view prediction history, portfolio performance, and staking positions
+          </p>
+          <div className="relative group">
+            <div className="absolute inset-0 bg-[#06b6d4] rounded-full blur-md opacity-40 group-hover:opacity-70 transition-opacity"></div>
+            <div className="relative [&_w3m-button]:grayscale [&_w3m-button]:contrast-200 [&_w3m-button]:sepia [&_w3m-button]:hue-rotate-180">
+              {/* @ts-ignore */}
+              <w3m-button />
+            </div>
+          </div>
         </main>
       </div>
     );
@@ -188,7 +195,7 @@ export default function ProfileClient() {
                           <span className="font-mono text-[10px] tracking-widest font-bold text-slate-300 uppercase">Edit Profile</span>
                         </button>
                       </div>
-                      <p className="text-slate-400 text-sm max-w-2xl leading-relaxed">
+                      <p className="text-zinc-300 text-sm max-w-2xl leading-relaxed">
                         {profile?.bio || 'No bio provided. Update your profile to tell the community about your trading strategy.'}
                       </p>
                     </>
@@ -214,7 +221,7 @@ export default function ProfileClient() {
                 
                 {/* Portfolio P&L Chart */}
                 <div className="glass-card p-6 bg-[#0a1628]/80 border-white/5">
-                  <h3 className="font-mono text-sm font-bold text-slate-300 mb-6 tracking-widest uppercase flex items-center gap-2">
+                  <h3 className="font-mono text-sm font-bold text-white mb-6 tracking-widest uppercase flex items-center gap-2">
                     <span className="material-symbols-outlined text-[#38bdf8]">monitoring</span>
                     Cumulative P&L
                   </h3>
@@ -243,7 +250,7 @@ export default function ProfileClient() {
                 {/* Staking History */}
                 <div className="glass-card p-6 bg-[#0a1628]/80 border-white/5">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                    <h3 className="font-mono text-sm font-bold text-slate-300 tracking-widest uppercase flex items-center gap-2">
+                    <h3 className="font-mono text-sm font-bold text-white tracking-widest uppercase flex items-center gap-2">
                       <span className="material-symbols-outlined text-[#38bdf8]">receipt_long</span>
                       Staking History
                     </h3>
@@ -321,7 +328,7 @@ export default function ProfileClient() {
                       </span>
                     </div>
                     <h3 className="font-bold text-white text-lg mb-2">Genesis Member</h3>
-                    <p className="text-slate-400 text-xs leading-relaxed mb-6">
+                    <p className="text-zinc-300 text-xs leading-relaxed mb-6">
                       Mint your on-chain prediction pass to unlock zero-fee trading and private Discord access.
                     </p>
                     
@@ -339,7 +346,7 @@ export default function ProfileClient() {
 
                 {/* Active Positions */}
                 <div className="glass-card p-6 bg-[#0a1628]/80 border-white/5">
-                  <h3 className="font-mono text-sm font-bold text-slate-300 mb-6 tracking-widest uppercase flex items-center gap-2">
+                  <h3 className="font-mono text-sm font-bold text-white mb-6 tracking-widest uppercase flex items-center gap-2">
                     <span className="material-symbols-outlined text-[#38bdf8]">radar</span>
                     Active Positions
                   </h3>

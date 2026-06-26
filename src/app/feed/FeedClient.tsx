@@ -53,10 +53,10 @@ export default function FeedClient({ initialStakes }: FeedClientProps) {
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6">
           <div>
-            <h1 className="text-[32px] font-black tracking-tight text-[#38bdf8] mb-1 italic">
+            <h1 className="text-[32px] font-black tracking-tight text-white mb-1 italic">
               LIVE ACTIVITY FEED
             </h1>
-            <p className="font-mono text-sm text-slate-400">
+            <p className="font-mono text-sm text-zinc-300">
               Real-time platform execution log and oracle verification stream.
             </p>
           </div>
@@ -132,7 +132,7 @@ export default function FeedClient({ initialStakes }: FeedClientProps) {
                           </span>
                         </td>
                         <td className="p-4 text-slate-300 min-w-[250px]">
-                          User <span className="text-[#38bdf8] font-bold">{stake.walletAddress.substring(0, 6)}...{stake.walletAddress.slice(-4)}</span> staked on{' '}
+                          User <span className="text-[#38bdf8] font-bold font-mono">{stake.walletAddress.substring(0, 6)}...{stake.walletAddress.slice(-4)}</span> staked on{' '}
                           {market ? (
                             <Link href={`/market/${market.id}`} className="text-white hover:text-[#38bdf8] transition-colors hover:underline">
                               {market.title}

@@ -4,6 +4,7 @@ export interface CryptoData {
   current_price: number;
   price_change_percentage_24h: number;
   market_cap: number;
+  market_cap_rank: number;
   total_volume: number;
   high_24h: number;
   low_24h: number;
@@ -40,6 +41,7 @@ function assertCryptoData(value: unknown): CryptoData[] {
       typeof data.current_price !== 'number' ||
       typeof data.price_change_percentage_24h !== 'number' ||
       typeof data.market_cap !== 'number' ||
+      typeof data.market_cap_rank !== 'number' ||
       typeof data.total_volume !== 'number' ||
       typeof data.high_24h !== 'number' ||
       typeof data.low_24h !== 'number'
@@ -53,6 +55,7 @@ function assertCryptoData(value: unknown): CryptoData[] {
       current_price: data.current_price,
       price_change_percentage_24h: data.price_change_percentage_24h,
       market_cap: data.market_cap,
+      market_cap_rank: data.market_cap_rank,
       total_volume: data.total_volume,
       high_24h: data.high_24h,
       low_24h: data.low_24h,

@@ -1,5 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { createConfig, http } from 'wagmi';
+import { mainnet, sepolia } from 'wagmi/chains';
+import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors';
 import { arcTestnet } from './contracts';
 
 export { arcTestnet };
@@ -17,10 +19,19 @@ export const arcTestnetConfig = {
 };
 
 export const wagmiConfig = createConfig({
-  chains: [arcTestnet],
+  chains: [arcTestnet, mainnet, sepolia],
   ssr: true,
+  connectors: [
+    injected(),
+    walletConnect({ 
+      projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? '' 
+    }),
+    coinbaseWallet({ appName: 'ArcSignal' }),
+  ],
   transports: {
     [arcTestnet.id]: http(arcTestnetConfig.rpcUrl),
+    [mainnet.id]: http(),
+    [sepolia.id]: http(),
   },
 });
 

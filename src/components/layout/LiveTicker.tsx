@@ -13,7 +13,10 @@ export default function LiveTicker() {
       try {
         const [tickerPrices, liveMatches] = await Promise.all([
           fetchTickerPrices(),
-          fetchLiveMatches(),
+          fetchLiveMatches().catch((err) => {
+            console.warn('Skipping live matches due to error:', err instanceof Error ? err.message : String(err));
+            return [] as LiveMatch[];
+          }),
         ]);
         setPrices(tickerPrices);
         setMatches(liveMatches);

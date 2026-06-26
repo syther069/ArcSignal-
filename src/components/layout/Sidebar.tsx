@@ -1,51 +1,77 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { 
+  BarChart2, 
+  Activity, 
+  Wallet, 
+  Lock, 
+  Scale, 
+  HelpCircle, 
+  Settings, 
+  Plus 
+} from 'lucide-react';
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [isConnected, setIsConnected] = useState(false);
+  const address = "0x1234567890123456789012345678901234567890";
+
+  const truncateAddress = (addr: string) => {
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
 
   const mainNav = [
-    { name: 'Markets', href: '/markets', icon: 'analytics' },
-    { name: 'Activity', href: '/activity', icon: 'query_stats' },
-    { name: 'Portfolio', href: '/portfolio', icon: 'account_balance' },
-    { name: 'Vaults', href: '/vaults', icon: 'lock' },
-    { name: 'Governance', href: '/governance', icon: 'gavel' },
-    { name: 'Support', href: '/support', icon: 'help_outline' },
+    { name: 'Markets', href: '/markets', icon: BarChart2 },
+    { name: 'Activity', href: '/activity', icon: Activity },
+    { name: 'Portfolio', href: '/portfolio', icon: Wallet },
+    { name: 'Vaults', href: '/vaults', icon: Lock },
+    { name: 'Governance', href: '/governance', icon: Scale },
+    { name: 'Support', href: '/support', icon: HelpCircle },
   ];
 
   return (
-    <aside className="fixed left-0 top-16 h-[calc(100vh-64px)] w-[264px] bg-[#0a1628] border-r border-[rgba(255,255,255,0.06)] flex flex-col p-4 z-40 hidden lg:flex">
-      {/* Top: ARC TESTNET Status */}
-      <div className="p-3 bg-[#0f1f38] rounded-[6px] border border-white/5 mb-8">
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-[#34d399] animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0"></div>
-          <div>
-            <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-bold text-[#fbbf24] tracking-widest uppercase leading-tight">ARC TESTNET</p>
-            <p className="font-[family-name:var(--font-jetbrains-mono)] text-[9px] text-gray-400 mt-1 uppercase tracking-wider">Node Active (21ms)</p>
+    <aside className="fixed left-0 top-0 h-screen w-[240px] bg-[#0d0d0d] border-r border-[#1f1f1f] flex flex-col z-40 hidden lg:flex">
+      {/* Top Section */}
+      <div className="p-4 flex flex-col gap-4">
+        {/* Logo */}
+        <div className="flex items-center gap-2 px-2 mt-2">
+          <span className="text-white font-bold text-lg tracking-wider">ARCSIGNAL</span>
+          <span className="text-amber-500 text-[10px] font-bold px-2 py-0.5 bg-amber-500/10 rounded-full">
+            ARC TESTNET
+          </span>
+        </div>
+        
+        {/* Network Status Pill */}
+        <div className="bg-[#141414] border border-[#1f1f1f] rounded-lg p-[12px] flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)] shrink-0"></div>
+          <div className="flex flex-col">
+            <span className="text-white text-xs font-semibold">Arc Testnet</span>
+            <span className="text-zinc-400 text-[10px]">Node Active 21ms</span>
           </div>
         </div>
       </div>
 
-      {/* Nav Items */}
-      <nav className="flex-1 space-y-1">
+      {/* Navigation Items (middle section) */}
+      <nav className="flex-1 py-2 flex flex-col">
         {mainNav.map((item) => {
           const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/');
+          const Icon = item.icon;
           
           return (
             <Link 
               key={item.name} 
               href={item.href}
-              className={`flex items-center gap-3 p-3 transition-all group ${
+              className={`flex items-center gap-[12px] h-[44px] px-[16px] group transition-colors ${
                 isActive 
-                  ? 'bg-[#38bdf8]/10 text-[#38bdf8] border-l-2 border-[#38bdf8]' 
-                  : 'text-gray-400 hover:text-white hover:bg-white/5 border-l-2 border-transparent'
+                  ? 'border-l-2 border-[#06b6d4] text-[#06b6d4]' 
+                  : 'text-zinc-400 hover:bg-[#141414] hover:text-white border-l-2 border-transparent'
               }`}
             >
-              <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold tracking-[0.1em] uppercase">
+              <Icon size={18} className={isActive ? 'text-[#06b6d4]' : 'text-zinc-400 group-hover:text-white transition-colors'} />
+              <span className="text-[13px] uppercase tracking-widest font-medium">
                 {item.name}
               </span>
             </Link>
@@ -53,26 +79,58 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Bottom Area */}
-      <div className="mt-auto pt-6 border-t border-white/5 space-y-4">
-        {/* NEW PREDICTION Button */}
-        <button className="w-full bg-[#38bdf8] text-[#020817] p-3 font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold tracking-[0.1em] uppercase rounded-[4px] hover:shadow-[0_0_15px_rgba(56,189,248,0.4)] transition-all flex items-center justify-center gap-2">
-          <span className="material-symbols-outlined text-[18px]">add_circle</span>
-          NEW PREDICTION
-        </button>
+      {/* Bottom Section */}
+      <div className="mt-auto pb-4 flex flex-col gap-4">
+        {/* Wallet Connect Area */}
+        <div className="px-4">
+          {!isConnected ? (
+            <button 
+              onClick={() => setIsConnected(true)}
+              className="w-full h-[44px] rounded-lg border border-[#06b6d4] text-[#06b6d4] text-[13px] font-bold uppercase tracking-wider hover:bg-[#06b6d4]/10 transition-colors"
+            >
+              Connect Wallet
+            </button>
+          ) : (
+            <div 
+              onClick={() => setIsConnected(false)}
+              className="w-full h-[44px] rounded-lg border border-[#1f1f1f] bg-[#141414] flex items-center justify-center gap-2 cursor-pointer hover:border-zinc-700 transition-colors"
+            >
+              <div className="w-2 h-2 rounded-full bg-green-500 shrink-0"></div>
+              <span className="text-zinc-300 text-[13px] font-medium font-mono">
+                {truncateAddress(address)}
+              </span>
+            </div>
+          )}
+        </div>
 
-        {/* Settings & Docs */}
-        <div className="space-y-1">
-          <Link href="/settings" className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 transition-all rounded-[4px]">
-            <span className="material-symbols-outlined text-[20px]">settings</span>
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold tracking-[0.1em] uppercase">Settings</span>
-          </Link>
-          <Link href="/docs" className="flex items-center gap-3 p-3 text-gray-400 hover:text-white hover:bg-white/5 transition-all rounded-[4px]">
-            <span className="material-symbols-outlined text-[20px]">description</span>
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold tracking-[0.1em] uppercase">Docs</span>
+        {/* NEW PREDICTION Button */}
+        <div className="px-4">
+          <button className="w-full h-[44px] bg-[#06b6d4] hover:bg-[#0891b2] text-white rounded-lg flex items-center justify-center gap-2 transition-colors">
+            <Plus size={16} />
+            <span className="text-[13px] font-bold uppercase tracking-wider">
+              NEW PREDICTION
+            </span>
+          </button>
+        </div>
+
+        {/* Settings Nav Item */}
+        <div className="flex flex-col pt-2 border-t border-[#1f1f1f]">
+          <Link 
+            href="/settings"
+            className={`flex items-center gap-[12px] h-[44px] px-[16px] group transition-colors ${
+              pathname === '/settings' || (pathname.startsWith('/settings') && pathname !== '/')
+                ? 'border-l-2 border-[#06b6d4] text-[#06b6d4]' 
+                : 'text-zinc-400 hover:bg-[#141414] hover:text-white border-l-2 border-transparent'
+            }`}
+          >
+            <Settings size={18} className={pathname.startsWith('/settings') && pathname !== '/' ? 'text-[#06b6d4]' : 'text-zinc-400 group-hover:text-white transition-colors'} />
+            <span className="text-[13px] uppercase tracking-widest font-medium">
+              Settings
+            </span>
           </Link>
         </div>
       </div>
     </aside>
   );
 }
+

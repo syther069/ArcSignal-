@@ -236,7 +236,24 @@ export async function getMarketsByCategory(category: MarketCategoryFilter): Prom
 }
 
 export async function getRecentStakes(_limit = 20): Promise<Stake[]> {
-  return [];
+  const markets = await getOpenMarkets();
+  if (markets.length === 0) return [];
+  
+  // Generate 15 mock stakes
+  return Array.from({ length: 15 }).map((_, i) => {
+    const market = markets[i % markets.length];
+    const stake: any = {
+      id: `mock-stake-${i}`,
+      marketId: market.id,
+      walletAddress: `0x${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}...${Math.floor(Math.random() * 16777215).toString(16).padStart(4, '0')}`,
+      side: Math.random() > 0.5 ? 0 : 1,
+      amountUsdc: Math.floor(Math.random() * 900) + 100,
+      txHash: `0xmock${i}`,
+      createdAt: new Date(Date.now() - Math.floor(Math.random() * 86400000)).toISOString(),
+      market: market // Attach market for feed
+    };
+    return stake as Stake;
+  }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export async function getLeaderboard(_filter = 'profit', _limit = 50): Promise<LeaderboardEntry[]> {
