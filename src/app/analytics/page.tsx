@@ -1,4 +1,3 @@
-import { getOpenMarkets, getRecentStakes } from '@/lib/frontend-data';
 import AnalyticsClient from './AnalyticsClient';
 import { Market, Stake } from '@/types';
 
@@ -9,8 +8,9 @@ export default async function AnalyticsPage() {
   let stakes: Stake[] = [];
 
   try {
-    markets = await getOpenMarkets();
-    stakes = await getRecentStakes(100);
+    const res = await fetch('http://localhost:3000/api/markets', { cache: 'no-store' });
+    const data = await res.json();
+    markets = data.markets || [];
   } catch (error) {
     console.error('Failed to fetch analytics data:', error);
   }

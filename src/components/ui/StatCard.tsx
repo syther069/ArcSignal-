@@ -14,18 +14,20 @@ export function StatCard({
   changePositive = true,
 }: StatCardProps) {
   return (
-    <div className="bg-[#0f1f38] rounded-[6px] border border-white/10 p-4 flex flex-col gap-1">
-      <div className="text-[11px] uppercase text-gray-400 tracking-[0.08em] font-medium">
+    <div className="bg-[#141414] border border-[#1f1f1f] rounded-[6px] p-4 flex flex-col gap-1">
+      <div className="text-[11px] uppercase text-zinc-500 tracking-widest mb-2">
         {label}
       </div>
-      <div className="flex items-baseline gap-2 mt-0.5">
-        <div className="text-2xl font-bold text-white font-[family-name:var(--font-jetbrains-mono)] tabular-nums">
+      <div className="flex items-baseline gap-2">
+        <div className="text-2xl font-bold text-white font-mono">
           {value}
         </div>
         {change && (
           <div
-            className={`text-xs font-medium ${
-              changePositive ? 'text-[#34d399]' : 'text-[#f87171]'
+            className={`text-xs font-semibold px-1.5 py-0.5 rounded-sm ${
+              changePositive
+                ? 'text-[#34d399] bg-[#34d399]/10'
+                : 'text-[#f87171] bg-[#f87171]/10'
             }`}
           >
             {change}

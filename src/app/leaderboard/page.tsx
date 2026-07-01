@@ -1,4 +1,3 @@
-import { getLeaderboard } from '@/lib/frontend-data';
 import LeaderboardClient from './LeaderboardClient';
 import { LeaderboardEntry } from '@/types';
 
@@ -8,7 +7,7 @@ export default async function LeaderboardPage() {
   let initialLeaderboard: LeaderboardEntry[] = [];
 
   try {
-    initialLeaderboard = await getLeaderboard('profit', 50);
+    // Leaderboard data coming soon
   } catch (error) {
     console.error('Failed to fetch leaderboard:', error);
   }

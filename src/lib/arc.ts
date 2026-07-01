@@ -18,16 +18,31 @@ export const arcTestnetConfig = {
   blockExplorer: arcTestnet.blockExplorers.default.url,
 };
 
+function getConnectors() {
+  try {
+    const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+    const connectorValues = [
+      injected(),
+      projectId ? walletConnect({ projectId }) : null,
+      coinbaseWallet({ appName: 'ArcSignal' }),
+    ];
+
+    if (connectorValues == null) {
+      return [];
+    }
+
+    return Object.values(connectorValues).filter(
+      (connector): connector is NonNullable<typeof connector> => connector != null,
+    );
+  } catch {
+    return [];
+  }
+}
+
 export const wagmiConfig = createConfig({
   chains: [arcTestnet, mainnet, sepolia],
   ssr: true,
-  connectors: [
-    injected(),
-    walletConnect({ 
-      projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? '' 
-    }),
-    coinbaseWallet({ appName: 'ArcSignal' }),
-  ],
+  connectors: getConnectors(),
   transports: {
     [arcTestnet.id]: http(arcTestnetConfig.rpcUrl),
     [mainnet.id]: http(),

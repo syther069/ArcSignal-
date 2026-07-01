@@ -1,4 +1,3 @@
-import { getRecentStakes } from '@/lib/frontend-data';
 import FeedClient from './FeedClient';
 import { Stake } from '@/types';
 
@@ -8,7 +7,7 @@ export default async function FeedPage() {
   let initialStakes: Stake[] = [];
 
   try {
-    initialStakes = await getRecentStakes(100);
+    // Stakes API not yet available, leaving empty
   } catch (error) {
     console.error('Failed to fetch recent stakes:', error);
   }

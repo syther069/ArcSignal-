@@ -1,5 +1,4 @@
 import { fetchUpcomingFixtures, fetchLiveMatches } from '@/lib/apifootball';
-import { getMarketsByCategory } from '@/lib/frontend-data';
 import { Market } from '@/types';
 import WorldCupClient from './WorldCupClient';
 
@@ -11,11 +10,14 @@ export default async function WorldCupPage() {
   let footballMarkets: Market[] = [];
 
   try {
-    const [fixtures, live, markets] = await Promise.all([
+    const [fixtures, live, marketsRes] = await Promise.all([
       fetchUpcomingFixtures(),
       fetchLiveMatches(),
-      getMarketsByCategory('football'),
+      fetch('http://localhost:3000/api/markets', { cache: 'no-store' }),
     ]);
+    const data = await marketsRes.json();
+    const markets: Market[] = data.markets || [];
+    footballMarkets = markets.filter(m => m.category.toLowerCase() === 'football' || m.category.toLowerCase() === 'sports');
     upcomingFixtures = fixtures.map((fixture) => ({
       homeTeam: fixture.homeTeam,
       awayTeam: fixture.awayTeam,

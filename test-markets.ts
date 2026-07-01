@@ -1,10 +1,9 @@
 require('dotenv').config({ path: '.env' });
-import { getOpenMarkets } from './src/lib/frontend-data';
 
 async function main() {
   console.log('--- STARTING DIAGNOSTIC SCRIPT ---');
-  const markets = await getOpenMarkets();
-  console.log(`[SCRIPT] markets length: ${markets.length}`);
+  // const markets = await getOpenMarkets();
+  // console.log(`[SCRIPT] markets length: ${markets.length}`);
 }
 
 main().catch(console.error);

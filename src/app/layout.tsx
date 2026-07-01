@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
-import { JetBrains_Mono } from 'next/font/google';
+import { Inter, JetBrains_Mono } from 'next/font/google';
 import Navbar from '@/components/layout/Navbar';
 import { Web3Provider } from '@/components/layout/Web3Provider';
 import NetworkSwitcher from '@/components/wallet/NetworkSwitcher';
@@ -16,6 +16,12 @@ const jetBrainsMono = JetBrains_Mono({
   display: 'swap',
 });
 
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: 'ArcSignal',
   description: 'AI-powered prediction markets on ARC Network',
@@ -27,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`dark ${jetBrainsMono.variable}`}>
+    <html lang="en" className={`dark ${jetBrainsMono.variable} ${inter.variable}`}>
       <body>
         <Web3Provider>
           <Navbar />
