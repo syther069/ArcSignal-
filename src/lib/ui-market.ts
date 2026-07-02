@@ -1,5 +1,5 @@
 import { formatUnits } from 'viem';
-import type { SerializableMarket } from './markets';
+import type { SerializableMarket } from './types';
 import type { Market as UiMarket } from '@/types';
 
 function usdcToNumber(value: string) {
@@ -20,7 +20,7 @@ function parseFootballTeams(question: string) {
 
 export function toUiMarket(market: SerializableMarket): UiMarket {
   const category = market.category === 'FOOTBALL' ? 'football' : 'crypto';
-  const title = market.question.replace(/\s*\[fixtureId:\d+\]\s*$/, '');
+  const title = (market.question ?? market.marketId).replace(/\s*\[fixtureId:\d+\]\s*$/, '');
   const pools = {
     followPool: usdcToNumber(market.followPool),
     fadePool: usdcToNumber(market.fadePool),
@@ -28,20 +28,20 @@ export function toUiMarket(market: SerializableMarket): UiMarket {
   const teams = category === 'football' ? parseFootballTeams(title) : {};
 
   return {
-    id: String(market.id),
+    id: market.marketId,
     category,
     subType: category === 'crypto' ? 'price' : undefined,
     title,
-    description: market.analysis.summary,
-    agentPick: market.analysis.prediction,
+    description: market.analysis?.summary ?? title,
+    agentPick: market.analysis?.prediction ?? 'YES',
     agentId: 'arcsignal-agent',
-    confidence: market.analysis.confidence,
-    probability: market.analysis.probability,
-    summary: market.analysis.summary,
-    bull_case: market.analysis.bullCase,
-    bear_case: market.analysis.bearCase,
-    keyFactors: market.analysis.keyFactors,
-    data_sources: market.analysis.sources,
+    confidence: market.analysis?.confidence ?? 50,
+    probability: market.analysis?.probability ?? 50,
+    summary: market.analysis?.summary,
+    bull_case: market.analysis?.bullCase,
+    bear_case: market.analysis?.bearCase,
+    keyFactors: market.analysis?.keyFactors ?? [],
+    data_sources: market.analysis?.sources,
     volume: pools.followPool + pools.fadePool,
     participants: 0,
     followPool: pools.followPool,
@@ -50,7 +50,7 @@ export function toUiMarket(market: SerializableMarket): UiMarket {
     resolved: market.resolved,
     outcome: market.outcome,
     resolution_source: category === 'football' ? 'API-Football' : 'CoinGecko',
-    createdAt: market.analysis.generatedAt,
+    createdAt: market.analysis?.generatedAt ?? new Date().toISOString(),
     ...teams,
   };
 }

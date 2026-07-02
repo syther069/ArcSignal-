@@ -1,5 +1,5 @@
 export type MarketCategory = 'CRYPTO' | 'FOOTBALL';
-export type MarketOutcome = 'FOLLOW' | 'FADE' | 'CANCELLED' | 'PENDING';
+export type MarketOutcome = 'FOLLOW' | 'FADE' | 'PENDING';
 
 export interface AIAnalysis {
   probability: number;
@@ -14,33 +14,27 @@ export interface AIAnalysis {
   generatedAt: string;
 }
 
-export interface MarketMeta {
-  id: string;
+export interface Market {
   marketId: string;
-  question: string;
   category: MarketCategory;
   resolutionTime: number;
-  analysis: AIAnalysis;
-}
-
-export interface OnChainMarket {
-  id: number;
-  followPool: bigint;
-  fadePool: bigint;
-  resolved: boolean;
-  outcome: 0 | 1 | 2;
-}
-
-export interface Market extends MarketMeta {
   followPool: bigint;
   fadePool: bigint;
   resolved: boolean;
   outcome: MarketOutcome;
+  // AI analysis stored in memory cache, not on-chain
+  analysis?: AIAnalysis;
+  question?: string;
+}
+
+export interface SerializableMarket extends Omit<Market, 'followPool' | 'fadePool'> {
+  followPool: string;
+  fadePool: string;
 }
 
 export interface UserPosition {
-  marketId: number;
-  side: 'FOLLOW' | 'FADE';
-  amount: bigint;
+  marketId: string;
+  followStake: bigint;
+  fadeStake: bigint;
   claimed: boolean;
 }

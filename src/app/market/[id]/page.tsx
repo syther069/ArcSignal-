@@ -19,7 +19,7 @@ export default async function MarketDetailPage({
     const marketId = decodeURIComponent(params.id);
     const chainMarkets = await getMarketsFromChain();
     const markets = chainMarkets.map(serializeMarket);
-    const chainMarket = markets.find((market) => market.id === marketId);
+    const chainMarket = markets.find((market) => market.marketId === marketId);
     market = chainMarket ? toUiMarket(chainMarket) : null;
   } catch {
     market = null;

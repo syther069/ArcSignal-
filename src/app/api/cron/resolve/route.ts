@@ -34,9 +34,10 @@ export async function POST(req: Request) {
 
     try {
       let outcome: 0 | 1 = 1;
+      const question = market.question ?? market.marketId;
 
       if (market.category === 'CRYPTO') {
-        const match = market.question.match(/Will (\w+) close above \$([\d,]+)/);
+        const match = question.match(/Will (\w+) close above \$([\d,]+)/);
         if (match) {
           const symbol = match[1].toLowerCase();
           const target = parseFloat(match[2].replace(/,/g, ''));
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
           if (coin) outcome = coin.current_price > target ? 0 : 1;
         }
       } else if (market.category === 'FOOTBALL') {
-        const fixtureIdMatch = market.question.match(/\[fixtureId:(\d+)\]/);
+        const fixtureIdMatch = question.match(/\[fixtureId:(\d+)\]/);
         if (fixtureIdMatch) {
           const fixtureId = parseInt(fixtureIdMatch[1]);
           const completed = await fetchCompletedFixtures(1, 2026, yesterday, today);

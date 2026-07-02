@@ -1,6 +1,8 @@
 import { parseAbiItem, type Address } from 'viem';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS, publicClient } from './contracts';
-import type { AIAnalysis, Market, MarketCategory, MarketOutcome } from './types';
+import type { AIAnalysis, Market, MarketCategory, MarketOutcome, SerializableMarket } from './types';
+
+export type { SerializableMarket } from './types';
 
 interface ContractMarket {
   marketId: string;
@@ -10,11 +12,6 @@ interface ContractMarket {
   fadePool: bigint;
   resolved: boolean;
   outcome: number;
-}
-
-export interface SerializableMarket extends Omit<Market, 'followPool' | 'fadePool'> {
-  followPool: string;
-  fadePool: string;
 }
 
 const marketCreatedEvent = parseAbiItem(
@@ -48,7 +45,7 @@ function mapOutcome(resolved: boolean, outcome: number): MarketOutcome {
     return 'FADE';
   }
 
-  return 'CANCELLED';
+  return 'PENDING';
 }
 
 function fallbackAnalysis(marketId: string, category: MarketCategory): AIAnalysis {
@@ -73,7 +70,6 @@ function fallbackAnalysis(marketId: string, category: MarketCategory): AIAnalysi
 export function mapContractMarket(data: ContractMarket): Market {
   const category = mapCategory(data.category);
   return {
-    id: data.marketId,
     marketId: data.marketId,
     question: data.marketId,
     category,
