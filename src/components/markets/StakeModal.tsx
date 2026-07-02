@@ -5,7 +5,7 @@ import { useAccount, useBalance, useReadContract, useWalletClient, usePublicClie
 import { parseUnits } from 'viem';
 import { Market, StakeSide } from '@/types';
 import { USDC_ADDRESS, ArcSignal_ADDRESS, USDC_ABI, approveUSDC } from '@/lib/usdc';
-import { stakeOnMarket } from '@/lib/stake';
+import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 
 export interface StakeModalProps {
   market: Market;
@@ -79,13 +79,18 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
     try {
       setIsProcessing(true);
       setError(null);
-      const hash = await stakeOnMarket(market.id, side, amountStr, address, walletClient);
+      const hash = await walletClient.writeContract({
+        address: ARCSIGNAL_ADDRESS,
+        abi: ARCSIGNAL_ABI,
+        functionName: 'stake',
+        args: [market.marketId, side, amountBigInt],
+      });
       
       // Wait for on-chain confirmation before syncing with backend
       await publicClient.waitForTransactionReceipt({ hash });
       
       // Sync with backend
-      await fetch(`/api/markets/${market.id}/vote`, {
+      await fetch(`/api/markets/${market.marketId}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

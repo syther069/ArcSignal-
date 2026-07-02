@@ -4,6 +4,9 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, publicClient, ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchUpcomingFixtures } from '@/lib/apifootball';
+import { generateCryptoAnalysis, generateFootballAnalysis } from '@/lib/gemini';
+import { cacheAnalysis } from '@/lib/markets';
+import type { Address } from 'viem';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -41,6 +44,7 @@ export async function POST(req: Request) {
 
   const created: string[] = [];
   const errors: string[] = [];
+  const now = Math.floor(Date.now() / 1000);
 
   // CRYPTO MARKETS
   try {
@@ -55,15 +59,35 @@ export async function POST(req: Request) {
       const resolutionTime = resolutionTimestamp(h);
       const resolutionDate = new Date(Number(resolutionTime) * 1000).toUTCString();
       const question = `Will ${coin.symbol.toUpperCase()} close above $${target.toLocaleString('en-US')} by ${resolutionDate}?`;
+      const marketId = `${coin.symbol.toUpperCase()}-PRICE-${now}-${i}`;
 
       try {
+        const analysis = await generateCryptoAnalysis({
+          question,
+          resolutionCriteria: `Resolves YES if ${coin.symbol.toUpperCase()}/USD price on CoinGecko is above $${target.toLocaleString('en-US')} at resolution time.`,
+          resolutionTime: resolutionDate,
+          cryptoData: {
+            id: coin.id,
+            symbol: coin.symbol,
+            current_price: coin.current_price,
+            price_change_percentage_24h: coin.price_change_percentage_24h,
+            market_cap: coin.market_cap,
+            total_volume: coin.total_volume,
+            high_24h: coin.high_24h,
+            low_24h: coin.low_24h,
+            target_price: target,
+          },
+        });
+
         const hash = await walletClient.writeContract({
-          address: ARCSIGNAL_ADDRESS,
+          address: ARCSIGNAL_ADDRESS as Address,
           abi: ARCSIGNAL_ABI,
           functionName: 'createMarket',
-          args: [question, 'CRYPTO', resolutionTime],
+          args: [marketId, 'CRYPTO', resolutionTime],
         });
+
         await publicClient.waitForTransactionReceipt({ hash });
+        cacheAnalysis(marketId, question, analysis);
         created.push(`[CRYPTO] ${question}`);
       } catch (err) {
         errors.push(`[CRYPTO] ${coin.symbol}: ${err instanceof Error ? err.message : String(err)}`);
@@ -84,16 +108,33 @@ export async function POST(req: Request) {
       const hoursFromNow = Math.max(1, Math.ceil((resolutionUnix - Date.now() / 1000) / 3600));
       const resolutionTime = resolutionTimestamp(hoursFromNow);
       const kickoffLabel = new Date(fixture.kickoffTime * 1000).toUTCString();
-      const question = `Will ${fixture.homeTeam} beat ${fixture.awayTeam} on ${kickoffLabel}? [fixtureId:${fixture.fixtureId}]`;
+      const question = `Will ${fixture.homeTeam} beat ${fixture.awayTeam} on ${kickoffLabel}?`;
+      const marketId = `MATCH-${fixture.fixtureId}-${now}`;
 
       try {
+        const analysis = await generateFootballAnalysis({
+          question,
+          resolutionCriteria: `Resolves YES if ${fixture.homeTeam} wins at full time. Resolves NO if draw or ${fixture.awayTeam} wins.`,
+          matchTime: kickoffLabel,
+          fixtureData: {
+            fixtureId: fixture.fixtureId,
+            homeTeam: fixture.homeTeam,
+            awayTeam: fixture.awayTeam,
+            kickoffTime: kickoffLabel,
+            round: fixture.round,
+            leagueName: fixture.leagueName,
+          },
+        });
+
         const hash = await walletClient.writeContract({
-          address: ARCSIGNAL_ADDRESS,
+          address: ARCSIGNAL_ADDRESS as Address,
           abi: ARCSIGNAL_ABI,
           functionName: 'createMarket',
-          args: [question, 'FOOTBALL', resolutionTime],
+          args: [marketId, 'FOOTBALL', resolutionTime],
         });
+
         await publicClient.waitForTransactionReceipt({ hash });
+        cacheAnalysis(marketId, question, analysis);
         created.push(`[FOOTBALL] ${question}`);
       } catch (err) {
         errors.push(`[FOOTBALL] ${fixture.homeTeam} vs ${fixture.awayTeam}: ${err instanceof Error ? err.message : String(err)}`);
@@ -103,5 +144,9 @@ export async function POST(req: Request) {
     errors.push(`[FOOTBALL] Fixtures fetch failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  return NextResponse.json({ created, errors, summary: `${created.length} markets created, ${errors.length} failed` });
+  return NextResponse.json({
+    created,
+    errors,
+    summary: `${created.length} markets created, ${errors.length} failed`,
+  });
 }

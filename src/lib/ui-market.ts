@@ -28,7 +28,7 @@ export function toUiMarket(market: SerializableMarket): UiMarket {
   const teams = category === 'football' ? parseFootballTeams(title) : {};
 
   return {
-    id: market.marketId,
+    marketId: market.marketId,
     category,
     subType: category === 'crypto' ? 'price' : undefined,
     title,

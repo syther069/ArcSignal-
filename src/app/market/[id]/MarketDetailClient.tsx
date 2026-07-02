@@ -39,7 +39,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
     address: ArcSignal_ADDRESS,
     abi: ArcSignal_ABI,
     functionName: 'markets',
-    args: [market.id.toString()],
+    args: [market.marketId],
   });
 
   const followPool = chainMarket ? parseFloat(formatUnits(chainMarket[3] as bigint, 6)) : market.followPool;

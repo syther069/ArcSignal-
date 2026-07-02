@@ -110,7 +110,7 @@ export default function LiveActivityPanel() {
               const fadePercent = total > 0 ? (market.fadePool / total) * 100 : 0;
 
               return (
-                <div key={market.id} className="space-y-1.5">
+                <div key={market.marketId} className="space-y-1.5">
                   <div className="flex items-center justify-between text-[11px] font-semibold text-slate-200">
                     <span className="truncate pr-2">{market.title}</span>
                     <span className="font-mono text-slate-400 shrink-0">{total.toLocaleString()} USDC</span>

@@ -2,6 +2,8 @@ import type { Address } from 'viem';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS, publicClient } from './contracts';
 import type { AIAnalysis, Market, MarketCategory, MarketOutcome, SerializableMarket } from './types';
 
+export type { SerializableMarket };
+
 // In-memory cache for AI analysis (keyed by marketId)
 const analysisCache = new Map<string, AIAnalysis>();
 const questionCache = new Map<string, string>();

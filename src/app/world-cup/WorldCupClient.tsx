@@ -123,7 +123,7 @@ export default function WorldCupClient({ upcomingFixtures, liveMatches, football
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {footballMarkets.map((market) => (
-                <div key={market.id} className="glass-card p-5 border-white/5">
+                <div key={market.marketId} className="glass-card p-5 border-white/5">
                   <h3 className="font-bold text-white text-lg mb-2">{market.title}</h3>
                   <p className="text-slate-400 text-sm mb-4">{market.summary}</p>
                   <div className="flex gap-4">
@@ -137,7 +137,7 @@ export default function WorldCupClient({ upcomingFixtures, liveMatches, football
                     </div>
                   </div>
                   <div className="mt-4 text-center">
-                    <Link href={`/market/${encodeURIComponent(market.id)}`} className="text-[#38bdf8] text-sm hover:underline font-mono tracking-widest">
+                    <Link href={`/market/${encodeURIComponent(market.marketId)}`} className="text-[#38bdf8] text-sm hover:underline font-mono tracking-widest">
                       VIEW MARKET &rarr;
                     </Link>
                   </div>

@@ -65,7 +65,7 @@ export default function DashboardClient({ markets, aiAccuracy }: DashboardClient
             {visibleMarkets.map((market, index) => {
               const Icon = icons[index] ?? Bitcoin;
               return (
-                <div key={market.id} className="bg-surface-container rounded-xl border border-white/5 p-6 top-lit-border shadow-lg">
+                <div key={market.marketId} className="bg-surface-container rounded-xl border border-white/5 p-6 top-lit-border shadow-lg">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
@@ -79,7 +79,7 @@ export default function DashboardClient({ markets, aiAccuracy }: DashboardClient
                           </span>
                         </div>
                         <p className="text-[10px] font-mono text-on-surface-variant uppercase tracking-widest mt-1">
-                          MKT-{market.id} / {market.category}
+                          MKT-{market.marketId} / {market.category}
                         </p>
                       </div>
                     </div>

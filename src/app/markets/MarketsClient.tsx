@@ -89,7 +89,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredMarkets.map((market) => (
               <MarketCard
-                key={market.id}
+                key={market.marketId}
                 market={market}
                 onFollow={() => setStakeModal({ market, side: 0 })}
                 onFade={() => setStakeModal({ market, side: 1 })}

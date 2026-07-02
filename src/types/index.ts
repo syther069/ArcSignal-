@@ -3,7 +3,7 @@ export type CryptoSubType = 'price' | 'listing' | 'onchain';
 export type StakeSide = 0 | 1;
 
 export interface Market {
-  id: string;
+  marketId: string;
   category: MarketCategory;
   subType?: CryptoSubType;
   title: string;
