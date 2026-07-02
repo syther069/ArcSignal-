@@ -8,9 +8,16 @@ export type { SerializableMarket };
 const analysisCache = new Map<string, AIAnalysis>();
 const questionCache = new Map<string, string>();
 
+// Module-level store for market IDs (populated by cron generate route)
+const marketIdStore = new Set<string>();
+
 export function cacheAnalysis(marketId: string, question: string, analysis: AIAnalysis) {
   analysisCache.set(marketId, analysis);
   questionCache.set(marketId, question);
+}
+
+export function registerMarketId(marketId: string) {
+  marketIdStore.add(marketId);
 }
 
 function mapOutcome(resolved: boolean, outcome: number): MarketOutcome {
@@ -25,24 +32,39 @@ function mapCategory(category: string): MarketCategory {
 }
 
 export async function getMarketIds(): Promise<string[]> {
+  // First try in-memory store
+  if (marketIdStore.size > 0) {
+    return Array.from(marketIdStore);
+  }
+
+  // Fallback: try getLogs with recent block range only
   if (!ARCSIGNAL_ADDRESS || !/^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS)) return [];
 
-  const logs = await publicClient.getLogs({
-    address: ARCSIGNAL_ADDRESS as Address,
-    event: {
-      type: 'event',
-      name: 'MarketCreated',
-      inputs: [
-        { type: 'string', name: 'marketId', indexed: false },
-        { type: 'string', name: 'category', indexed: false },
-        { type: 'uint256', name: 'resolutionTime', indexed: false },
-      ],
-    },
-    fromBlock: 0n,
-    toBlock: 'latest',
-  });
+  try {
+    const latestBlock = await publicClient.getBlockNumber();
+    const fromBlock = latestBlock > 10000n ? latestBlock - 10000n : 0n;
 
-  return logs.map((log) => (log.args as { marketId: string }).marketId);
+    const logs = await publicClient.getLogs({
+      address: ARCSIGNAL_ADDRESS as Address,
+      event: {
+        type: 'event',
+        name: 'MarketCreated',
+        inputs: [
+          { type: 'string', name: 'marketId', indexed: false },
+          { type: 'string', name: 'category', indexed: false },
+          { type: 'uint256', name: 'resolutionTime', indexed: false },
+        ],
+      },
+      fromBlock,
+      toBlock: 'latest',
+    });
+
+    const ids = logs.map((log) => (log.args as { marketId: string }).marketId);
+    ids.forEach(id => marketIdStore.add(id));
+    return ids;
+  } catch {
+    return Array.from(marketIdStore);
+  }
 }
 
 export async function getMarketsFromChain(): Promise<Market[]> {

@@ -19,6 +19,7 @@ export async function GET() {
     return NextResponse.json({ markets });
   } catch (error) {
     console.error('[/api/markets]', error);
-    return NextResponse.json({ error: 'Failed to fetch markets' }, { status: 500 });
+    // Return empty array instead of error so UI shows empty state
+    return NextResponse.json({ markets: [] });
   }
 }
