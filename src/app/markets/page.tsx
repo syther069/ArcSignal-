@@ -1,17 +1,16 @@
 import MarketsClient from './MarketsClient';
-import { Market } from '@/types';
+import { getMarketsFromChain, serializeMarket, type SerializableMarket } from '@/lib/markets';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export default async function MarketsPage() {
-  let initialMarkets: Market[] = [];
+  let markets: SerializableMarket[] = [];
   try {
-    const res = await fetch('http://localhost:3000/api/markets', { cache: 'no-store' });
-    const data = await res.json();
-    initialMarkets = data.markets || [];
-  } catch (error) {
-    console.error('Failed to fetch markets:', error);
+    const chainMarkets = await getMarketsFromChain();
+    markets = chainMarkets.map(serializeMarket);
+  } catch {
+    markets = [];
   }
 
-  return <MarketsClient initialMarkets={initialMarkets} />;
+  return <MarketsClient markets={markets} />;
 }

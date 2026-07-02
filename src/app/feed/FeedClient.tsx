@@ -4,14 +4,16 @@ import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import { Stake, Market } from '@/types';
+import type { SerializableMarket } from '@/lib/markets';
 
 type FeedFilter = 'ALL' | 'FOOTBALL' | 'CRYPTO' | 'FOLLOW' | 'FADE';
 
 interface FeedClientProps {
   initialStakes: Stake[];
+  markets: SerializableMarket[];
 }
 
-export default function FeedClient({ initialStakes }: FeedClientProps) {
+export default function FeedClient({ initialStakes, markets: _markets }: FeedClientProps) {
   const [filter, setFilter] = useState<FeedFilter>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;

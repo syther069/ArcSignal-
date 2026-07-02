@@ -1,16 +1,19 @@
 import FeedClient from './FeedClient';
 import { Stake } from '@/types';
+import { getMarketsFromChain, serializeMarket, type SerializableMarket } from '@/lib/markets';
 
-export const revalidate = 10;
+export const dynamic = 'force-dynamic';
 
 export default async function FeedPage() {
   let initialStakes: Stake[] = [];
+  let markets: SerializableMarket[] = [];
 
   try {
-    // Stakes API not yet available, leaving empty
-  } catch (error) {
-    console.error('Failed to fetch recent stakes:', error);
+    const chainMarkets = await getMarketsFromChain();
+    markets = chainMarkets.map(serializeMarket);
+  } catch {
+    markets = [];
   }
 
-  return <FeedClient initialStakes={initialStakes} />;
+  return <FeedClient initialStakes={initialStakes} markets={markets} />;
 }

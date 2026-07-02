@@ -1,10 +1,12 @@
 import MarketDetailClient from './MarketDetailClient';
 import { notFound } from 'next/navigation';
 import { Market } from '@/types';
+import { getMarketsFromChain, serializeMarket } from '@/lib/markets';
+import { toUiMarket } from '@/lib/ui-market';
 
 
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export default async function MarketDetailPage({
   params,
@@ -14,11 +16,12 @@ export default async function MarketDetailPage({
   let market: Market | null = null;
   
   try {
-    const res = await fetch('http://localhost:3000/api/markets', { cache: 'no-store' });
-    const data = await res.json();
-    market = (data.markets || []).find((m: Market) => m.id === params.id) || null;
-  } catch (error) {
-    console.error('Failed to fetch market details', error);
+    const chainMarkets = await getMarketsFromChain();
+    const markets = chainMarkets.map(serializeMarket);
+    const chainMarket = markets.find((market) => market.id === Number(params.id));
+    market = chainMarket ? toUiMarket(chainMarket) : null;
+  } catch {
+    market = null;
   }
 
   if (!market) {

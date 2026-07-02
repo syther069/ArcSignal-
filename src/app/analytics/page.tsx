@@ -1,18 +1,19 @@
 import AnalyticsClient from './AnalyticsClient';
 import { Market, Stake } from '@/types';
+import { getMarketsFromChain, serializeMarket } from '@/lib/markets';
+import { toUiMarket } from '@/lib/ui-market';
 
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
 export default async function AnalyticsPage() {
   let markets: Market[] = [];
   let stakes: Stake[] = [];
 
   try {
-    const res = await fetch('http://localhost:3000/api/markets', { cache: 'no-store' });
-    const data = await res.json();
-    markets = data.markets || [];
-  } catch (error) {
-    console.error('Failed to fetch analytics data:', error);
+    const chainMarkets = await getMarketsFromChain();
+    markets = chainMarkets.map(serializeMarket).map(toUiMarket);
+  } catch {
+    markets = [];
   }
 
   // Staking Volume Over Time (grouping real stakes by day)

@@ -1,133 +1,139 @@
 import { NextResponse } from 'next/server';
+import { createWalletClient, http } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { arcTestnet, publicClient, ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchUpcomingFixtures } from '@/lib/apifootball';
 import { generateCryptoAnalysis, generateFootballAnalysis } from '@/lib/gemini';
-import { createWalletClient, http } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
-import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS, publicClient } from '@/lib/contracts';
 
-export const maxDuration = 300; // Allow enough time for LLM calls and on-chain txs
+export const maxDuration = 300;
+export const dynamic = 'force-dynamic';
 
-async function generateAndPublishMarkets() {
-  const cryptoData = await fetchCryptoMarkets();
-  
-  // Fetch World Cup 2026 fixtures first (League ID 1)
-  let footballFixtures = await fetchUpcomingFixtures([1], 2026);
-  if (footballFixtures.length === 0) {
-    // Fallback to top leagues
-    footballFixtures = await fetchUpcomingFixtures();
+function resolutionTimestamp(hoursFromNow: number): bigint {
+  return BigInt(Math.floor(Date.now() / 1000) + hoursFromNow * 3600);
+}
+
+function priceTarget(current: number): number {
+  const magnitude = Math.pow(10, Math.floor(Math.log10(current)) - 1);
+  return Math.round((current * 1.015) / magnitude) * magnitude;
+}
+
+export async function POST(req: Request) {
+  const auth = req.headers.get('authorization');
+  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
-  const privateKey = process.env.PRIVATE_KEY;
-  if (!privateKey) throw new Error('PRIVATE_KEY is missing');
-  
-  const account = privateKeyToAccount(privateKey.startsWith('0x') ? (privateKey as `0x${string}`) : `0x${privateKey}`);
-  const rpcUrl = process.env.ARC_TESTNET_RPC_URL || process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL || 'https://rpc.testnet.arc.network';
-  
+
+  const privateKey = process.env.RESOLVER_PRIVATE_KEY;
+  if (!privateKey || !/^0x[a-fA-F0-9]{64}$/.test(privateKey)) {
+    return NextResponse.json({ error: 'RESOLVER_PRIVATE_KEY missing or invalid' }, { status: 500 });
+  }
+
+  if (!ARCSIGNAL_ADDRESS || !/^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS)) {
+    return NextResponse.json({ error: 'Contract address missing or invalid' }, { status: 500 });
+  }
+
+  const account = privateKeyToAccount(privateKey as `0x${string}`);
   const walletClient = createWalletClient({
     account,
     chain: arcTestnet,
-    transport: http(rpcUrl),
+    transport: http(process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL),
   });
 
-  const marketsToCreate = [];
-  
-  // 1. Build Crypto Markets
-  const topCoins = cryptoData.slice(0, 6);
-  for (const coin of topCoins) {
-    const isBullish = Math.random() > 0.5;
-    const targetMultiplier = isBullish ? 1.05 : 0.95;
-    const direction = isBullish ? 'reach' : 'drop to';
-    const targetPrice = coin.current_price * targetMultiplier;
-    
-    const question = `Will ${coin.symbol.toUpperCase()} ${direction} $${targetPrice.toFixed(2)} in the next 24 hours?`;
-    const resolutionTime = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
-    
-    const analysis = await generateCryptoAnalysis({
-      question,
-      resolutionCriteria: `Check if price reaches target using CoinGecko API`,
-      resolutionTime: new Date(resolutionTime * 1000).toISOString(),
-      cryptoData: coin as any,
-    });
-    
-    marketsToCreate.push({
-      question,
-      category: 'Crypto',
-      subType: coin.symbol.toUpperCase(),
-      resolutionTime: BigInt(resolutionTime),
-      analysisJson: JSON.stringify(analysis)
-    });
-  }
+  const created: string[] = [];
+  const errors: string[] = [];
 
-  // 2. Build Football Markets
-  const matches = footballFixtures.slice(0, 6);
-  for (const match of matches) {
-    const question = `Will ${match.homeTeam} win against ${match.awayTeam}?`;
-    const resolutionTime = match.kickoffTime + 4 * 60 * 60;
-    
-    const analysis = await generateFootballAnalysis({
-      question,
-      resolutionCriteria: `Check match result on API-Football`,
-      matchTime: new Date(match.kickoffTime * 1000).toISOString(),
-      fixtureData: match as any,
-    });
-    
-    marketsToCreate.push({
-      question,
-      category: 'Sports',
-      subType: 'Football',
-      resolutionTime: BigInt(resolutionTime),
-      analysisJson: JSON.stringify(analysis)
-    });
-  }
+  // CRYPTO MARKETS
+  try {
+    const coins = await fetchCryptoMarkets();
+    const selected = coins.slice(0, 6);
+    const hours = [15, 18, 22, 15, 18, 22];
 
-  // 3. Write all 12 markets on-chain
-  const results = [];
-  for (const market of marketsToCreate) {
-    try {
-      const { request } = await publicClient.simulateContract({
-        address: ARCSIGNAL_ADDRESS,
-        abi: ARCSIGNAL_ABI,
-        functionName: 'createMarket',
-        args: [
-          market.question,
-          market.category,
-          market.subType,
-          market.resolutionTime,
-          market.analysisJson
-        ],
-        account,
-      });
-      const hash = await walletClient.writeContract(request);
-      
-      // Wait for it to be mined so nonce doesn't collide easily
-      await publicClient.waitForTransactionReceipt({ hash });
-      
-      results.push({ question: market.question, txHash: hash });
-    } catch (e: any) {
-      console.error(`Error creating market "${market.question}":`, e);
-      results.push({ question: market.question, error: e.message });
+    for (let i = 0; i < selected.length; i++) {
+      const coin = selected[i];
+      const target = priceTarget(coin.current_price);
+      const h = hours[i];
+      const resolutionTime = resolutionTimestamp(h);
+      const resolutionDate = new Date(Number(resolutionTime) * 1000).toUTCString();
+      const question = `Will ${coin.symbol.toUpperCase()} close above $${target.toLocaleString('en-US')} by ${resolutionDate}?`;
+
+      try {
+        const analysis = await generateCryptoAnalysis({
+          question,
+          resolutionCriteria: `Resolves YES if ${coin.symbol.toUpperCase()}/USD price on CoinGecko is above $${target.toLocaleString('en-US')} at resolution time.`,
+          resolutionTime: resolutionDate,
+          cryptoData: {
+            id: coin.id,
+            symbol: coin.symbol,
+            current_price: coin.current_price,
+            price_change_percentage_24h: coin.price_change_percentage_24h,
+            market_cap: coin.market_cap,
+            total_volume: coin.total_volume,
+            high_24h: coin.high_24h,
+            low_24h: coin.low_24h,
+            target_price: target,
+          },
+        });
+
+        const hash = await walletClient.writeContract({
+          address: ARCSIGNAL_ADDRESS,
+          abi: ARCSIGNAL_ABI,
+          functionName: 'createMarket',
+          args: [question, 'CRYPTO', `${coin.symbol.toUpperCase()}_PRICE_TARGET`, resolutionTime, JSON.stringify(analysis)],
+        });
+        await publicClient.waitForTransactionReceipt({ hash });
+        created.push(`[CRYPTO] ${question}`);
+      } catch (err) {
+        errors.push(`[CRYPTO] ${coin.symbol}: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
+  } catch (err) {
+    errors.push(`[CRYPTO] CoinGecko fetch failed: ${err instanceof Error ? err.message : String(err)}`);
   }
-  return results;
-}
 
-export async function GET() {
+  // FOOTBALL MARKETS
   try {
-    const results = await generateAndPublishMarkets();
-    return NextResponse.json({ success: true, count: results.length, results });
-  } catch (error: any) {
-    console.error('Cron GET Error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-}
+    const wcFixtures = await fetchUpcomingFixtures([1], 2026);
+    const fixtures = wcFixtures.length >= 3 ? wcFixtures : await fetchUpcomingFixtures();
+    const selected = fixtures.slice(0, 6);
 
-export async function POST() {
-  try {
-    const results = await generateAndPublishMarkets();
-    return NextResponse.json({ success: true, count: results.length, results });
-  } catch (error: any) {
-    console.error('Cron POST Error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    for (const fixture of selected) {
+      const resolutionUnix = fixture.kickoffTime + 9000;
+      const hoursFromNow = Math.max(1, Math.ceil((resolutionUnix - Date.now() / 1000) / 3600));
+      const resolutionTime = resolutionTimestamp(hoursFromNow);
+      const kickoffLabel = new Date(fixture.kickoffTime * 1000).toUTCString();
+      const question = `Will ${fixture.homeTeam} beat ${fixture.awayTeam} on ${kickoffLabel}?`;
+
+      try {
+        const analysis = await generateFootballAnalysis({
+          question,
+          resolutionCriteria: `Resolves YES if ${fixture.homeTeam} wins at full time. Resolves NO if draw or ${fixture.awayTeam} wins.`,
+          matchTime: kickoffLabel,
+          fixtureData: {
+            fixtureId: fixture.fixtureId,
+            homeTeam: fixture.homeTeam,
+            awayTeam: fixture.awayTeam,
+            kickoffTime: kickoffLabel,
+            round: fixture.round,
+            leagueName: fixture.leagueName,
+          },
+        });
+
+        const hash = await walletClient.writeContract({
+          address: ARCSIGNAL_ADDRESS,
+          abi: ARCSIGNAL_ABI,
+          functionName: 'createMarket',
+          args: [question, 'FOOTBALL', `MATCH_RESULT_${fixture.fixtureId}`, resolutionTime, JSON.stringify(analysis)],
+        });
+        await publicClient.waitForTransactionReceipt({ hash });
+        created.push(`[FOOTBALL] ${question}`);
+      } catch (err) {
+        errors.push(`[FOOTBALL] ${fixture.homeTeam} vs ${fixture.awayTeam}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  } catch (err) {
+    errors.push(`[FOOTBALL] Fixtures fetch failed: ${err instanceof Error ? err.message : String(err)}`);
   }
+
+  return NextResponse.json({ created, errors, summary: `${created.length} markets created, ${errors.length} failed` });
 }

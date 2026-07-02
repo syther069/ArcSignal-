@@ -1,8 +1,9 @@
-import { fetchUpcomingFixtures, fetchLiveMatches } from '@/lib/apifootball';
 import { Market } from '@/types';
+import { getMarketsFromChain, serializeMarket } from '@/lib/markets';
+import { toUiMarket } from '@/lib/ui-market';
 import WorldCupClient from './WorldCupClient';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export default async function WorldCupPage() {
   let upcomingFixtures: { homeTeam: string; awayTeam: string; league: string }[] = [];
@@ -10,23 +11,13 @@ export default async function WorldCupPage() {
   let footballMarkets: Market[] = [];
 
   try {
-    const [fixtures, live, marketsRes] = await Promise.all([
-      fetchUpcomingFixtures(),
-      fetchLiveMatches(),
-      fetch('http://localhost:3000/api/markets', { cache: 'no-store' }),
-    ]);
-    const data = await marketsRes.json();
-    const markets: Market[] = data.markets || [];
-    footballMarkets = markets.filter(m => m.category.toLowerCase() === 'football' || m.category.toLowerCase() === 'sports');
-    upcomingFixtures = fixtures.map((fixture) => ({
-      homeTeam: fixture.homeTeam,
-      awayTeam: fixture.awayTeam,
-      league: fixture.leagueName,
-    }));
-    liveMatches = live;
-    footballMarkets = markets;
-  } catch (error) {
-    console.error('Failed to fetch World Cup data:', error);
+    const chainMarkets = await getMarketsFromChain();
+    footballMarkets = chainMarkets
+      .map(serializeMarket)
+      .filter((market) => market.category === 'FOOTBALL')
+      .map(toUiMarket);
+  } catch {
+    footballMarkets = [];
   }
 
   return (

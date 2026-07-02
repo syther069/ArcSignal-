@@ -1,18 +1,17 @@
 import DashboardClient from './DashboardClient';
-import { Market } from '@/types';
+import { getMarketsFromChain, serializeMarket, type SerializableMarket } from '@/lib/markets';
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  let initialMarkets: Market[] = [];
+  let markets: SerializableMarket[] = [];
   let aiAccuracy: any[] = [];
   try {
-    const res = await fetch('http://localhost:3000/api/markets', { cache: 'no-store' });
-    const data = await res.json();
-    initialMarkets = data.markets || [];
-  } catch (error) {
-    console.error('Failed to fetch dashboard data:', error);
+    const chainMarkets = await getMarketsFromChain();
+    markets = chainMarkets.map(serializeMarket);
+  } catch {
+    markets = [];
   }
 
-  return <DashboardClient initialMarkets={initialMarkets} aiAccuracy={aiAccuracy} />;
+  return <DashboardClient markets={markets} aiAccuracy={aiAccuracy} />;
 }
