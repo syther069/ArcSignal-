@@ -136,7 +136,7 @@ export default function FeedClient({ initialStakes, markets: _markets }: FeedCli
                         <td className="p-4 text-slate-300 min-w-[250px]">
                           User <span className="text-[#38bdf8] font-bold font-mono">{stake.walletAddress.substring(0, 6)}...{stake.walletAddress.slice(-4)}</span> staked on{' '}
                           {market ? (
-                            <Link href={`/market/${market.id}`} className="text-white hover:text-[#38bdf8] transition-colors hover:underline">
+                            <Link href={`/market/${encodeURIComponent(market.id)}`} className="text-white hover:text-[#38bdf8] transition-colors hover:underline">
                               {market.title}
                             </Link>
                           ) : (

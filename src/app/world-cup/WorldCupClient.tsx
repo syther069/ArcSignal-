@@ -137,7 +137,7 @@ export default function WorldCupClient({ upcomingFixtures, liveMatches, football
                     </div>
                   </div>
                   <div className="mt-4 text-center">
-                    <Link href={`/market/${market.id}`} className="text-[#38bdf8] text-sm hover:underline font-mono tracking-widest">
+                    <Link href={`/market/${encodeURIComponent(market.id)}`} className="text-[#38bdf8] text-sm hover:underline font-mono tracking-widest">
                       VIEW MARKET &rarr;
                     </Link>
                   </div>

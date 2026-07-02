@@ -29,9 +29,9 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
     address: ARCSIGNAL_ADDRESS,
     abi: ARCSIGNAL_ABI,
     functionName: 'getMarket',
-    args: [BigInt(/^\d+$/.test(market.id) ? market.id : 0)],
+    args: [market.id],
     query: {
-      enabled: /^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS) && /^\d+$/.test(market.id),
+      enabled: /^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS) && market.id.length > 0,
     },
   });
 

@@ -3,7 +3,7 @@ import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS, publicClient, USDC_ABI, U
 import { approveUSDC } from './usdc';
 
 export async function stakeOnMarket(
-  marketId: bigint | number | string,
+  marketId: string,
   side: 0 | 1,
   amountUSDC: string | number,
   userAddress: Address,
@@ -38,7 +38,7 @@ export async function stakeOnMarket(
     address: ARCSIGNAL_ADDRESS,
     abi: ARCSIGNAL_ABI,
     functionName: 'stake',
-    args: [BigInt(marketId), side, amount],
+    args: [marketId, side, amount],
     account: userAddress,
     chain: arcTestnet,
   });

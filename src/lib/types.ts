@@ -15,10 +15,10 @@ export interface AIAnalysis {
 }
 
 export interface MarketMeta {
-  id: number;
+  id: string;
+  marketId: string;
   question: string;
   category: MarketCategory;
-  subType: string;
   resolutionTime: number;
   analysis: AIAnalysis;
 }

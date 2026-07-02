@@ -16,9 +16,10 @@ export default async function MarketDetailPage({
   let market: Market | null = null;
   
   try {
+    const marketId = decodeURIComponent(params.id);
     const chainMarkets = await getMarketsFromChain();
     const markets = chainMarkets.map(serializeMarket);
-    const chainMarket = markets.find((market) => market.id === Number(params.id));
+    const chainMarket = markets.find((market) => market.id === marketId);
     market = chainMarket ? toUiMarket(chainMarket) : null;
   } catch {
     market = null;

@@ -4,7 +4,6 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, publicClient, ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchUpcomingFixtures } from '@/lib/apifootball';
-import { generateCryptoAnalysis, generateFootballAnalysis } from '@/lib/gemini';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -58,28 +57,11 @@ export async function POST(req: Request) {
       const question = `Will ${coin.symbol.toUpperCase()} close above $${target.toLocaleString('en-US')} by ${resolutionDate}?`;
 
       try {
-        const analysis = await generateCryptoAnalysis({
-          question,
-          resolutionCriteria: `Resolves YES if ${coin.symbol.toUpperCase()}/USD price on CoinGecko is above $${target.toLocaleString('en-US')} at resolution time.`,
-          resolutionTime: resolutionDate,
-          cryptoData: {
-            id: coin.id,
-            symbol: coin.symbol,
-            current_price: coin.current_price,
-            price_change_percentage_24h: coin.price_change_percentage_24h,
-            market_cap: coin.market_cap,
-            total_volume: coin.total_volume,
-            high_24h: coin.high_24h,
-            low_24h: coin.low_24h,
-            target_price: target,
-          },
-        });
-
         const hash = await walletClient.writeContract({
           address: ARCSIGNAL_ADDRESS,
           abi: ARCSIGNAL_ABI,
           functionName: 'createMarket',
-          args: [question, 'CRYPTO', `${coin.symbol.toUpperCase()}_PRICE_TARGET`, resolutionTime, JSON.stringify(analysis)],
+          args: [question, 'CRYPTO', resolutionTime],
         });
         await publicClient.waitForTransactionReceipt({ hash });
         created.push(`[CRYPTO] ${question}`);
@@ -102,28 +84,14 @@ export async function POST(req: Request) {
       const hoursFromNow = Math.max(1, Math.ceil((resolutionUnix - Date.now() / 1000) / 3600));
       const resolutionTime = resolutionTimestamp(hoursFromNow);
       const kickoffLabel = new Date(fixture.kickoffTime * 1000).toUTCString();
-      const question = `Will ${fixture.homeTeam} beat ${fixture.awayTeam} on ${kickoffLabel}?`;
+      const question = `Will ${fixture.homeTeam} beat ${fixture.awayTeam} on ${kickoffLabel}? [fixtureId:${fixture.fixtureId}]`;
 
       try {
-        const analysis = await generateFootballAnalysis({
-          question,
-          resolutionCriteria: `Resolves YES if ${fixture.homeTeam} wins at full time. Resolves NO if draw or ${fixture.awayTeam} wins.`,
-          matchTime: kickoffLabel,
-          fixtureData: {
-            fixtureId: fixture.fixtureId,
-            homeTeam: fixture.homeTeam,
-            awayTeam: fixture.awayTeam,
-            kickoffTime: kickoffLabel,
-            round: fixture.round,
-            leagueName: fixture.leagueName,
-          },
-        });
-
         const hash = await walletClient.writeContract({
           address: ARCSIGNAL_ADDRESS,
           abi: ARCSIGNAL_ABI,
           functionName: 'createMarket',
-          args: [question, 'FOOTBALL', `MATCH_RESULT_${fixture.fixtureId}`, resolutionTime, JSON.stringify(analysis)],
+          args: [question, 'FOOTBALL', resolutionTime],
         });
         await publicClient.waitForTransactionReceipt({ hash });
         created.push(`[FOOTBALL] ${question}`);

@@ -20,17 +20,18 @@ function parseFootballTeams(question: string) {
 
 export function toUiMarket(market: SerializableMarket): UiMarket {
   const category = market.category === 'FOOTBALL' ? 'football' : 'crypto';
+  const title = market.question.replace(/\s*\[fixtureId:\d+\]\s*$/, '');
   const pools = {
     followPool: usdcToNumber(market.followPool),
     fadePool: usdcToNumber(market.fadePool),
   };
-  const teams = category === 'football' ? parseFootballTeams(market.question) : {};
+  const teams = category === 'football' ? parseFootballTeams(title) : {};
 
   return {
     id: String(market.id),
     category,
     subType: category === 'crypto' ? 'price' : undefined,
-    title: market.question,
+    title,
     description: market.analysis.summary,
     agentPick: market.analysis.prediction,
     agentId: 'arcsignal-agent',

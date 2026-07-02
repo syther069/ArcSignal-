@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getMarketsFromChain, serializeMarket, type SerializableMarket } from '@/lib/markets';
 
+export const dynamic = 'force-dynamic';
+
 let marketsCache: SerializableMarket[] = [];
 let lastRefreshed = 0;
 

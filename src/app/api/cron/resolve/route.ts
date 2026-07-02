@@ -4,6 +4,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, publicClient, ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchCompletedFixtures } from '@/lib/apifootball';
+import { getMarketsFromChain } from '@/lib/markets';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,18 +24,13 @@ export async function POST(req: Request) {
   const resolved: string[] = [];
   const errors: string[] = [];
 
-  const count = await publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'marketCount' });
+  const markets = await getMarketsFromChain();
   const coins = await fetchCryptoMarkets();
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
-  for (let i = 0; i < Number(count); i++) {
-    const market = await publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'getMarket', args: [BigInt(i)] }) as {
-      id: bigint; question: string; category: string; subType: string;
-      resolutionTime: bigint; resolved: boolean; outcome: number;
-    };
-
-    if (market.resolved || Number(market.resolutionTime) > now) continue;
+  for (const market of markets) {
+    if (market.resolved || market.resolutionTime > now) continue;
 
     try {
       let outcome: 0 | 1 = 1;
@@ -48,7 +44,7 @@ export async function POST(req: Request) {
           if (coin) outcome = coin.current_price > target ? 0 : 1;
         }
       } else if (market.category === 'FOOTBALL') {
-        const fixtureIdMatch = market.subType.match(/MATCH_RESULT_(\d+)/);
+        const fixtureIdMatch = market.question.match(/\[fixtureId:(\d+)\]/);
         if (fixtureIdMatch) {
           const fixtureId = parseInt(fixtureIdMatch[1]);
           const completed = await fetchCompletedFixtures(1, 2026, yesterday, today);
@@ -61,12 +57,12 @@ export async function POST(req: Request) {
 
       const hash = await walletClient.writeContract({
         address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI,
-        functionName: 'resolveMarket', args: [BigInt(i), outcome],
+        functionName: 'resolveMarket', args: [market.marketId, outcome],
       });
       await publicClient.waitForTransactionReceipt({ hash });
-      resolved.push(`Market ${i}: outcome ${outcome}`);
+      resolved.push(`Market ${market.marketId}: outcome ${outcome}`);
     } catch (err) {
-      errors.push(`Market ${i}: ${err instanceof Error ? err.message : String(err)}`);
+      errors.push(`Market ${market.marketId}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
