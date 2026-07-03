@@ -63,8 +63,6 @@ export async function POST(req: Request) {
     existingIds.push(id);
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const dateStr = today.replace(/-/g, '');
 
   // CRYPTO MARKETS
   try {
@@ -74,13 +72,15 @@ export async function POST(req: Request) {
 
     for (let i = 0; i < selected.length; i++) {
       const coin = selected[i];
+      const symbolUpper = coin.symbol.toUpperCase();
 
-      // Skip if a market for this symbol already exists today
-      const alreadyExists = existingIds.some(id => 
-        id.startsWith(`${coin.symbol.toUpperCase()}-PRICE`) && id.includes(dateStr)
+      // Skip if a market for this symbol was created within the last 24 hours
+      const alreadyExists = existingIds.some(id =>
+        id.startsWith(`${symbolUpper}-PRICE-`) &&
+        Number(id.split('-')[2]) > (Date.now() / 1000) - 86400
       );
       if (alreadyExists) {
-        created.push(`[SKIP] ${coin.symbol.toUpperCase()} market already exists today`);
+        created.push(`[SKIP] ${symbolUpper} market already exists`);
         continue;
       }
 
@@ -88,8 +88,8 @@ export async function POST(req: Request) {
       const h = hours[i];
       const resolutionTime = resolutionTimestamp(h);
       const resolutionDate = new Date(Number(resolutionTime) * 1000).toUTCString();
-      const question = `Will ${coin.symbol.toUpperCase()} close above $${target.toLocaleString('en-US')} by ${resolutionDate}?`;
-      const marketId = `${coin.symbol.toUpperCase()}-PRICE-${dateStr}-${i}`;
+      const question = `Will ${symbolUpper} close above $${target.toLocaleString('en-US')} by ${resolutionDate}?`;
+      const marketId = `${symbolUpper}-PRICE-${now}-${i}`;
 
       try {
         const analysis = await generateCryptoAnalysis({
