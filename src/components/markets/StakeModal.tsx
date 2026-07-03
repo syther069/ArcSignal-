@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAccount, useBalance, useWalletClient, usePublicClient } from 'wagmi';
+import { useAccount, useWalletClient, usePublicClient, useReadContract } from 'wagmi';
 import { parseUnits, formatUnits } from 'viem';
 import { Market, StakeSide } from '@/types';
 import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
@@ -24,10 +24,15 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
 
-  const { data: balanceData } = useBalance({
-    address,
-    token: USDC_ADDRESS,
+  const { data: usdcRaw } = useReadContract({
+    address: USDC_ADDRESS,
+    abi: USDC_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address },
   });
+  const usdcBalanceBigInt = (usdcRaw as bigint | undefined) ?? 0n;
+  const usdcBalanceFormatted = formatUnits(usdcBalanceBigInt, 6);
 
   const parsedAmount = parseFloat(amount) || 0;
   // Ensure we don't pass 'NaN' to parseUnits
@@ -61,12 +66,16 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         throw new Error('ArcSignal contract address is not configured.');
       }
 
-      // Check native balance before attempting, to match UI display
-      const balance = await publicClient.getBalance({ address });
-      const amountNative = parseUnits(amountStr, 18);
+      // Check USDC balance before attempting
+      const balance = await publicClient.readContract({
+        address: USDC_ADDRESS,
+        abi: USDC_ABI,
+        functionName: 'balanceOf',
+        args: [address],
+      }) as bigint;
 
-      if (balance < amountNative) {
-        throw new Error(`Insufficient balance. You have ${formatUnits(balance, 18)} USDC but need ${amount} USDC.`);
+      if (balance < amountBigInt) {
+        throw new Error(`Insufficient USDC balance. You have ${formatUnits(balance, 6)} USDC but need ${amount} USDC.`);
       }
 
       // Try to check allowance — if USDC is non-standard and returns empty data, default to 0 and approve
@@ -227,7 +236,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                   <label className="text-[11px] font-[family-name:var(--font-jetbrains-mono)] tracking-widest text-gray-400">AMOUNT TO STAKE</label>
                   <div className="text-right">
                     <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-gray-400 block">
-                      Balance: <span className="text-white">{balanceData ? Number(balanceData.formatted).toFixed(2) : '0.00'}</span> USDC
+                      Balance: <span className="text-white">{Number(usdcBalanceFormatted).toFixed(2)}</span> USDC
                     </span>
                   </div>
                 </div>
@@ -243,7 +252,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                     placeholder="0.00"
                   />
                   <button
-                    onClick={() => setAmount(balanceData ? balanceData.formatted : '0')}
+                    onClick={() => setAmount(usdcBalanceFormatted)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#38bdf8] bg-[#38bdf8]/10 hover:bg-[#38bdf8]/20 border border-[#38bdf8]/20 px-3 py-1.5 rounded transition-colors"
                   >
                     MAX

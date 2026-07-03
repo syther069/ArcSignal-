@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAccount, usePublicClient, useBalance } from 'wagmi';
+import { useAccount, usePublicClient, useReadContract } from 'wagmi';
+import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import { formatUnits } from 'viem';
 import ConnectWalletButton from '../wallet/ConnectWalletButton';
 import Logo from '../ui/Logo';
@@ -13,8 +14,14 @@ export default function Navbar() {
   const pathname = usePathname();
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
-  const { data: balanceData } = useBalance({ address });
-  const usdcBalance = balanceData ? Number(balanceData.formatted).toFixed(2) : '0.00';
+  const { data: usdcRaw } = useReadContract({
+    address: USDC_ADDRESS,
+    abi: USDC_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address },
+  });
+  const usdcBalance = usdcRaw != null ? Number(formatUnits(usdcRaw as bigint, 6)).toFixed(2) : '0.00';
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
