@@ -12,6 +12,12 @@ import { Search, Layout, Bell, Settings, Menu, X } from 'lucide-react';
 export default function Navbar() {
   const pathname = usePathname();
   const { address, isConnected } = useAccount();
+  
+  const usdcAddress = process.env.NEXT_PUBLIC_USDC_CONTRACT_ADDRESS;
+  if (!usdcAddress) {
+    console.warn('NEXT_PUBLIC_USDC_CONTRACT_ADDRESS is not set');
+  }
+
   const { data: usdcBalance } = useBalance({
     address,
     token: USDC_ADDRESS,

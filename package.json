@@ -9,13 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "groq-sdk": "^0.9.1",
     "@reown/appkit": "1.6.8",
     "@reown/appkit-adapter-wagmi": "1.6.8",
     "@tanstack/react-query": "^5.41.0",
     "@wagmi/core": "2.16.7",
     "@walletconnect/ethereum-provider": "^2.23.10",
     "dotenv": "^17.4.2",
+    "groq-sdk": "^0.9.1",
     "lucide-react": "^1.21.0",
     "next": "14.2.35",
     "react": "18.3.1",
@@ -32,6 +32,8 @@
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
     "autoprefixer": "10.4.19",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.35",
     "postcss": "8.4.39"
   }
 }

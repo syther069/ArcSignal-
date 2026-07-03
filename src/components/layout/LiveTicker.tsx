@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { fetchTickerPrices, TickerPrice } from '@/lib/coingecko';
-import { fetchLiveMatches, LiveMatch } from '@/lib/apifootball';
+import type { LiveMatch } from '@/types';
 
 export default function LiveTicker() {
   const [prices, setPrices] = useState<TickerPrice[]>([]);
@@ -11,15 +11,18 @@ export default function LiveTicker() {
   useEffect(() => {
     async function updateData() {
       try {
-        const [tickerPrices, liveMatches] = await Promise.all([
-          fetchTickerPrices(),
-          fetchLiveMatches().catch((err) => {
-            console.warn('Skipping live matches due to error:', err instanceof Error ? err.message : String(err));
-            return [] as LiveMatch[];
-          }),
-        ]);
+        const tickerPrices = await fetchTickerPrices();
         setPrices(tickerPrices);
-        setMatches(liveMatches);
+        
+        try {
+          const res = await fetch('/api/football/live');
+          if (res.ok) {
+            const data = await res.json();
+            setMatches(data.matches || []);
+          }
+        } catch (err) {
+          console.warn('Skipping live matches due to error:', err instanceof Error ? err.message : String(err));
+        }
       } catch (err) {
         console.error('Error fetching ticker or matches', err);
       }

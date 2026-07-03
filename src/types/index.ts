@@ -71,3 +71,11 @@ export interface UserProfile {
   currentStreak: number;
   nftMinted: boolean;
 }
+
+export interface LiveMatch {
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number;
+  awayScore: number;
+  minute: number;
+}

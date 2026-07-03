@@ -45,6 +45,27 @@ export async function POST(req: Request) {
   const errors: string[] = [];
   const now = Math.floor(Date.now() / 1000);
 
+  // Get existing market IDs
+  const count = await publicClient.readContract({
+    address: ARCSIGNAL_ADDRESS as Address,
+    abi: ARCSIGNAL_ABI,
+    functionName: 'getMarketCount',
+  }) as bigint;
+
+  const existingIds: string[] = [];
+  for (let i = 0; i < Number(count); i++) {
+    const id = await publicClient.readContract({
+      address: ARCSIGNAL_ADDRESS as Address,
+      abi: ARCSIGNAL_ABI,
+      functionName: 'getMarketIdByIndex',
+      args: [BigInt(i)],
+    }) as string;
+    existingIds.push(id);
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const dateStr = today.replace(/-/g, '');
+
   // CRYPTO MARKETS
   try {
     const coins = await fetchCryptoMarkets();
@@ -53,12 +74,22 @@ export async function POST(req: Request) {
 
     for (let i = 0; i < selected.length; i++) {
       const coin = selected[i];
+
+      // Skip if a market for this symbol already exists today
+      const alreadyExists = existingIds.some(id => 
+        id.startsWith(`${coin.symbol.toUpperCase()}-PRICE`) && id.includes(dateStr)
+      );
+      if (alreadyExists) {
+        created.push(`[SKIP] ${coin.symbol.toUpperCase()} market already exists today`);
+        continue;
+      }
+
       const target = priceTarget(coin.current_price);
       const h = hours[i];
       const resolutionTime = resolutionTimestamp(h);
       const resolutionDate = new Date(Number(resolutionTime) * 1000).toUTCString();
       const question = `Will ${coin.symbol.toUpperCase()} close above $${target.toLocaleString('en-US')} by ${resolutionDate}?`;
-      const marketId = `${coin.symbol.toUpperCase()}-PRICE-${now}-${i}`;
+      const marketId = `${coin.symbol.toUpperCase()}-PRICE-${dateStr}-${i}`;
 
       try {
         const analysis = await generateCryptoAnalysis({
@@ -102,6 +133,12 @@ export async function POST(req: Request) {
     const selected = fixtures.slice(0, 6);
 
     for (const fixture of selected) {
+      const alreadyExists = existingIds.some(id => id.startsWith(`MATCH-${fixture.fixtureId}`));
+      if (alreadyExists) {
+        created.push(`[SKIP] ${fixture.homeTeam} vs ${fixture.awayTeam} already exists`);
+        continue;
+      }
+
       const resolutionUnix = fixture.kickoffTime + 9000;
       const hoursFromNow = Math.max(1, Math.ceil((resolutionUnix - Date.now() / 1000) / 3600));
       const resolutionTime = resolutionTimestamp(hoursFromNow);

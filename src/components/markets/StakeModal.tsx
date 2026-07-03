@@ -54,6 +54,13 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
     try {
       setError(null);
       
+      if (!USDC_ADDRESS || !/^0x[a-fA-F0-9]{40}$/.test(USDC_ADDRESS)) {
+        throw new Error('USDC contract address is not configured. Check NEXT_PUBLIC_USDC_CONTRACT_ADDRESS.');
+      }
+      if (!ARCSIGNAL_ADDRESS || !/^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS)) {
+        throw new Error('ArcSignal contract address is not configured.');
+      }
+
       const allowance = await publicClient.readContract({
         address: USDC_ADDRESS,
         abi: USDC_ABI,
