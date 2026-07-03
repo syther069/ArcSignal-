@@ -3,9 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAccount, usePublicClient } from 'wagmi';
+import { useAccount, usePublicClient, useBalance } from 'wagmi';
 import { formatUnits } from 'viem';
-import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import ConnectWalletButton from '../wallet/ConnectWalletButton';
 import Logo from '../ui/Logo';
 import { Search, Layout, Bell, Settings, Menu, X } from 'lucide-react';
@@ -14,25 +13,8 @@ export default function Navbar() {
   const pathname = usePathname();
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
-  const [usdcBalance, setUsdcBalance] = useState<string>('0.00');
-
-  useEffect(() => {
-    if (!address || !publicClient || !USDC_ADDRESS) return;
-    if (!USDC_ADDRESS || !/^0x[a-fA-F0-9]{40}$/.test(USDC_ADDRESS)) {
-      console.warn('NEXT_PUBLIC_USDC_CONTRACT_ADDRESS is not set or invalid');
-      return;
-    }
-    publicClient.readContract({
-      address: USDC_ADDRESS,
-      abi: USDC_ABI,
-      functionName: 'balanceOf',
-      args: [address],
-    }).then((balance) => {
-      setUsdcBalance(Number(formatUnits(balance as bigint, 6)).toFixed(2));
-    }).catch(() => {
-      setUsdcBalance('0.00');
-    });
-  }, [address, publicClient]);
+  const { data: balanceData } = useBalance({ address });
+  const usdcBalance = balanceData ? Number(balanceData.formatted).toFixed(2) : '0.00';
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 

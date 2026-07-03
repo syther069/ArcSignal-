@@ -61,16 +61,12 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         throw new Error('ArcSignal contract address is not configured.');
       }
 
-      // Check USDC balance before attempting
-      const balance = await publicClient.readContract({
-        address: USDC_ADDRESS,
-        abi: USDC_ABI,
-        functionName: 'balanceOf',
-        args: [address],
-      }) as bigint;
+      // Check native balance before attempting, to match UI display
+      const balance = await publicClient.getBalance({ address });
+      const amountNative = parseUnits(amountStr, 18);
 
-      if (balance < amountBigInt) {
-        throw new Error(`Insufficient USDC balance. You have ${formatUnits(balance, 6)} USDC but need ${amount} USDC.`);
+      if (balance < amountNative) {
+        throw new Error(`Insufficient balance. You have ${formatUnits(balance, 18)} USDC but need ${amount} USDC.`);
       }
 
       // Try to check allowance — if USDC is non-standard and returns empty data, default to 0 and approve
