@@ -25,14 +25,30 @@ export default function PortfolioClient() {
     setLoading(true);
     
     try {
-      const logs = await publicClient.getLogs({
-        address: ARCSIGNAL_ADDRESS,
-        event: parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)'),
-        fromBlock: 0n,
-        toBlock: 'latest'
-      });
+      const currentBlock = await publicClient.getBlockNumber();
+      // Our contract was deployed around block 50012000
+      const DEPLOYMENT_BLOCK = 50012000n;
+      
+      let fromBlock = DEPLOYMENT_BLOCK;
+      let allLogs: any[] = [];
 
-      const userStakes = logs
+      // Fetch logs in chunks of 9999 to avoid RPC limits
+      while (fromBlock <= currentBlock) {
+        let toBlock = fromBlock + 9999n;
+        if (toBlock > currentBlock) {
+          toBlock = currentBlock;
+        }
+        const logs = await publicClient.getLogs({
+          address: ARCSIGNAL_ADDRESS,
+          event: parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)'),
+          fromBlock,
+          toBlock
+        });
+        allLogs.push(...logs);
+        fromBlock = toBlock + 1n;
+      }
+
+      const userStakes = allLogs
         .filter((log: any) => log.args.user?.toLowerCase() === address.toLowerCase())
         .map((log: any) => ({
           id: log.transactionHash + '-' + log.logIndex,
