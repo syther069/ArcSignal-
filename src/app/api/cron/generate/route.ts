@@ -133,9 +133,11 @@ export async function POST(req: Request) {
     const selected = fixtures.slice(0, 6);
 
     for (const fixture of selected) {
-      const alreadyExists = existingIds.some(id => id.startsWith(`MATCH-${fixture.fixtureId}`));
+      const alreadyExists = existingIds.some(id => 
+        id.startsWith(`MATCH-${fixture.fixtureId}-`)
+      );
       if (alreadyExists) {
-        created.push(`[SKIP] ${fixture.homeTeam} vs ${fixture.awayTeam} already exists`);
+        created.push(`[SKIP] Match ${fixture.fixtureId} already exists`);
         continue;
       }
 
