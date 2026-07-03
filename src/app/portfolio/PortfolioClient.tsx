@@ -3,44 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import { useAccount, useReadContracts, useWalletClient, usePublicClient } from 'wagmi';
-import { ArcSignal_ADDRESS } from '@/lib/usdc';
+import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
 import { Badge } from '@/components/ui/Badge';
-import { formatUnits } from 'viem';
-
-const ArcSignal_ABI = [
-  {
-    type: 'function',
-    name: 'markets',
-    stateMutability: 'view',
-    inputs: [{ name: 'marketId', type: 'string' }],
-    outputs: [
-      { name: 'marketId', type: 'string' },
-      { name: 'category', type: 'string' },
-      { name: 'resolutionTime', type: 'uint256' },
-      { name: 'followPool', type: 'uint256' },
-      { name: 'fadePool', type: 'uint256' },
-      { name: 'resolved', type: 'bool' },
-      { name: 'outcome', type: 'uint8' },
-    ],
-  },
-  {
-    type: 'function',
-    name: 'claimed',
-    stateMutability: 'view',
-    inputs: [
-      { name: 'marketId', type: 'string' },
-      { name: 'user', type: 'address' }
-    ],
-    outputs: [{ type: 'bool' }],
-  },
-  {
-    type: 'function',
-    name: 'claimWinnings',
-    stateMutability: 'nonpayable',
-    inputs: [{ name: 'marketId', type: 'string' }],
-    outputs: [],
-  }
-] as const;
+import { formatUnits, parseAbiItem } from 'viem';
 
 export default function PortfolioClient() {
   const { address } = useAccount();
@@ -52,32 +17,77 @@ export default function PortfolioClient() {
   const [claiming, setClaiming] = useState<Record<string, boolean>>({});
 
   const fetchPortfolio = async () => {
-    if (!address) {
+    if (!address || !publicClient) {
       setLoading(false);
       return;
     }
     
     setLoading(true);
     
-    setStakes([]);
-    setLoading(false);
+    try {
+      const logs = await publicClient.getLogs({
+        address: ARCSIGNAL_ADDRESS,
+        event: parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)'),
+        fromBlock: 0n,
+        toBlock: 'latest'
+      });
+
+      const userStakes = logs
+        .filter((log: any) => log.args.user?.toLowerCase() === address.toLowerCase())
+        .map((log: any) => ({
+          id: log.transactionHash + '-' + log.logIndex,
+          marketId: log.args.marketId,
+          side: log.args.side,
+          amountUsdc: log.args.amount || 0n,
+          markets: {
+            title: 'Loading...',
+            category: 'crypto'
+          },
+          createdAt: new Date().toISOString()
+        }));
+
+      // Group by marketId and side
+      const grouped: Record<string, any> = {};
+      for (const s of userStakes) {
+        const key = s.marketId + '-' + s.side;
+        if (!grouped[key]) {
+          grouped[key] = { ...s };
+        } else {
+          grouped[key].amountUsdc = grouped[key].amountUsdc + s.amountUsdc;
+        }
+      }
+      
+      const finalStakes = Object.values(grouped).map(s => ({
+        ...s,
+        amountUsdc: formatUnits(s.amountUsdc, 6)
+      }));
+      
+      // Sort by newest (assuming logs order)
+      finalStakes.reverse();
+
+      setStakes(finalStakes);
+    } catch (err) {
+      console.error("Failed to fetch stakes:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchPortfolio();
-  }, [address]);
+  }, [address, publicClient]);
 
   // Multicall to get live on-chain status for each market
   const contractsToRead = stakes.flatMap(stake => [
     {
-      address: ArcSignal_ADDRESS,
-      abi: ArcSignal_ABI,
-      functionName: 'markets',
+      address: ARCSIGNAL_ADDRESS,
+      abi: ARCSIGNAL_ABI,
+      functionName: 'getMarket',
       args: [stake.marketId],
     },
     {
-      address: ArcSignal_ADDRESS,
-      abi: ArcSignal_ABI,
+      address: ARCSIGNAL_ADDRESS,
+      abi: ARCSIGNAL_ABI,
       functionName: 'claimed',
       args: [stake.marketId, address as `0x${string}`],
     }
@@ -96,8 +106,8 @@ export default function PortfolioClient() {
       setClaiming(prev => ({ ...prev, [marketId]: true }));
       const { request } = await publicClient.simulateContract({
         account: address as `0x${string}`,
-        address: ArcSignal_ADDRESS,
-        abi: ArcSignal_ABI,
+        address: ARCSIGNAL_ADDRESS,
+        abi: ARCSIGNAL_ABI,
         functionName: 'claimWinnings',
         args: [marketId],
       });
@@ -133,18 +143,18 @@ export default function PortfolioClient() {
               const marketObj = chainData?.[i * 2]?.result as any;
               const isClaimed = chainData?.[i * 2 + 1]?.result as boolean;
               
-              const isResolved = marketObj ? marketObj[5] : stake.markets?.resolved;
-              const outcome = marketObj ? marketObj[6] : 0;
+              const isResolved = marketObj ? marketObj.resolved : stake.markets?.resolved;
+              const outcome = marketObj ? marketObj.outcome : 0;
               const sideText = stake.side === 0 ? 'FOLLOW' : 'FADE';
               const isFollow = stake.side === 0;
               
-              const userWon = isResolved && outcome === stake.side;
-              const userLost = isResolved && outcome !== stake.side;
+              const userWon = isResolved && outcome === (stake.side + 1); // side 0 -> outcome 1, side 1 -> outcome 2
+              const userLost = isResolved && outcome !== (stake.side + 1) && outcome !== 0;
 
               let payoutAmount = 0;
               if (userWon && marketObj) {
-                const followPool = parseFloat(formatUnits(marketObj[3], 6));
-                const fadePool = parseFloat(formatUnits(marketObj[4], 6));
+                const followPool = parseFloat(formatUnits(marketObj.followPool, 6));
+                const fadePool = parseFloat(formatUnits(marketObj.fadePool, 6));
                 const winningPool = stake.side === 0 ? followPool : fadePool;
                 const totalPool = followPool + fadePool;
                 payoutAmount = winningPool > 0 ? (Number(stake.amountUsdc) / winningPool) * totalPool : 0;
@@ -154,14 +164,14 @@ export default function PortfolioClient() {
                 <div key={stake.id} className="glass-card p-5 border-white/5 bg-[#101416]/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <Badge variant={stake.markets?.category || 'crypto'} label={stake.markets?.category || 'MARKET'} />
+                      <Badge variant={marketObj?.category || 'crypto'} label={marketObj?.category || 'MARKET'} />
                       {isResolved ? (
                         <Badge variant="resolved" label="RESOLVED" />
                       ) : (
                         <span className="bg-[#38bdf8]/10 text-[#38bdf8] px-2 py-0.5 font-mono text-[10px] rounded tracking-widest border border-[#38bdf8]/20 animate-pulse">LIVE</span>
                       )}
                     </div>
-                    <h3 className="font-bold text-white text-lg leading-tight mb-1">{stake.markets?.title}</h3>
+                    <h3 className="font-bold text-white text-lg leading-tight mb-1">{marketObj?.question || stake.marketId}</h3>
                     <p className="font-mono text-xs text-slate-500">Staked on: {new Date(stake.createdAt).toLocaleDateString()}</p>
                   </div>
 
