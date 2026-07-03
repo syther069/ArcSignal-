@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAccount, useBalance, useWalletClient, usePublicClient } from 'wagmi';
-import { parseUnits } from 'viem';
+import { parseUnits, formatUnits } from 'viem';
 import { Market, StakeSide } from '@/types';
 import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
@@ -61,6 +61,18 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         throw new Error('ArcSignal contract address is not configured.');
       }
 
+      // Check USDC balance before attempting
+      const balance = await publicClient.readContract({
+        address: USDC_ADDRESS,
+        abi: USDC_ABI,
+        functionName: 'balanceOf',
+        args: [address],
+      }) as bigint;
+
+      if (balance < amountBigInt) {
+        throw new Error(`Insufficient USDC balance. You have ${formatUnits(balance, 6)} USDC but need ${amount} USDC.`);
+      }
+
       // Try to check allowance — if USDC is non-standard and returns empty data, default to 0 and approve
       let currentAllowance = 0n;
       try {
@@ -84,7 +96,10 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
           functionName: 'approve',
           args: [ARCSIGNAL_ADDRESS, amountBigInt],
         });
-        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+        const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
+        if (approveReceipt.status === 'reverted') {
+          throw new Error('USDC approval transaction failed on-chain. Make sure you have sufficient USDC balance.');
+        }
       }
 
       setStep('staking');
@@ -95,7 +110,10 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         args: [market.marketId, side, amountBigInt],
       });
       
-      await publicClient.waitForTransactionReceipt({ hash: stakeHash });
+      const stakeReceipt = await publicClient.waitForTransactionReceipt({ hash: stakeHash });
+      if (stakeReceipt.status === 'reverted') {
+        throw new Error('Stake transaction failed on-chain. The market may be closed or you may have insufficient USDC.');
+      }
       
       // Sync with backend
       await fetch(`/api/markets/${market.marketId}/vote`, {
@@ -112,7 +130,8 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
       setTxHash(stakeHash);
       setStep('success');
     } catch (err: any) {
-      setError(err.message || 'Staking failed');
+      const message = err instanceof Error ? err.message : 'Transaction failed. Please try again.';
+      setError(message);
       setStep('idle');
     }
   };
