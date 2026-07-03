@@ -61,14 +61,22 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         throw new Error('ArcSignal contract address is not configured.');
       }
 
-      const allowance = await publicClient.readContract({
-        address: USDC_ADDRESS,
-        abi: USDC_ABI,
-        functionName: 'allowance',
-        args: [address, ARCSIGNAL_ADDRESS],
-      });
+      // Try to check allowance — if USDC is non-standard and returns empty data, default to 0 and approve
+      let currentAllowance = 0n;
+      try {
+        const allowance = await publicClient.readContract({
+          address: USDC_ADDRESS,
+          abi: USDC_ABI,
+          functionName: 'allowance',
+          args: [address, ARCSIGNAL_ADDRESS],
+        });
+        currentAllowance = allowance as bigint;
+      } catch {
+        // Non-standard USDC — allowance check returned 0x, proceed with approve
+        currentAllowance = 0n;
+      }
 
-      if ((allowance as bigint) < amountBigInt) {
+      if (currentAllowance < amountBigInt) {
         setStep('approving');
         const approveHash = await walletClient.writeContract({
           address: USDC_ADDRESS,

@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAccount, useBalance } from 'wagmi';
-import { USDC_ADDRESS } from '@/lib/usdc';
+import { useAccount, usePublicClient } from 'wagmi';
+import { formatUnits } from 'viem';
+import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import ConnectWalletButton from '../wallet/ConnectWalletButton';
 import Logo from '../ui/Logo';
 import { Search, Layout, Bell, Settings, Menu, X } from 'lucide-react';
@@ -12,16 +13,26 @@ import { Search, Layout, Bell, Settings, Menu, X } from 'lucide-react';
 export default function Navbar() {
   const pathname = usePathname();
   const { address, isConnected } = useAccount();
-  
-  const usdcAddress = process.env.NEXT_PUBLIC_USDC_CONTRACT_ADDRESS;
-  if (!usdcAddress) {
-    console.warn('NEXT_PUBLIC_USDC_CONTRACT_ADDRESS is not set');
-  }
+  const publicClient = usePublicClient();
+  const [usdcBalance, setUsdcBalance] = useState<string>('0.00');
 
-  const { data: usdcBalance } = useBalance({
-    address,
-    token: USDC_ADDRESS,
-  });
+  useEffect(() => {
+    if (!address || !publicClient || !USDC_ADDRESS) return;
+    if (!USDC_ADDRESS || !/^0x[a-fA-F0-9]{40}$/.test(USDC_ADDRESS)) {
+      console.warn('NEXT_PUBLIC_USDC_CONTRACT_ADDRESS is not set or invalid');
+      return;
+    }
+    publicClient.readContract({
+      address: USDC_ADDRESS,
+      abi: USDC_ABI,
+      functionName: 'balanceOf',
+      args: [address],
+    }).then((balance) => {
+      setUsdcBalance(Number(formatUnits(balance as bigint, 6)).toFixed(2));
+    }).catch(() => {
+      setUsdcBalance('0.00');
+    });
+  }, [address, publicClient]);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -90,7 +101,7 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             {isConnected && (
               <div className="hidden xl:block bg-surface-container-high px-3 py-1.5 rounded-lg border border-white/10 text-sm font-mono text-on-surface">
-                {usdcBalance ? Number(usdcBalance.formatted).toFixed(2) : '0.00'} USDC
+                {usdcBalance} USDC
               </div>
             )}
             {/* We will wrap the existing ConnectWalletButton inside a styled div or modify its global class if needed. 
