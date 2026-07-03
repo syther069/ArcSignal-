@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAccount, useBalance, useReadContract, useWalletClient, usePublicClient } from 'wagmi';
+import { useAccount, useBalance, useWalletClient, usePublicClient } from 'wagmi';
 import { parseUnits } from 'viem';
 import { Market, StakeSide } from '@/types';
-import { USDC_ADDRESS, ArcSignal_ADDRESS, USDC_ABI, approveUSDC } from '@/lib/usdc';
+import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 
 export interface StakeModalProps {
@@ -16,7 +16,7 @@ export interface StakeModalProps {
 
 export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const [amount, setAmount] = useState('50');
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [step, setStep] = useState<'idle' | 'approving' | 'staking' | 'success'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
 
@@ -34,17 +34,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const amountStr = isNaN(parsedAmount) ? '0' : parsedAmount.toString();
   const amountBigInt = parseUnits(amountStr, 6);
 
-  const { data: allowanceData, refetch: refetchAllowance } = useReadContract({
-    address: USDC_ADDRESS,
-    abi: USDC_ABI,
-    functionName: 'allowance',
-    args: address ? [address, ArcSignal_ADDRESS] : undefined,
-    query: {
-      enabled: !!address,
-    }
-  });
 
-  const needsApproval = allowanceData !== undefined && (allowanceData as bigint) < amountBigInt;
 
   if (!isOpen) return null;
 
@@ -59,35 +49,38 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const poolShare = winningPool > 0 ? (parsedAmount / winningPool) * 100 : 0;
   const payout = winningPool > 0 ? (parsedAmount / winningPool) * totalPool : 0;
 
-  const handleApprove = async () => {
-    if (!walletClient || !publicClient) return;
-    try {
-      setIsProcessing(true);
-      setError(null);
-      const hash = await approveUSDC(amountBigInt, walletClient);
-      await publicClient.waitForTransactionReceipt({ hash });
-      await refetchAllowance();
-    } catch (err: any) {
-      setError(err.message || 'Approval failed');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const handleStake = async () => {
     if (!walletClient || !address || !publicClient) return;
     try {
-      setIsProcessing(true);
       setError(null);
-      const hash = await walletClient.writeContract({
+      
+      const allowance = await publicClient.readContract({
+        address: USDC_ADDRESS,
+        abi: USDC_ABI,
+        functionName: 'allowance',
+        args: [address, ARCSIGNAL_ADDRESS],
+      });
+
+      if ((allowance as bigint) < amountBigInt) {
+        setStep('approving');
+        const approveHash = await walletClient.writeContract({
+          address: USDC_ADDRESS,
+          abi: USDC_ABI,
+          functionName: 'approve',
+          args: [ARCSIGNAL_ADDRESS, amountBigInt],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      }
+
+      setStep('staking');
+      const stakeHash = await walletClient.writeContract({
         address: ARCSIGNAL_ADDRESS,
         abi: ARCSIGNAL_ABI,
         functionName: 'stake',
         args: [market.marketId, side, amountBigInt],
       });
       
-      // Wait for on-chain confirmation before syncing with backend
-      await publicClient.waitForTransactionReceipt({ hash });
+      await publicClient.waitForTransactionReceipt({ hash: stakeHash });
       
       // Sync with backend
       await fetch(`/api/markets/${market.marketId}/vote`, {
@@ -97,27 +90,27 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
           direction: side === 0 ? 'follow' : 'fade',
           amount: amountStr,
           walletAddress: address,
-          txHash: hash
+          txHash: stakeHash
         })
       });
 
-      setTxHash(hash);
+      setTxHash(stakeHash);
+      setStep('success');
     } catch (err: any) {
       setError(err.message || 'Staking failed');
-    } finally {
-      setIsProcessing(false);
+      setStep('idle');
     }
   };
 
   const handleClose = () => {
-    if (isProcessing) return;
+    if (step === 'approving' || step === 'staking') return;
 
     // Defer reset so the user doesn't see UI flashes during close animation
     setTimeout(() => {
       setAmount('50');
       setError(null);
       setTxHash(null);
-      setIsProcessing(false);
+      setStep('idle');
     }, 300);
 
     onClose();
@@ -133,26 +126,26 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         <div className="p-6 border-b border-white/10 flex justify-between items-center">
           <div className="flex flex-col gap-1">
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold text-[#38bdf8] tracking-[0.1em]">
-              STAKE PROTOCOL
+              POSITION CONFIRMED
             </span>
-            <h2 className="text-xl font-bold text-white">STAKE USDC</h2>
+            <h2 className="text-xl font-bold text-white">Place Position</h2>
           </div>
           <button
             onClick={handleClose}
-            disabled={isProcessing}
+            disabled={step === 'approving' || step === 'staking'}
             className="text-gray-400 hover:text-white transition-colors disabled:opacity-50"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
 
-        {txHash ? (
+        {step === 'success' && txHash ? (
           /* SUCCESS STATE */
           <div className="p-8 flex flex-col items-center justify-center text-center gap-4">
             <div className="w-16 h-16 rounded-full bg-[#34d399]/20 flex items-center justify-center mb-2">
               <div className="w-8 h-8 rounded-full bg-[#34d399] text-[#020817] flex items-center justify-center text-xl font-bold">✓</div>
             </div>
-            <h3 className="text-2xl font-bold text-white">STAKE CONFIRMED</h3>
+            <h3 className="text-2xl font-bold text-white">Position Recorded</h3>
             <p className="text-sm text-gray-400">
               Your <strong className={isFollow ? "text-[#34d399]" : "text-[#f87171]"}>{isFollow ? 'FOLLOW' : 'FADE'}</strong> position has been successfully recorded on Arc Testnet.
             </p>
@@ -169,8 +162,8 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
               </a>
             </div>
 
-            <button onClick={handleClose} className="w-full mt-4 bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded transition-colors font-[family-name:var(--font-jetbrains-mono)] text-[11px] tracking-widest">
-              CLOSE
+            <button onClick={handleClose} className="w-full mt-4 bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded transition-colors font-[family-name:var(--font-jetbrains-mono)] text-[11px] tracking-widest uppercase">
+              Done
             </button>
           </div>
         ) : (
@@ -246,47 +239,15 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
 
             {/* Actions */}
             <div className="p-6 pt-0 space-y-3">
-              {needsApproval ? (
-                <>
-                  <button
-                    onClick={handleApprove}
-                    disabled={isProcessing || parsedAmount <= 0}
-                    className="w-full bg-[#38bdf8] text-[#020817] font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold py-4 tracking-widest hover:brightness-110 rounded transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {isProcessing ? (
-                      <><span className="animate-spin text-lg leading-none">↻</span> PROCESSING...</>
-                    ) : (
-                      'STEP 1: APPROVE USDC'
-                    )}
-                  </button>
-                  <button
-                    disabled
-                    className="w-full bg-[#0f1f38] text-gray-500 font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold py-4 tracking-widest rounded border border-white/5 cursor-not-allowed"
-                  >
-                    STEP 2: CONFIRM STAKE
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    disabled
-                    className="w-full bg-transparent text-[#38bdf8] font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold py-3 tracking-widest rounded border border-[#38bdf8]/30 flex items-center justify-center gap-2 cursor-not-allowed opacity-80"
-                  >
-                    ✓ USDC APPROVED
-                  </button>
-                  <button
-                    onClick={handleStake}
-                    disabled={isProcessing || parsedAmount <= 0}
-                    className="w-full bg-[#38bdf8] text-[#020817] font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold py-4 tracking-widest hover:brightness-110 rounded transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {isProcessing ? (
-                      <><span className="animate-spin text-lg leading-none">↻</span> PROCESSING...</>
-                    ) : (
-                      'STEP 2: CONFIRM STAKE'
-                    )}
-                  </button>
-                </>
-              )}
+              <button
+                onClick={handleStake}
+                disabled={step !== 'idle' || parsedAmount <= 0}
+                className="w-full bg-[#38bdf8] text-[#020817] font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold py-4 tracking-widest hover:brightness-110 rounded transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase"
+              >
+                {step === 'approving' && <><span className="animate-spin text-lg leading-none">↻</span> Approving USDC spend...</>}
+                {step === 'staking' && <><span className="animate-spin text-lg leading-none">↻</span> Placing your position...</>}
+                {step === 'idle' && 'CONFIRM STAKE'}
+              </button>
             </div>
           </>
         )}
