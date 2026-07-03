@@ -1,5 +1,5 @@
 export type MarketCategory = 'CRYPTO' | 'FOOTBALL';
-export type MarketOutcome = 'FOLLOW' | 'FADE' | 'PENDING';
+export type MarketOutcome = 'FOLLOW' | 'FADE' | 'PENDING' | 'CANCELLED';
 
 export interface AIAnalysis {
   probability: number;

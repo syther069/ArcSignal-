@@ -26,15 +26,19 @@ export const ARCSIGNAL_ADDRESS = process.env.NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDR
 export const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_CONTRACT_ADDRESS as `0x${string}`;
 
 export const ARCSIGNAL_ABI = parseAbi([
-  'function createMarket(string marketId, string category, uint256 resolutionTime) external',
+  'function createMarket(string marketId, string category, string question, string analysisJson, uint256 resolutionTime) external',
   'function stake(string marketId, uint8 side, uint256 amount) external',
   'function resolveMarket(string marketId, uint8 outcome) external',
+  'function cancelMarket(string marketId) external',
   'function claimWinnings(string marketId) external',
-  'function getMarket(string marketId) external view returns ((string marketId, string category, uint256 resolutionTime, uint256 followPool, uint256 fadePool, bool resolved, uint8 outcome))',
+  'function getMarket(string marketId) external view returns ((string marketId, string category, string question, string analysisJson, uint256 resolutionTime, uint256 followPool, uint256 fadePool, bool resolved, uint8 outcome))',
+  'function getMarketCount() external view returns (uint256)',
+  'function getMarketIdByIndex(uint256 index) external view returns (string)',
+  'function getAllMarketIds() external view returns (string[])',
   'function followStakes(string marketId, address user) external view returns (uint256)',
   'function fadeStakes(string marketId, address user) external view returns (uint256)',
   'function claimed(string marketId, address user) external view returns (bool)',
-  'event MarketCreated(string marketId, string category, uint256 resolutionTime)',
+  'event MarketCreated(string marketId, string category, string question, uint256 resolutionTime)',
   'event Staked(string marketId, address user, uint8 side, uint256 amount)',
   'event MarketResolved(string marketId, uint8 outcome)',
   'event Claimed(string marketId, address user, uint256 amount)',

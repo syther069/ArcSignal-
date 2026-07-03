@@ -4,7 +4,6 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, publicClient, ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchCompletedFixtures } from '@/lib/apifootball';
-import { getMarketIds } from '@/lib/markets';
 import type { Address } from 'viem';
 
 export const dynamic = 'force-dynamic';
@@ -29,12 +28,28 @@ export async function POST(req: Request) {
   const resolved: string[] = [];
   const errors: string[] = [];
 
-  const marketIds = await getMarketIds();
+  const count = await publicClient.readContract({
+    address: ARCSIGNAL_ADDRESS as Address,
+    abi: ARCSIGNAL_ABI,
+    functionName: 'getMarketCount',
+  }) as bigint;
+
+  if (!count || count === 0n) {
+    return NextResponse.json({ resolved: [], errors: [], message: 'No markets found' });
+  }
+
   const coins = await fetchCryptoMarkets();
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
-  for (const marketId of marketIds) {
+  for (let i = 0; i < Number(count); i++) {
+    const marketId = await publicClient.readContract({
+      address: ARCSIGNAL_ADDRESS as Address,
+      abi: ARCSIGNAL_ABI,
+      functionName: 'getMarketIdByIndex',
+      args: [BigInt(i)],
+    }) as string;
+
     const market = await publicClient.readContract({
       address: ARCSIGNAL_ADDRESS as Address,
       abi: ARCSIGNAL_ABI,
@@ -43,6 +58,7 @@ export async function POST(req: Request) {
     }) as {
       marketId: string;
       category: string;
+      question: string;
       resolutionTime: bigint;
       resolved: boolean;
       outcome: number;
@@ -54,17 +70,16 @@ export async function POST(req: Request) {
       let outcome: 0 | 1 = 1;
 
       if (market.category === 'CRYPTO') {
-        // marketId format: BTC-PRICE-timestamp-index
         const symbol = marketId.split('-')[0].toLowerCase();
         const coin = coins.find(c => c.symbol.toLowerCase() === symbol);
-        // Read target from question stored in cache — fallback: keep outcome=1 (Fade wins)
         if (coin) {
-          // We need the price target — stored in question cache
-          // Best effort: if price went up 1.5%+ since creation, Follow wins
-          outcome = coin.price_change_percentage_24h > 0 ? 0 : 1;
+          const match = market.question.match(/\$([0-9,]+)/);
+          if (match) {
+            const target = parseFloat(match[1].replace(/,/g, ''));
+            outcome = coin.current_price > target ? 0 : 1;
+          }
         }
       } else if (market.category === 'FOOTBALL') {
-        // marketId format: MATCH-fixtureId-timestamp
         const fixtureId = parseInt(marketId.split('-')[1]);
         const completed = await fetchCompletedFixtures(1, 2026, yesterday, today);
         const fixture = completed.find(f => f.fixtureId === fixtureId);

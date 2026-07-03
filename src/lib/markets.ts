@@ -4,26 +4,11 @@ import type { AIAnalysis, Market, MarketCategory, MarketOutcome, SerializableMar
 
 export type { SerializableMarket };
 
-// In-memory cache for AI analysis (keyed by marketId)
-const analysisCache = new Map<string, AIAnalysis>();
-const questionCache = new Map<string, string>();
-
-// Module-level store for market IDs (populated by cron generate route)
-const marketIdStore = new Set<string>();
-
-export function cacheAnalysis(marketId: string, question: string, analysis: AIAnalysis) {
-  analysisCache.set(marketId, analysis);
-  questionCache.set(marketId, question);
-}
-
-export function registerMarketId(marketId: string) {
-  marketIdStore.add(marketId);
-}
-
 function mapOutcome(resolved: boolean, outcome: number): MarketOutcome {
   if (!resolved) return 'PENDING';
   if (outcome === 0) return 'FOLLOW';
-  return 'FADE';
+  if (outcome === 1) return 'FADE';
+  return 'CANCELLED';
 }
 
 function mapCategory(category: string): MarketCategory {
@@ -31,50 +16,37 @@ function mapCategory(category: string): MarketCategory {
   return 'CRYPTO';
 }
 
-export async function getMarketIds(): Promise<string[]> {
-  // First try in-memory store
-  if (marketIdStore.size > 0) {
-    return Array.from(marketIdStore);
-  }
-
-  // Fallback: try getLogs with recent block range only
-  if (!ARCSIGNAL_ADDRESS || !/^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS)) return [];
-
+function safeParseAnalysis(json: string): AIAnalysis | undefined {
   try {
-    const latestBlock = await publicClient.getBlockNumber();
-    const fromBlock = latestBlock > 10000n ? latestBlock - 10000n : 0n;
-
-    const logs = await publicClient.getLogs({
-      address: ARCSIGNAL_ADDRESS as Address,
-      event: {
-        type: 'event',
-        name: 'MarketCreated',
-        inputs: [
-          { type: 'string', name: 'marketId', indexed: false },
-          { type: 'string', name: 'category', indexed: false },
-          { type: 'uint256', name: 'resolutionTime', indexed: false },
-        ],
-      },
-      fromBlock,
-      toBlock: 'latest',
-    });
-
-    const ids = logs.map((log) => (log.args as { marketId: string }).marketId);
-    ids.forEach(id => marketIdStore.add(id));
-    return ids;
+    if (!json || json.length < 10) return undefined;
+    return JSON.parse(json) as AIAnalysis;
   } catch {
-    return Array.from(marketIdStore);
+    return undefined;
   }
 }
 
 export async function getMarketsFromChain(): Promise<Market[]> {
   if (!ARCSIGNAL_ADDRESS || !/^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS)) return [];
 
-  const marketIds = await getMarketIds();
+  const count = await publicClient.readContract({
+    address: ARCSIGNAL_ADDRESS as Address,
+    abi: ARCSIGNAL_ABI,
+    functionName: 'getMarketCount',
+  }) as bigint;
+
+  if (!count || count === 0n) return [];
+
   const markets: Market[] = [];
 
-  for (const marketId of marketIds) {
+  for (let i = 0; i < Number(count); i++) {
     try {
+      const marketId = await publicClient.readContract({
+        address: ARCSIGNAL_ADDRESS as Address,
+        abi: ARCSIGNAL_ABI,
+        functionName: 'getMarketIdByIndex',
+        args: [BigInt(i)],
+      }) as string;
+
       const data = await publicClient.readContract({
         address: ARCSIGNAL_ADDRESS as Address,
         abi: ARCSIGNAL_ABI,
@@ -83,6 +55,8 @@ export async function getMarketsFromChain(): Promise<Market[]> {
       }) as {
         marketId: string;
         category: string;
+        question: string;
+        analysisJson: string;
         resolutionTime: bigint;
         followPool: bigint;
         fadePool: bigint;
@@ -93,13 +67,13 @@ export async function getMarketsFromChain(): Promise<Market[]> {
       markets.push({
         marketId: data.marketId,
         category: mapCategory(data.category),
+        question: data.question,
         resolutionTime: Number(data.resolutionTime),
         followPool: data.followPool,
         fadePool: data.fadePool,
         resolved: data.resolved,
         outcome: mapOutcome(data.resolved, data.outcome),
-        analysis: analysisCache.get(marketId),
-        question: questionCache.get(marketId),
+        analysis: safeParseAnalysis(data.analysisJson),
       });
     } catch {
       // skip markets that fail to load

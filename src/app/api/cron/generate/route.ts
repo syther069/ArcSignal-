@@ -5,7 +5,6 @@ import { arcTestnet, publicClient, ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/li
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchUpcomingFixtures } from '@/lib/apifootball';
 import { generateCryptoAnalysis, generateFootballAnalysis } from '@/lib/gemini';
-import { cacheAnalysis, registerMarketId } from '@/lib/markets';
 import type { Address } from 'viem';
 
 export const maxDuration = 300;
@@ -83,12 +82,10 @@ export async function POST(req: Request) {
           address: ARCSIGNAL_ADDRESS as Address,
           abi: ARCSIGNAL_ABI,
           functionName: 'createMarket',
-          args: [marketId, 'CRYPTO', resolutionTime],
+          args: [marketId, 'CRYPTO', question, JSON.stringify(analysis), resolutionTime],
         });
 
         await publicClient.waitForTransactionReceipt({ hash });
-        cacheAnalysis(marketId, question, analysis);
-        registerMarketId(marketId);
         created.push(`[CRYPTO] ${question}`);
       } catch (err) {
         errors.push(`[CRYPTO] ${coin.symbol}: ${err instanceof Error ? err.message : String(err)}`);
@@ -131,12 +128,10 @@ export async function POST(req: Request) {
           address: ARCSIGNAL_ADDRESS as Address,
           abi: ARCSIGNAL_ABI,
           functionName: 'createMarket',
-          args: [marketId, 'FOOTBALL', resolutionTime],
+          args: [marketId, 'FOOTBALL', question, JSON.stringify(analysis), resolutionTime],
         });
 
         await publicClient.waitForTransactionReceipt({ hash });
-        cacheAnalysis(marketId, question, analysis);
-        registerMarketId(marketId);
         created.push(`[FOOTBALL] ${question}`);
       } catch (err) {
         errors.push(`[FOOTBALL] ${fixture.homeTeam} vs ${fixture.awayTeam}: ${err instanceof Error ? err.message : String(err)}`);
