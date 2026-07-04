@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { formatUnits } from 'viem';
 import { useReadContract } from 'wagmi';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
-import type { Market } from '@/types';
+import type { SerializableMarket } from '@/lib/markets';
 import { CountdownTimer } from './CountdownTimer';
 
 export interface MarketCardProps {
-  market: Market;
+  market: SerializableMarket;
   onFollow: () => void;
   onFade: () => void;
 }
@@ -38,15 +38,15 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
   });
 
   const chainMarket = data as { followPool: bigint; fadePool: bigint } | undefined;
-  const liveFollowPool = chainMarket?.followPool ?? numberToUsdc(market.followPool);
-  const liveFadePool   = chainMarket?.fadePool   ?? numberToUsdc(market.fadePool);
+  const liveFollowPool = chainMarket?.followPool ?? numberToUsdc(Number(market.followPool));
+  const liveFadePool   = chainMarket?.fadePool   ?? numberToUsdc(Number(market.fadePool));
   const totalPool      = liveFollowPool + liveFadePool;
   const followShare    =
     totalPool > 0n
       ? Number((liveFollowPool * 10_000n) / totalPool) / 100
       : 0;
 
-  const probability = market.probability ?? market.confidence;
+  const probability = market.analysis?.probability ?? market.analysis?.confidence ?? 50;
   const isResolved  = market.resolved;
 
   return (
@@ -56,7 +56,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
             <span className="bg-[#ddb7ff]/10 text-[#ddb7ff] border border-[#ddb7ff]/20 px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wider">
-              {market.category} / {market.subType ?? 'market'}
+              {market.category}
             </span>
             {!isResolved && (
               <div className="flex items-center gap-1">
@@ -65,7 +65,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
             )}
           </div>
           <h3 className="font-[family-name:var(--font-hanken)] text-base font-semibold text-white leading-snug">
-            {market.title}
+            {market.question}
           </h3>
         </div>
         <span
@@ -135,7 +135,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
             <CountdownTimer resolutionTime={market.resolutionTime} />
           </span>
           <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8]">
-            Confidence {market.confidence}%
+            Confidence {market.analysis?.confidence ?? 50}%
           </span>
         </div>
       </div>
@@ -143,23 +143,23 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
       {/* Analysis expand */}
       {expanded && (
         <div className="mt-5 space-y-4 border-t border-[#1e293b] pt-5 text-sm text-[#94a3b8]">
-          <p>{market.summary ?? market.description}</p>
+          <p>{market.analysis?.summary}</p>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
               <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#4fdbc8] uppercase tracking-wider">
                 Bull Case
               </p>
-              <p className="mt-1 text-xs">{market.bull_case ?? market.description}</p>
+              <p className="mt-1 text-xs">{market.analysis?.bullCase}</p>
             </div>
             <div>
               <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#ffb4ab] uppercase tracking-wider">
                 Bear Case
               </p>
-              <p className="mt-1 text-xs">{market.bear_case ?? market.description}</p>
+              <p className="mt-1 text-xs">{market.analysis?.bearCase}</p>
             </div>
           </div>
           <ul className="space-y-1.5 text-xs text-[#94a3b8]">
-            {market.keyFactors?.map((factor) => (
+            {market.analysis?.keyFactors?.map((factor) => (
               <li key={factor} className="flex items-start gap-1.5">
                 <span className="text-[#ddb7ff] mt-0.5">›</span>
                 {factor}

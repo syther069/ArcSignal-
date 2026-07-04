@@ -21,11 +21,10 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
     side: StakeSide;
   } | null>(null);
 
-  const uiMarkets = useMemo(() => markets.map(toUiMarket), [markets]);
   const filteredMarkets = useMemo(() => {
-    if (filter === 'all') return uiMarkets;
-    return uiMarkets.filter((market) => market.category === filter);
-  }, [filter, uiMarkets]);
+    if (filter === 'all') return markets;
+    return markets.filter((market) => market.category.toLowerCase() === filter);
+  }, [filter, markets]);
 
   const categories = [
     { id: 'all',      label: 'All Markets' },
@@ -86,7 +85,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
         </div>
 
         {/* Market grid */}
-        {filteredMarkets.length === 0 ? (
+        {markets.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center">
             <div className="w-12 h-12 rounded-xl bg-[#0f172a] border border-[#1e293b] flex items-center justify-center mb-4">
               <div className="w-2 h-2 rounded-full bg-[#ddb7ff] animate-pulse-dot" />
@@ -104,8 +103,8 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
               <MarketCard
                 key={market.marketId}
                 market={market}
-                onFollow={() => setStakeModal({ market, side: 0 })}
-                onFade={() => setStakeModal({ market, side: 1 })}
+                onFollow={() => setStakeModal({ market: toUiMarket(market), side: 0 })}
+                onFade={() => setStakeModal({ market: toUiMarket(market), side: 1 })}
               />
             ))}
           </div>
