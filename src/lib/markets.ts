@@ -26,7 +26,11 @@ function safeParseAnalysis(json: string): AIAnalysis | undefined {
 }
 
 export async function getMarketsFromChain(): Promise<Market[]> {
-  if (!ARCSIGNAL_ADDRESS || !/^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS)) return [];
+  console.log("getMarketsFromChain called. ARCSIGNAL_ADDRESS:", ARCSIGNAL_ADDRESS);
+  if (!ARCSIGNAL_ADDRESS || !/^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS)) {
+    console.log("ARCSIGNAL_ADDRESS check failed");
+    return [];
+  }
 
   const count = await publicClient.readContract({
     address: ARCSIGNAL_ADDRESS as Address,

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, publicClient, ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
+import { getMarketsFromChain } from '@/lib/markets';
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchUpcomingFixtures } from '@/lib/apifootball';
 import { generateCryptoAnalysis, generateFootballAnalysis } from '@/lib/gemini';
@@ -63,6 +64,9 @@ export async function POST(req: Request) {
     existingIds.push(id);
   }
 
+  // Fetch full market data for accurate deduplication based on expiration
+  const existingMarkets = await getMarketsFromChain();
+
 
   // CRYPTO MARKETS
   try {
@@ -74,10 +78,10 @@ export async function POST(req: Request) {
       const coin = selected[i];
       const symbolUpper = coin.symbol.toUpperCase();
 
-      // Skip if a market for this symbol was created within the last 24 hours
-      const alreadyExists = existingIds.some(id =>
-        id.startsWith(`${symbolUpper}-PRICE-`) &&
-        Number(id.split('-')[2]) > (Date.now() / 1000) - 86400
+      // Skip if an active non-expired market for this symbol already exists
+      const alreadyExists = existingMarkets.some(m =>
+        m.marketId.startsWith(`${symbolUpper}-PRICE-`) &&
+        (!m.resolved && m.resolutionTime > now)
       );
       if (alreadyExists) {
         created.push(`[SKIP] ${symbolUpper} market already exists`);
@@ -133,8 +137,10 @@ export async function POST(req: Request) {
     const selected = fixtures.slice(0, 6);
 
     for (const fixture of selected) {
-      const alreadyExists = existingIds.some(id => 
-        id.startsWith(`MATCH-${fixture.fixtureId}-`)
+      // Skip if an active non-expired market for this fixture already exists
+      const alreadyExists = existingMarkets.some(m => 
+        m.marketId.startsWith(`MATCH-${fixture.fixtureId}-`) &&
+        (!m.resolved && m.resolutionTime > now)
       );
       if (alreadyExists) {
         created.push(`[SKIP] Match ${fixture.fixtureId} already exists`);
