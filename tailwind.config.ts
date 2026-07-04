@@ -9,10 +9,22 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // ── Stitch design tokens ──────────────────────────────
+        'arc-bg':      '#131313',
+        'arc-surface': '#0f172a',
+        'arc-border':  '#1e293b',
+        'arc-purple':  '#ddb7ff',
+        'arc-teal':    '#4fdbc8',
+        'arc-red':     '#ffb4ab',
+        'arc-text':    '#e5e2e1',
+        'arc-muted':   '#94a3b8',
+        'arc-card':    '#1c1b1b',
+
+        // ── Legacy tokens (kept for other pages) ──────────────
         'on-error': '#690005',
         'on-tertiary': '#003824',
         'primary-fixed': '#e1e0ff',
-        background: '#111416',
+        background: '#131313',
         'on-surface': '#e2e2e5',
         'on-secondary-fixed': '#0d1c2d',
         'on-primary': '#1000a9',
@@ -58,8 +70,23 @@ const config: Config = {
         error: '#ffb4ab',
       },
       fontFamily: {
-        mono: ['var(--font-jetbrains-mono)', 'monospace'],
-        sans: ['var(--font-inter)', 'sans-serif'],
+        mono:   ['var(--font-jetbrains-mono)', 'monospace'],
+        sans:   ['var(--font-inter)', 'sans-serif'],
+        hanken: ['var(--font-hanken)', 'sans-serif'],
+      },
+      keyframes: {
+        marquee: {
+          '0%':   { transform: 'translateX(0%)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+        'pulse-dot': {
+          '0%, 100%': { opacity: '1' },
+          '50%':      { opacity: '0.3' },
+        },
+      },
+      animation: {
+        marquee:    'marquee 40s linear infinite',
+        'pulse-dot': 'pulse-dot 2s ease-in-out infinite',
       },
     },
   },

@@ -28,62 +28,75 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
   }, [filter, uiMarkets]);
 
   const categories = [
-    { id: 'all', label: 'All Markets' },
-    { id: 'crypto', label: 'Crypto' },
+    { id: 'all',      label: 'All Markets' },
+    { id: 'crypto',   label: 'Crypto' },
     { id: 'football', label: 'Football' },
   ];
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-[#131313]">
       <Sidebar />
 
-      <main className="lg:ml-[264px] pt-24 p-8 flex-1 min-w-0 min-h-screen max-w-[1440px] mx-auto w-full">
+      <main className="lg:ml-[264px] pt-24 p-6 lg:p-8 flex-1 min-w-0 min-h-screen max-w-[1440px] mx-auto w-full pb-24 md:pb-8">
+        {/* Page header */}
         <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-on-surface tracking-tight mb-2">Markets Explorer</h1>
-            <p className="text-sm text-on-surface-variant max-w-2xl">
-              Deploying deep-learning analytics to forecast global events. Transparent staking, immutable outcomes.
+            <h1 className="font-[family-name:var(--font-hanken)] text-4xl font-bold text-white tracking-tight mb-2">
+              Markets Explorer
+            </h1>
+            <p className="text-sm text-[#94a3b8] max-w-2xl">
+              Deploying deep-learning analytics to forecast global events.{' '}
+              Transparent staking, immutable outcomes.
             </p>
           </div>
-          <button className="flex items-center gap-2 bg-surface-container-high hover:bg-surface-bright text-on-surface py-2.5 px-4 rounded font-medium text-sm transition-colors border border-white/10 shrink-0">
+          <button className="flex items-center gap-2 bg-[#ddb7ff]/10 hover:bg-[#ddb7ff]/20 text-[#ddb7ff] py-2.5 px-4 rounded-lg font-[family-name:var(--font-jetbrains-mono)] text-xs font-semibold uppercase tracking-wider transition-colors border border-[#ddb7ff]/25 shrink-0">
             <Plus className="w-4 h-4" />
             Create Market
           </button>
         </header>
 
-        {/* Filters and Sorting */}
+        {/* Filters + Sort */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-          <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto scrollbar-hide">
+          {/* Category tabs */}
+          <div className="inline-flex items-center gap-1 bg-[#0f172a] border border-[#1e293b] rounded-xl p-1">
             {categories.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setFilter(cat.id)}
-                className={`whitespace-nowrap px-4 py-2 rounded text-sm font-medium transition-colors ${
+                className={`whitespace-nowrap px-4 py-1.5 rounded-lg text-xs font-[family-name:var(--font-jetbrains-mono)] font-semibold uppercase tracking-wider transition-all ${
                   filter === cat.id
-                    ? 'bg-primary-fixed text-on-primary-fixed'
-                    : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                    ? 'bg-[#ddb7ff]/10 text-[#ddb7ff] border border-[#ddb7ff]/25'
+                    : 'text-[#94a3b8] hover:text-[#e5e2e1] border border-transparent'
                 }`}
               >
                 {cat.label}
               </button>
             ))}
           </div>
-          
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <button className="flex items-center justify-between w-full md:w-48 bg-surface-container border border-white/5 px-4 py-2 rounded text-sm text-on-surface-variant">
+
+          <div className="flex items-center gap-2">
+            <button className="flex items-center justify-between w-48 bg-[#0f172a] border border-[#1e293b] px-4 py-2 rounded-lg text-xs font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8] hover:border-[#ddb7ff]/30 transition-colors">
               <span>Volume: Highest first</span>
               <ChevronDown className="w-4 h-4" />
             </button>
-            <button className="bg-surface-container border border-white/5 p-2 rounded text-on-surface-variant hover:text-on-surface transition-colors">
-              <Filter className="w-5 h-5" />
+            <button className="bg-[#0f172a] border border-[#1e293b] p-2 rounded-lg text-[#94a3b8] hover:text-[#ddb7ff] hover:border-[#ddb7ff]/30 transition-colors">
+              <Filter className="w-4 h-4" />
             </button>
           </div>
         </div>
 
+        {/* Market grid */}
         {filteredMarkets.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center">
-            <p className="text-zinc-400 text-lg">AI agents are generating markets...</p>
-            <p className="text-zinc-600 text-sm mt-2">Check back shortly or trigger market generation.</p>
+            <div className="w-12 h-12 rounded-xl bg-[#0f172a] border border-[#1e293b] flex items-center justify-center mb-4">
+              <div className="w-2 h-2 rounded-full bg-[#ddb7ff] animate-pulse-dot" />
+            </div>
+            <p className="font-[family-name:var(--font-hanken)] text-lg font-semibold text-[#94a3b8]">
+              AI agents are generating markets...
+            </p>
+            <p className="text-sm text-[#94a3b8]/60 mt-2">
+              Check back shortly or trigger market generation.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -3,72 +3,101 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  LineChart, 
-  Wallet, 
-  BarChart2, 
-  Trophy, 
-  FileText, 
+import {
+  LineChart,
+  Wallet,
+  BarChart2,
+  Trophy,
+  FileText,
   Plus,
-  HelpCircle
+  HelpCircle,
+  Zap,
 } from 'lucide-react';
 
 export default function Sidebar() {
   const pathname = usePathname();
 
   const navItems = [
-    { name: 'Markets', icon: LineChart, href: '/markets' },
-    { name: 'Portfolio', icon: Wallet, href: '/portfolio' },
-    { name: 'Analytics', icon: BarChart2, href: '/analytics' },
-    { name: 'Leaderboard', icon: Trophy, href: '/leaderboard' },
-    { name: 'Docs', icon: FileText, href: '/docs' },
+    { name: 'Markets',     icon: LineChart,  href: '/markets' },
+    { name: 'Portfolio',   icon: Wallet,     href: '/portfolio' },
+    { name: 'Analytics',   icon: BarChart2,  href: '/analytics' },
+    { name: 'Leaderboard', icon: Trophy,     href: '/leaderboard' },
+    { name: 'Docs',        icon: FileText,   href: '/docs' },
   ];
 
   return (
-    <aside className="fixed left-0 top-16 h-[calc(100vh-64px)] w-[264px] bg-background border-r border-white/10 hidden lg:flex flex-col justify-between py-6 z-40">
-      <div className="px-4">
-        <div className="mb-6 px-4">
-          <p className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">
+    <aside className="fixed left-0 top-16 h-[calc(100vh-64px)] w-[264px] bg-[#0f172a] border-r border-[#1e293b] hidden lg:flex flex-col justify-between py-6 z-40">
+      {/* Logo area */}
+      <div>
+        <div className="px-6 mb-7 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-[#ddb7ff]/15 border border-[#ddb7ff]/30 flex items-center justify-center shrink-0">
+            <Zap className="w-4 h-4 text-[#ddb7ff]" />
+          </div>
+          <div>
+            <p className="font-[family-name:var(--font-hanken)] text-sm font-bold text-[#e5e2e1] leading-none">
+              ArcSignal
+            </p>
+            <p className="text-[10px] text-[#94a3b8] mt-0.5 leading-none">
+              Decentralized Predictions
+            </p>
+          </div>
+        </div>
+
+        {/* Nav label */}
+        <div className="px-6 mb-3">
+          <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-semibold text-[#94a3b8]/60 uppercase tracking-widest">
             Navigation
           </p>
         </div>
 
-        <nav className="flex flex-col gap-1">
+        {/* Nav items */}
+        <nav className="flex flex-col gap-0.5 px-3">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== '/');
-            
+            const isActive =
+              pathname === item.href ||
+              (pathname.startsWith(item.href) && item.href !== '/');
             return (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${
                   isActive
-                    ? 'bg-surface-container-highest text-primary border-l-2 border-primary'
-                    : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface border-l-2 border-transparent'
+                    ? 'bg-[#1c1b1b] text-[#ddb7ff] border border-[#ddb7ff]/20'
+                    : 'text-[#94a3b8] hover:bg-[#1c1b1b] hover:text-[#e5e2e1] border border-transparent'
                 }`}
               >
-                <item.icon className="w-5 h-5" />
-                {item.name}
+                <item.icon className="w-4 h-4 shrink-0" />
+                <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-semibold uppercase tracking-wider">
+                  {item.name}
+                </span>
               </Link>
             );
           })}
         </nav>
       </div>
 
-      <div className="px-6 mb-6">
-        <button className="w-full flex items-center justify-center gap-2 bg-surface-container-highest hover:bg-surface-bright text-on-surface py-3 px-4 rounded-lg text-sm font-semibold transition-colors border border-white/5 shadow-sm mb-8">
-          <Plus className="w-4 h-4" />
+      {/* Bottom section */}
+      <div className="px-4">
+        <button className="w-full flex items-center justify-center gap-2 bg-[#ddb7ff]/10 hover:bg-[#ddb7ff]/20 text-[#ddb7ff] py-2.5 px-4 rounded-lg text-xs font-[family-name:var(--font-jetbrains-mono)] font-semibold uppercase tracking-wider transition-colors border border-[#ddb7ff]/25 mb-5">
+          <Plus className="w-3.5 h-3.5" />
           Create Market
         </button>
 
-        <div className="flex flex-col gap-4">
-          <Link href="/support" className="flex items-center gap-3 text-on-surface-variant hover:text-on-surface transition-colors text-sm">
+        <div className="flex flex-col gap-3">
+          <Link
+            href="/support"
+            className="flex items-center gap-2.5 text-[#94a3b8] hover:text-[#e5e2e1] transition-colors text-xs"
+          >
             <HelpCircle className="w-4 h-4" />
-            Support
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] uppercase tracking-wider">
+              Support
+            </span>
           </Link>
-          <div className="flex items-center justify-between text-on-surface-variant text-xs">
-            <span>v.4.2.1-stable</span>
-            <div className="w-2 h-2 rounded-full bg-tertiary"></div>
+          <div className="flex items-center justify-between text-[#94a3b8]/60">
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px]">
+              v.4.2.1-stable
+            </span>
+            <div className="w-2 h-2 rounded-full bg-[#4fdbc8] animate-pulse-dot" />
           </div>
         </div>
       </div>

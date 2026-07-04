@@ -3,12 +3,32 @@
 @tailwind utilities;
 
 body {
-  background-color: #080A0C;
-  color: #e2e2e5;
+  background-color: #131313;
+  color: #e5e2e1;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
 
+/* ── Stitch design system animations ─────────────────── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes marquee {
+  0%   { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 40s linear infinite;
+}
+
+/* ── Utility classes ──────────────────────────────────── */
 .glass-card {
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(40px);
@@ -21,9 +41,9 @@ body {
 }
 
 .mesh-gradient {
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(192, 193, 255, 0.05) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(78, 222, 163, 0.03) 0px, transparent 50%);
+  background-image:
+    radial-gradient(at 0% 0%, rgba(221, 183, 255, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(79, 219, 200, 0.03) 0px, transparent 50%);
 }
 
 .network-mesh {
@@ -38,7 +58,7 @@ body {
   background: rgba(0,0,0,0.1);
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(221, 183, 255, 0.2);
 }
 
 .glass-panel {
@@ -50,4 +70,3 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
-

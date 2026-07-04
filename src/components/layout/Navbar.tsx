@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAccount, usePublicClient, useReadContract } from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
 import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import { formatUnits } from 'viem';
 import ConnectWalletButton from '../wallet/ConnectWalletButton';
@@ -13,7 +13,6 @@ import { Search, Layout, Bell, Settings, Menu, X } from 'lucide-react';
 export default function Navbar() {
   const pathname = usePathname();
   const { address, isConnected } = useAccount();
-  const publicClient = usePublicClient();
   const { data: usdcRaw } = useReadContract({
     address: USDC_ADDRESS,
     abi: USDC_ABI,
@@ -21,40 +20,45 @@ export default function Navbar() {
     args: address ? [address] : undefined,
     query: { enabled: !!address },
   });
-  const usdcBalance = usdcRaw != null ? Number(formatUnits(usdcRaw as bigint, 6)).toFixed(2) : '0.00';
+  const usdcBalance =
+    usdcRaw != null
+      ? Number(formatUnits(usdcRaw as bigint, 6)).toFixed(2)
+      : '0.00';
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { name: 'Markets', href: '/markets' },
+    { name: 'Markets',   href: '/markets' },
     { name: 'Portfolio', href: '/portfolio' },
     { name: 'Analytics', href: '/analytics' },
-    { name: 'Docs', href: '/docs' },
+    { name: 'Docs',      href: '/docs' },
   ];
 
   return (
-    <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-white/10 shadow-2xl shadow-black/40">
+    <header className="fixed top-0 w-full z-50 bg-[#131313] border-b border-[#1e293b] shadow-2xl shadow-black/40">
       <div className="flex justify-between items-center h-16 px-6 max-w-[1440px] mx-auto w-full">
-        {/* Left Section: Logo & Nav Links */}
+        {/* Left: Logo + Nav */}
         <div className="flex items-center gap-10">
           <Link href="/" className="flex items-center gap-2">
-            <Logo className="w-8 h-8 text-primary" />
-            <span className="font-sans text-xl font-bold tracking-tight text-on-surface">
+            <Logo className="w-8 h-8 text-[#ddb7ff]" />
+            <span className="font-[family-name:var(--font-hanken)] text-xl font-bold tracking-tight text-[#e5e2e1]">
               ArcSignal
             </span>
           </Link>
-          
+
           <nav className="hidden lg:flex items-center gap-8">
             {navLinks.map((link) => {
-              const isActive = pathname === link.href || (pathname.startsWith(link.href) && link.href !== '/');
+              const isActive =
+                pathname === link.href ||
+                (pathname.startsWith(link.href) && link.href !== '/');
               return (
                 <Link
                   key={link.name}
                   href={link.href}
-                  className={`font-sans text-sm transition-colors ${
-                    isActive 
-                      ? 'text-primary border-b-2 border-primary py-5' 
-                      : 'text-on-surface-variant hover:text-on-surface py-5 border-b-2 border-transparent'
+                  className={`text-sm font-medium transition-colors py-5 border-b-2 ${
+                    isActive
+                      ? 'text-[#ddb7ff] border-[#ddb7ff]'
+                      : 'text-[#94a3b8] hover:text-[#e5e2e1] border-transparent'
                   }`}
                 >
                   {link.name}
@@ -64,73 +68,72 @@ export default function Navbar() {
           </nav>
         </div>
 
-        {/* Right Section: Search, Icons, Wallet */}
+        {/* Right: Search, Icons, Wallet */}
         <div className="hidden lg:flex items-center gap-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant w-4 h-4" />
-            <input 
-              type="text" 
-              placeholder="Search markets..." 
-              className="w-64 bg-surface-container-high border border-white/10 rounded-lg py-2 pl-9 pr-4 text-sm focus:outline-none focus:border-primary/50 text-on-surface placeholder:text-on-surface-variant transition-colors"
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8] w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search markets..."
+              className="w-64 bg-[#0f172a] border border-[#1e293b] rounded-lg py-2 pl-9 pr-4 text-sm focus:outline-none focus:border-[#ddb7ff]/50 text-[#e5e2e1] placeholder:text-[#94a3b8] transition-colors"
             />
           </div>
 
-          <div className="flex items-center gap-4 text-on-surface-variant">
-            <button className="hover:text-on-surface transition-colors">
+          <div className="flex items-center gap-4 text-[#94a3b8]">
+            <button className="hover:text-[#e5e2e1] transition-colors">
               <Layout className="w-5 h-5" />
             </button>
-            <button className="hover:text-on-surface transition-colors">
+            <button className="hover:text-[#e5e2e1] transition-colors">
               <Bell className="w-5 h-5" />
             </button>
-            <button className="hover:text-on-surface transition-colors">
+            <button className="hover:text-[#e5e2e1] transition-colors">
               <Settings className="w-5 h-5" />
             </button>
           </div>
 
           <div className="flex items-center gap-4">
             {isConnected && (
-              <div className="hidden xl:block bg-surface-container-high px-3 py-1.5 rounded-lg border border-white/10 text-sm font-mono text-on-surface">
+              <div className="hidden xl:block bg-[#0f172a] px-3 py-1.5 rounded-lg border border-[#1e293b] text-sm font-[family-name:var(--font-jetbrains-mono)] text-[#e5e2e1]">
                 {usdcBalance} USDC
               </div>
             )}
-            {/* We will wrap the existing ConnectWalletButton inside a styled div or modify its global class if needed. 
-                For now, ConnectWalletButton handles its own styling, but we'll place it here. */}
             <div className="opacity-90 hover:opacity-100 transition-opacity">
-               <ConnectWalletButton />
+              <ConnectWalletButton />
             </div>
           </div>
         </div>
 
-        {/* Mobile Menu Toggle */}
-        <button 
-          className="lg:hidden text-on-surface-variant"
+        {/* Mobile toggle */}
+        <button
+          className="lg:hidden text-[#94a3b8] hover:text-[#e5e2e1] transition-colors"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
         </button>
       </div>
 
-      {/* Mobile Menu Dropdown */}
+      {/* Mobile dropdown */}
       {mobileMenuOpen && (
-        <div className="lg:hidden absolute top-16 left-0 w-full bg-surface-container border-b border-white/10 p-4 shadow-2xl">
+        <div className="lg:hidden absolute top-16 left-0 w-full bg-[#0f172a] border-b border-[#1e293b] p-4 shadow-2xl">
           <div className="mb-4 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant w-4 h-4" />
-            <input 
-              type="text" 
-              placeholder="Search markets..." 
-              className="w-full bg-surface-container-high border border-white/10 rounded-lg py-2 pl-9 pr-4 text-sm focus:outline-none text-on-surface"
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8] w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search markets..."
+              className="w-full bg-[#131313] border border-[#1e293b] rounded-lg py-2 pl-9 pr-4 text-sm focus:outline-none text-[#e5e2e1] placeholder:text-[#94a3b8]"
             />
           </div>
-          <nav className="flex flex-col gap-2 mb-6">
+          <nav className="flex flex-col gap-1 mb-6">
             {navLinks.map((link) => (
               <Link
                 key={link.name}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`p-3 rounded-lg text-sm font-medium ${
-                  pathname === link.href || (pathname.startsWith(link.href) && link.href !== '/')
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-on-surface-variant'
+                className={`p-3 rounded-lg text-sm font-medium font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider ${
+                  pathname === link.href ||
+                  (pathname.startsWith(link.href) && link.href !== '/')
+                    ? 'bg-[#ddb7ff]/10 text-[#ddb7ff]'
+                    : 'text-[#94a3b8]'
                 }`}
               >
                 {link.name}

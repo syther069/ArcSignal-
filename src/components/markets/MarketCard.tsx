@@ -31,110 +31,163 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
     functionName: 'getMarket',
     args: [market.marketId],
     query: {
-      enabled: /^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS) && market.marketId.length > 0,
+      enabled:
+        /^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS) &&
+        market.marketId.length > 0,
     },
   });
 
   const chainMarket = data as { followPool: bigint; fadePool: bigint } | undefined;
   const liveFollowPool = chainMarket?.followPool ?? numberToUsdc(market.followPool);
-  const liveFadePool = chainMarket?.fadePool ?? numberToUsdc(market.fadePool);
-  const totalPool = liveFollowPool + liveFadePool;
-  const followShare = totalPool > 0n
-    ? Number((liveFollowPool * 10_000n) / totalPool) / 100
-    : 0;
+  const liveFadePool   = chainMarket?.fadePool   ?? numberToUsdc(market.fadePool);
+  const totalPool      = liveFollowPool + liveFadePool;
+  const followShare    =
+    totalPool > 0n
+      ? Number((liveFollowPool * 10_000n) / totalPool) / 100
+      : 0;
+
+  const probability = market.probability ?? market.confidence;
+  const isResolved  = market.resolved;
 
   return (
-    <article className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-5 transition-colors duration-150 hover:bg-[#1a1a1a]">
+    <article className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5 transition-all duration-150 hover:border-[#ddb7ff]/40 hover:shadow-lg hover:shadow-[#ddb7ff]/5 flex flex-col">
+      {/* Header */}
       <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <span className="text-xs text-zinc-500 uppercase tracking-wider">
-            {market.category} / {market.subType ?? 'market'}
-          </span>
-          <h3 className="mt-2 text-base font-medium text-white">{market.title}</h3>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="bg-[#ddb7ff]/10 text-[#ddb7ff] border border-[#ddb7ff]/20 px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wider">
+              {market.category} / {market.subType ?? 'market'}
+            </span>
+            {!isResolved && (
+              <div className="flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#4fdbc8] animate-pulse-dot" />
+              </div>
+            )}
+          </div>
+          <h3 className="font-[family-name:var(--font-hanken)] text-base font-semibold text-white leading-snug">
+            {market.title}
+          </h3>
         </div>
-        <span className="rounded-full border border-[#1f1f1f] px-2 py-0.5 text-xs text-zinc-400">
-          {market.outcome ?? (market.resolved ? 'RESOLVED' : 'PENDING')}
+        <span
+          className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wider border ${
+            isResolved
+              ? 'bg-[#94a3b8]/10 border-[#94a3b8]/20 text-[#94a3b8]'
+              : 'bg-[#4fdbc8]/10 border-[#4fdbc8]/20 text-[#4fdbc8]'
+          }`}
+        >
+          {market.outcome ?? (isResolved ? 'RESOLVED' : 'PENDING')}
         </span>
       </div>
 
-      <div className="space-y-4">
+      {/* Body */}
+      <div className="space-y-4 flex-1">
+        {/* AI Probability */}
         <div>
-          <div className="mb-2 flex items-center justify-between text-xs text-zinc-500 uppercase tracking-wider">
-            <span>AI probability</span>
-            <span>{market.probability ?? market.confidence}%</span>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-semibold text-[#94a3b8] uppercase tracking-wider">
+              AI Probability
+            </span>
+            <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#ddb7ff]">
+              {probability}%
+            </span>
           </div>
-          <div className="h-1.5 rounded-full bg-zinc-800">
+          <div className="h-1.5 rounded-full bg-[#1e293b]">
             <div
-              className="h-full rounded-full bg-[#22c55e]"
-              style={{ width: `${market.probability ?? market.confidence}%` }}
+              className="h-full rounded-full bg-[#ddb7ff] transition-all duration-500"
+              style={{ width: `${probability}%` }}
             />
           </div>
         </div>
 
+        {/* Pool boxes */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg border border-[#1f1f1f] bg-[#111111] p-3">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider">Follow pool</p>
-            <p className="mt-1 font-mono text-lg font-semibold text-white">
-              {toPoolDisplay(liveFollowPool)} USDC
+          <div className="rounded-lg border border-[#1e293b] bg-[#1c1b1b] p-3">
+            <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8] uppercase tracking-wider">
+              Follow Pool
+            </p>
+            <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-base font-semibold text-white">
+              {toPoolDisplay(liveFollowPool)}{' '}
+              <span className="text-xs text-[#94a3b8]">USDC</span>
             </p>
           </div>
-          <div className="rounded-lg border border-[#1f1f1f] bg-[#111111] p-3">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider">Fade pool</p>
-            <p className="mt-1 font-mono text-lg font-semibold text-white">
-              {toPoolDisplay(liveFadePool)} USDC
+          <div className="rounded-lg border border-[#1e293b] bg-[#1c1b1b] p-3">
+            <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8] uppercase tracking-wider">
+              Fade Pool
+            </p>
+            <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-base font-semibold text-white">
+              {toPoolDisplay(liveFadePool)}{' '}
+              <span className="text-xs text-[#94a3b8]">USDC</span>
             </p>
           </div>
         </div>
 
-        <div className="h-1.5 overflow-hidden rounded-full bg-[#ef4444]">
-          <div className="h-full bg-[#22c55e]" style={{ width: `${followShare}%` }} />
+        {/* Follow / Fade split bar */}
+        <div className="h-1 overflow-hidden rounded-full bg-[#ffb4ab]/30">
+          <div
+            className="h-full bg-[#4fdbc8] transition-all duration-500"
+            style={{ width: `${followShare}%` }}
+          />
         </div>
 
-        <div className="flex items-center justify-between text-xs text-zinc-500">
-          <CountdownTimer resolutionTime={market.resolutionTime} />
-          <span>Confidence {market.confidence}%</span>
+        {/* Countdown + confidence */}
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8]">
+            <CountdownTimer resolutionTime={market.resolutionTime} />
+          </span>
+          <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8]">
+            Confidence {market.confidence}%
+          </span>
         </div>
       </div>
 
+      {/* Analysis expand */}
       {expanded && (
-        <div className="mt-5 space-y-4 border-t border-[#1f1f1f] pt-5 text-sm text-zinc-300">
+        <div className="mt-5 space-y-4 border-t border-[#1e293b] pt-5 text-sm text-[#94a3b8]">
           <p>{market.summary ?? market.description}</p>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <p className="text-xs text-[#22c55e] uppercase tracking-wider">Bull case</p>
-              <p className="mt-1">{market.bull_case ?? market.description}</p>
+              <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#4fdbc8] uppercase tracking-wider">
+                Bull Case
+              </p>
+              <p className="mt-1 text-xs">{market.bull_case ?? market.description}</p>
             </div>
             <div>
-              <p className="text-xs text-[#ef4444] uppercase tracking-wider">Bear case</p>
-              <p className="mt-1">{market.bear_case ?? market.description}</p>
+              <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#ffb4ab] uppercase tracking-wider">
+                Bear Case
+              </p>
+              <p className="mt-1 text-xs">{market.bear_case ?? market.description}</p>
             </div>
           </div>
-          <ul className="space-y-2 text-xs text-zinc-400">
+          <ul className="space-y-1.5 text-xs text-[#94a3b8]">
             {market.keyFactors?.map((factor) => (
-              <li key={factor}>{factor}</li>
+              <li key={factor} className="flex items-start gap-1.5">
+                <span className="text-[#ddb7ff] mt-0.5">›</span>
+                {factor}
+              </li>
             ))}
           </ul>
         </div>
       )}
 
+      {/* Actions */}
       <div className="mt-5 grid grid-cols-3 gap-3">
         <button
-          onClick={() => setExpanded((value) => !value)}
-          className="rounded-lg border border-[#1f1f1f] px-3 py-2 text-xs font-semibold text-zinc-300 transition-colors duration-150 hover:bg-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          onClick={() => setExpanded((v) => !v)}
+          className="rounded-lg border border-[#ddb7ff]/30 px-3 py-2 text-xs font-[family-name:var(--font-jetbrains-mono)] font-semibold text-[#ddb7ff] uppercase tracking-wider transition-colors hover:bg-[#ddb7ff]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ddb7ff]/50"
         >
           Analysis
         </button>
         <button
           onClick={onFollow}
-          disabled={market.resolved}
-          className="rounded-lg bg-[#22c55e] px-3 py-2 text-xs font-semibold text-black transition-colors duration-150 hover:bg-[#16a34a] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          disabled={isResolved}
+          className="rounded-lg border border-[#4fdbc8]/40 bg-[#4fdbc8]/20 px-3 py-2 text-xs font-[family-name:var(--font-jetbrains-mono)] font-semibold text-[#4fdbc8] uppercase tracking-wider transition-colors hover:bg-[#4fdbc8]/40 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4fdbc8]/50"
         >
           Follow AI
         </button>
         <button
           onClick={onFade}
-          disabled={market.resolved}
-          className="rounded-lg bg-[#ef4444] px-3 py-2 text-xs font-semibold text-white transition-colors duration-150 hover:bg-[#dc2626] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          disabled={isResolved}
+          className="rounded-lg border border-[#1e293b] bg-[#1c1b1b] px-3 py-2 text-xs font-[family-name:var(--font-jetbrains-mono)] font-semibold text-[#94a3b8] uppercase tracking-wider transition-colors hover:bg-[#ffb4ab]/20 hover:text-[#ffb4ab] hover:border-[#ffb4ab]/40 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ffb4ab]/50"
         >
           Fade AI
         </button>
