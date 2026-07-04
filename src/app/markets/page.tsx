@@ -9,12 +9,17 @@ export default async function MarketsPage() {
     const chainMarkets = await getMarketsFromChain();
     const now = Date.now() / 1000;
     
-    // Only show resolved markets or markets that haven't expired yet
-    const activeMarkets = chainMarkets.filter(m => m.resolved || m.resolutionTime > now);
+    // Only show pending markets that haven't expired, or recently resolved markets (last 24h)
+    const activeMarkets = chainMarkets.filter(m => {
+      if (!m.resolved && m.resolutionTime <= now) return false; // Hide expired pending
+      if (m.resolved && m.resolutionTime < now - 86400) return false; // Hide old resolved
+      return true;
+    });
     markets = activeMarkets.map(serializeMarket);
 
-    // If there are very few active markets left, trigger generation in the background
-    if (activeMarkets.length < 2 && chainMarkets.length > 0) {
+    // If there are very few pending active markets left, trigger generation in the background
+    const pendingActive = activeMarkets.filter(m => !m.resolved);
+    if (pendingActive.length < 2 && chainMarkets.length > 0) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       fetch(`${appUrl}/api/cron/generate`, {
         method: 'POST',
