@@ -15,16 +15,19 @@ export default async function AnalyticsPage() {
     markets = [];
   }
 
-  // ─── Fetch ALL Staked events from chain ────────────────────────────────────
+  // ─── Fetch Recent Staked events for the chart ──────────────────────────────
   let stakedLogs: any[] = [];
   try {
+    const currentBlock = await publicClient.getBlockNumber();
+    const fromBlock = currentBlock > 10000n ? currentBlock - 10000n : 0n;
     stakedLogs = await publicClient.getLogs({
       address: ARCSIGNAL_ADDRESS,
       event: ARCSIGNAL_ABI.find((x: any) => x.type === 'event' && x.name === 'Staked') as any,
-      fromBlock: 0n,
+      fromBlock,
       toBlock: 'latest',
     }) as any[];
-  } catch {
+  } catch (err) {
+    console.error('Failed to fetch logs:', err);
     stakedLogs = [];
   }
 
@@ -84,7 +87,10 @@ export default async function AnalyticsPage() {
 
   // ─── Aggregate Stats ───────────────────────────────────────────────────────
   const totalVolume = totalFollow + totalFade;
-  const totalStakedUsdc = stakedLogs.reduce((acc: number, l: any) => acc + Number(l.args.amount) / 1e6, 0);
+  const totalStakedUsdc = stakedLogs.length > 0 
+    ? stakedLogs.reduce((acc: number, l: any) => acc + Number(l.args.amount) / 1e6, 0)
+    : totalVolume;
+  
   const avgConfidence = markets.length > 0
     ? Math.round(markets.reduce((acc: number, m: any) => acc + (m.confidence || 0), 0) / markets.length)
     : 0;

@@ -19,10 +19,13 @@ export default async function LeaderboardPage() {
     const chainMarkets = await getMarketsFromChain();
     markets = chainMarkets.map(serializeMarket);
 
+    const currentBlock = await publicClient.getBlockNumber();
+    const fromBlock = currentBlock > 10000n ? currentBlock - 10000n : 0n;
+
     const stakedLogs = await publicClient.getLogs({
       address: ARCSIGNAL_ADDRESS,
       event: parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)'),
-      fromBlock: 0n,
+      fromBlock,
       toBlock: 'latest',
     });
 

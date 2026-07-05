@@ -93,11 +93,14 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
       if (!targetAddress || !publicClient) return;
       setLoadingPositions(true);
       try {
+        const currentBlock = await publicClient.getBlockNumber();
+        const fromBlock = currentBlock > 10000n ? currentBlock - 10000n : 0n;
+
         const logs = await publicClient.getLogs({
           address: ARCSIGNAL_ADDRESS,
           event: ARCSIGNAL_ABI.find(x => x.type === 'event' && x.name === 'Staked') as any,
           args: { user: targetAddress },
-          fromBlock: 0n,
+          fromBlock,
         });
 
         // Multicall to get market details
@@ -246,19 +249,33 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
     setIsUploading(false);
   };
 
+  const [isConfirming, setIsConfirming] = useState(false);
+
   const handleSave = async () => {
     if (!targetAddress) return;
     try {
-      await writeContractAsync({
+      const hash = await writeContractAsync({
         address: ARCSIGNAL_ADDRESS,
         abi: ARCSIGNAL_ABI,
         functionName: 'setProfile',
         args: [editForm.username, editForm.bio, editForm.avatarUrl],
       });
+      
+      setIsConfirming(true);
+      if (publicClient) {
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status === 'reverted') {
+          throw new Error('Transaction reverted on-chain.');
+        }
+      }
+      
       setIsEditing(false);
       refetchProfile();
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to save profile', e);
+      alert('Profile update failed: ' + (e?.shortMessage || e?.message || 'Unknown error'));
+    } finally {
+      setIsConfirming(false);
     }
   };
 
@@ -586,7 +603,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={isSaving || isUploading}
+                disabled={isUploading || isSaving || isConfirming}
                 className="px-8 py-2.5 text-white text-sm font-bold uppercase tracking-wider rounded transition-all active:scale-[0.98] disabled:opacity-50"
                 style={{
                   background: '#a855f7',
@@ -594,7 +611,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
                   fontFamily: 'JetBrains Mono, monospace',
                 }}
               >
-                {isSaving ? 'Saving…' : 'Save Profile'}
+                {isUploading ? 'Uploading...' : isSaving ? 'Sign in Wallet...' : isConfirming ? 'Confirming...' : 'Save Profile'}
               </button>
             </div>
           </div>
