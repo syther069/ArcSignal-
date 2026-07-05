@@ -15,19 +15,22 @@ interface MarketsClientProps {
 }
 
 export default function MarketsClient({ markets }: MarketsClientProps) {
-  const [filter, setFilter] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('All Markets');
   const [selectedTimeframe, setSelectedTimeframe] = useState('All');
   const [stakeModal, setStakeModal] = useState<{
     market: Market;
     side: StakeSide;
   } | null>(null);
 
+  const nowUnix = Math.floor(Date.now() / 1000);
+  const timeframes = ['All', '5m', '15m', '1h', '4h', '24h'];
+
   const filteredMarkets = useMemo(() => {
     return markets.filter((m) => {
       const categoryMatch =
-        filter === 'all' ||
-        (filter === 'crypto' && m.category === 'CRYPTO') ||
-        (filter === 'football' && m.category === 'FOOTBALL');
+        selectedCategory === 'All Markets' ||
+        (selectedCategory === 'Crypto' && m.category === 'CRYPTO') ||
+        (selectedCategory === 'Football' && m.category === 'FOOTBALL');
 
       const timeframeMatch =
         selectedTimeframe === 'All' ||
@@ -36,19 +39,25 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
 
       return categoryMatch && timeframeMatch;
     });
-  }, [filter, selectedTimeframe, markets]);
+  }, [selectedCategory, selectedTimeframe, markets]);
 
-  const categories = [
-    { id: 'all',      label: 'All Markets' },
-    { id: 'crypto',   label: 'Crypto' },
-    { id: 'football', label: 'Football' },
-  ];
+  const getTimeframeCount = (timeframe: string) => {
+    return markets.filter((market) => {
+      const active = !market.resolved && market.resolutionTime > nowUnix;
+      if (!active || market.category !== 'CRYPTO') return false;
+      if (timeframe === 'All') return true;
+      return market.marketId.includes(`-PRICE-${timeframe}-`);
+    }).length;
+  };
+
+  const categories = ['All Markets', 'Crypto', 'Football'];
 
   return (
     <div className="flex min-h-screen bg-[#131313]">
       <Sidebar />
 
-      <main className="lg:ml-[264px] pt-24 pb-24 md:pb-8 flex-1 min-w-0 min-h-screen">\n        <div className="max-w-[1440px] mx-auto w-full p-6 lg:p-8">
+      <main className="lg:ml-[264px] pt-24 pb-24 md:pb-8 flex-1 min-w-0 min-h-screen">
+        <div className="max-w-[1440px] mx-auto w-full p-6 lg:p-8">
         {/* Page header */}
         <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -73,15 +82,18 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
             <div className="inline-flex items-center gap-1 bg-[#0f172a] border border-[#1e293b] rounded-xl p-1">
               {categories.map((cat) => (
                 <button
-                  key={cat.id}
-                  onClick={() => setFilter(cat.id)}
+                  key={cat}
+                  onClick={() => {
+                    setSelectedCategory(cat);
+                    if (cat === 'Football') setSelectedTimeframe('All');
+                  }}
                   className={`whitespace-nowrap px-4 py-1.5 rounded-lg text-xs font-[family-name:var(--font-jetbrains-mono)] font-semibold uppercase tracking-wider transition-all ${
-                    filter === cat.id
+                    selectedCategory === cat
                       ? 'bg-[#ddb7ff]/10 text-[#ddb7ff] border border-[#ddb7ff]/25'
                       : 'text-[#94a3b8] hover:text-[#e5e2e1] border border-transparent'
                   }`}
                 >
-                  {cat.label}
+                  {cat}
                 </button>
               ))}
             </div>
@@ -98,9 +110,9 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
           </div>
 
           {/* Timeframe tabs */}
-          {filter !== 'football' && (
+          {selectedCategory !== 'Football' && (
             <div className="flex items-center gap-2 mt-1">
-              {['All', '5m', '15m', '1h', '4h', '24h'].map(tf => (
+              {timeframes.map(tf => (
                 <button
                   key={tf}
                   onClick={() => setSelectedTimeframe(tf)}
@@ -111,11 +123,9 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                   }`}
                 >
                   {tf}
-                  {tf !== 'All' && (
-                    <span className="ml-1 bg-surface-container-highest text-text-muted text-[10px] px-1.5 py-0.5 rounded-full">
-                      {markets.filter(m => m.marketId.includes(`-PRICE-${tf}-`)).length}
-                    </span>
-                  )}
+                  <span className="ml-1 bg-surface-container-highest text-text-muted text-[10px] px-1.5 py-0.5 rounded-full">
+                    {getTimeframeCount(tf)}
+                  </span>
                 </button>
               ))}
             </div>
@@ -123,7 +133,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
         </div>
 
         {/* Market grid */}
-        {markets.length === 0 ? (
+        {filteredMarkets.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-32 text-center">
             <div className="w-12 h-12 rounded-xl bg-[#0f172a] border border-[#1e293b] flex items-center justify-center mb-4">
               <div className="w-2 h-2 rounded-full bg-[#ddb7ff] animate-pulse-dot" />

@@ -78,7 +78,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
               {market.category}
             </span>
             {timeframe && (
-              <span className="bg-[#4fdbc8]/10 text-[#4fdbc8] border border-[#4fdbc8]/20 px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wider">
+              <span className="bg-[#94a3b8]/10 text-[#94a3b8] border border-[#94a3b8]/20 px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wider">
                 {timeframe}
               </span>
             )}

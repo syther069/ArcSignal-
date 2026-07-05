@@ -12,7 +12,7 @@ import type { Address } from 'viem';
 const CONTRACT_ADDRESS = '0x1321B81F0608A7166062d6AcABC2b64646D80bC1' as Address;
 
 
-export const maxDuration = 300;
+export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
 function resolutionTimestamp(hoursFromNow: number): bigint {
