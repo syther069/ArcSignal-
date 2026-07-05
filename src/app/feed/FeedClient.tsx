@@ -22,8 +22,7 @@ export default function FeedClient({ initialStakes, markets: _markets }: FeedCli
   const filteredStakes = useMemo(() => {
     return initialStakes.filter((stake) => {
       // We expect the join to have attached the market data
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const market = (stake as any).market as Market | undefined;
+      const market = (stake as Stake & { market?: Market }).market;
       
       if (filter === 'ALL') return true;
       if (filter === 'FOOTBALL') return market?.category === 'football';
@@ -111,8 +110,7 @@ export default function FeedClient({ initialStakes, markets: _markets }: FeedCli
               <tbody className="font-mono text-xs">
                 {currentStakes.length > 0 ? (
                   currentStakes.map((stake) => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const market = (stake as any).market as Market | undefined;
+                    const market = (stake as Stake & { market?: Market }).market;
                     const timeString = new Date(stake.createdAt).toLocaleTimeString([], { hour12: false });
                     const isFollow = stake.side === 0;
                     
@@ -229,7 +227,7 @@ export default function FeedClient({ initialStakes, markets: _markets }: FeedCli
           </div>
           <div className="flex gap-2 text-[#38bdf8]">
             <span className="opacity-50">ARCSIGNAL_OS:~$</span>
-            <span>tail -f activity_stream.log --filter="live_stakes"</span>
+            <span>tail -f activity_stream.log --filter=&quot;live_stakes&quot;</span>
             <span className="inline-block w-2 h-3 bg-[#38bdf8] animate-pulse"></span>
           </div>
         </div>

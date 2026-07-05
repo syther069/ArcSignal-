@@ -211,9 +211,9 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                   GAVEL: RESOLUTION RULES
                 </h3>
                 <div className="bg-background-deep p-4 border border-outline-variant rounded italic text-text-muted text-sm leading-relaxed">
-                  "{market.category === 'crypto'
+                  &quot;{market.category === 'crypto'
                     ? `This market resolves based on the verified price from CoinGecko at the resolution timestamp. If the AI prediction is correct, FOLLOW wins. If incorrect, FADE wins. Settlement occurs T+1 hour after timestamp.`
-                    : `This market resolves based on the official match result. If the AI prediction (${market.agentPick}) is correct, FOLLOW wins. If incorrect, FADE wins.`}"
+                    : `This market resolves based on the official match result. If the AI prediction (${market.agentPick}) is correct, FOLLOW wins. If incorrect, FADE wins.`}&quot;
                 </div>
               </div>
             </div>
