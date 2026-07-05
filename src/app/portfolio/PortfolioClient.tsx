@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
@@ -40,7 +40,7 @@ export default function PortfolioClient() {
   const [claiming, setClaiming] = useState<Record<string, boolean>>({});
 
   // ─── Fetch all positions via multicall ──────────────────────────────────────
-  const fetchPortfolio = async () => {
+  const fetchPortfolio = useCallback(async () => {
     if (!address || !publicClient) {
       setLoading(false);
       return;
@@ -122,11 +122,11 @@ export default function PortfolioClient() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [address, publicClient]);
 
   useEffect(() => {
     fetchPortfolio();
-  }, [address, publicClient]);
+  }, [fetchPortfolio]);
 
   // ─── Claim Handler ──────────────────────────────────────────────────────────
   const handleClaim = async (marketId: string) => {
