@@ -16,15 +16,27 @@ interface MarketsClientProps {
 
 export default function MarketsClient({ markets }: MarketsClientProps) {
   const [filter, setFilter] = useState('all');
+  const [selectedTimeframe, setSelectedTimeframe] = useState('All');
   const [stakeModal, setStakeModal] = useState<{
     market: Market;
     side: StakeSide;
   } | null>(null);
 
   const filteredMarkets = useMemo(() => {
-    if (filter === 'all') return markets;
-    return markets.filter((market) => market.category.toLowerCase() === filter);
-  }, [filter, markets]);
+    return markets.filter((m) => {
+      const categoryMatch =
+        filter === 'all' ||
+        (filter === 'crypto' && m.category === 'CRYPTO') ||
+        (filter === 'football' && m.category === 'FOOTBALL');
+
+      const timeframeMatch =
+        selectedTimeframe === 'All' ||
+        m.category !== 'CRYPTO' ||
+        m.marketId.includes(`-PRICE-${selectedTimeframe}-`);
+
+      return categoryMatch && timeframeMatch;
+    });
+  }, [filter, selectedTimeframe, markets]);
 
   const categories = [
     { id: 'all',      label: 'All Markets' },
@@ -55,33 +67,59 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
         </header>
 
         {/* Filters + Sort */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-          {/* Category tabs */}
-          <div className="inline-flex items-center gap-1 bg-[#0f172a] border border-[#1e293b] rounded-xl p-1">
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setFilter(cat.id)}
-                className={`whitespace-nowrap px-4 py-1.5 rounded-lg text-xs font-[family-name:var(--font-jetbrains-mono)] font-semibold uppercase tracking-wider transition-all ${
-                  filter === cat.id
-                    ? 'bg-[#ddb7ff]/10 text-[#ddb7ff] border border-[#ddb7ff]/25'
-                    : 'text-[#94a3b8] hover:text-[#e5e2e1] border border-transparent'
-                }`}
-              >
-                {cat.label}
+        <div className="flex flex-col mb-8 gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            {/* Category tabs */}
+            <div className="inline-flex items-center gap-1 bg-[#0f172a] border border-[#1e293b] rounded-xl p-1">
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setFilter(cat.id)}
+                  className={`whitespace-nowrap px-4 py-1.5 rounded-lg text-xs font-[family-name:var(--font-jetbrains-mono)] font-semibold uppercase tracking-wider transition-all ${
+                    filter === cat.id
+                      ? 'bg-[#ddb7ff]/10 text-[#ddb7ff] border border-[#ddb7ff]/25'
+                      : 'text-[#94a3b8] hover:text-[#e5e2e1] border border-transparent'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button className="flex items-center justify-between w-48 bg-[#0f172a] border border-[#1e293b] px-4 py-2 rounded-lg text-xs font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8] hover:border-[#ddb7ff]/30 transition-colors">
+                <span>Volume: Highest first</span>
+                <ChevronDown className="w-4 h-4" />
               </button>
-            ))}
+              <button className="bg-[#0f172a] border border-[#1e293b] p-2 rounded-lg text-[#94a3b8] hover:text-[#ddb7ff] hover:border-[#ddb7ff]/30 transition-colors">
+                <Filter className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button className="flex items-center justify-between w-48 bg-[#0f172a] border border-[#1e293b] px-4 py-2 rounded-lg text-xs font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8] hover:border-[#ddb7ff]/30 transition-colors">
-              <span>Volume: Highest first</span>
-              <ChevronDown className="w-4 h-4" />
-            </button>
-            <button className="bg-[#0f172a] border border-[#1e293b] p-2 rounded-lg text-[#94a3b8] hover:text-[#ddb7ff] hover:border-[#ddb7ff]/30 transition-colors">
-              <Filter className="w-4 h-4" />
-            </button>
-          </div>
+          {/* Timeframe tabs */}
+          {filter !== 'football' && (
+            <div className="flex items-center gap-2 mt-1">
+              {['All', '5m', '15m', '1h', '4h', '24h'].map(tf => (
+                <button
+                  key={tf}
+                  onClick={() => setSelectedTimeframe(tf)}
+                  className={`px-3 py-1 rounded-full text-xs font-label-caps uppercase transition-all flex items-center ${
+                    selectedTimeframe === tf
+                      ? 'bg-primary text-on-primary-container'
+                      : 'bg-surface-container-low text-text-muted border border-border-subtle hover:border-primary hover:text-primary'
+                  }`}
+                >
+                  {tf}
+                  {tf !== 'All' && (
+                    <span className="ml-1 bg-surface-container-highest text-text-muted text-[10px] px-1.5 py-0.5 rounded-full">
+                      {markets.filter(m => m.marketId.includes(`-PRICE-${tf}-`)).length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Market grid */}

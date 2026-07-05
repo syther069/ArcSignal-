@@ -76,58 +76,88 @@ export async function POST(req: Request) {
   try {
     const coins = await fetchCryptoMarkets();
     const selected = coins.slice(0, 6);
-    const hours = [15, 18, 22, 15, 18, 22];
+    
+    const timeframes = [
+      { label: '5m',  minutes: 5 },
+      { label: '15m', minutes: 15 },
+      { label: '1h',  minutes: 60 },
+      { label: '4h',  minutes: 240 },
+      { label: '24h', minutes: 1440 },
+    ];
 
-    for (let i = 0; i < selected.length; i++) {
-      const coin = selected[i];
-      const symbolUpper = coin.symbol.toUpperCase();
+    function getPriceTarget(current: number, timeframe: string): number {
+      const multipliers: Record<string, number> = {
+        '5m':  1.000,
+        '15m': 1.003,
+        '1h':  1.010,
+        '4h':  1.020,
+        '24h': 1.035,
+      };
+      const mult = multipliers[timeframe] ?? 1.015;
+      const raw = current * mult;
+      const magnitude = Math.pow(10, Math.floor(Math.log10(raw)) - 1);
+      return Math.round(raw / magnitude) * magnitude;
+    }
 
-      // Skip if an active non-expired market for this symbol already exists
-      const alreadyExists = existingMarkets.some(m =>
-        m.marketId.startsWith(`${symbolUpper}-PRICE-`) &&
-        (!m.resolved && m.resolutionTime > now)
-      );
-      if (alreadyExists) {
-        created.push(`[SKIP] ${symbolUpper} market already exists`);
-        continue;
-      }
+    for (const timeframe of timeframes) {
+      for (const coin of selected) {
+        const symbolUpper = coin.symbol.toUpperCase();
 
-      const target = priceTarget(coin.current_price);
-      const h = hours[i];
-      const resolutionTime = resolutionTimestamp(h);
-      const resolutionDate = new Date(Number(resolutionTime) * 1000).toUTCString();
-      const question = `Will ${symbolUpper} close above $${target.toLocaleString('en-US')} by ${resolutionDate}?`;
-      const marketId = `${symbolUpper}-PRICE-${now}-${i}`;
+        // Skip if active non-expired non-resolved market exists for symbol+timeframe
+        const alreadyExists = existingMarkets.some(m =>
+          m.marketId.startsWith(`${symbolUpper}-PRICE-${timeframe.label}-`) &&
+          (!m.resolved && m.resolutionTime > now)
+        );
+        if (alreadyExists) {
+          created.push(`[SKIP] ${symbolUpper} ${timeframe.label} already exists`);
+          continue;
+        }
 
-      try {
-        const analysis = await generateCryptoAnalysis({
-          question,
-          resolutionCriteria: `Resolves YES if ${coin.symbol.toUpperCase()}/USD price on CoinGecko is above $${target.toLocaleString('en-US')} at resolution time.`,
-          resolutionTime: resolutionDate,
-          cryptoData: {
-            id: coin.id,
-            symbol: coin.symbol,
-            current_price: coin.current_price,
-            price_change_percentage_24h: coin.price_change_percentage_24h,
-            market_cap: coin.market_cap,
-            total_volume: coin.total_volume,
-            high_24h: coin.high_24h,
-            low_24h: coin.low_24h,
-            target_price: target,
-          },
-        });
+        const target = getPriceTarget(coin.current_price, timeframe.label);
+        const resolutionTime = BigInt(now + timeframe.minutes * 60);
+        const resolutionDate = new Date(Number(resolutionTime) * 1000).toUTCString();
+        
+        let questionVerb = 'close above';
+        if (timeframe.label === '5m') {
+          questionVerb = 'stay above';
+        }
+        
+        const question = `Will ${symbolUpper} ${questionVerb} $${target.toLocaleString('en-US')} in the next ${timeframe.label}?`;
+        const marketId = `${symbolUpper}-PRICE-${timeframe.label}-${now}`;
 
-        const hash = await walletClient.writeContract({
-          address: CONTRACT_ADDRESS,
-          abi: ARCSIGNAL_ABI,
-          functionName: 'createMarket',
-          args: [marketId, 'CRYPTO', question, JSON.stringify(analysis), resolutionTime],
-        });
+        try {
+          const analysis = await generateCryptoAnalysis({
+            question,
+            resolutionCriteria: `Resolves YES if ${coin.symbol.toUpperCase()}/USD price on CoinGecko is above $${target.toLocaleString('en-US')} at resolution time (${resolutionDate}).`,
+            resolutionTime: resolutionDate,
+            cryptoData: {
+              id: coin.id,
+              symbol: coin.symbol,
+              current_price: coin.current_price,
+              price_change_percentage_24h: coin.price_change_percentage_24h,
+              market_cap: coin.market_cap,
+              total_volume: coin.total_volume,
+              high_24h: coin.high_24h,
+              low_24h: coin.low_24h,
+              target_price: target,
+            },
+          });
 
-        await publicClient.waitForTransactionReceipt({ hash });
-        created.push(`[CRYPTO] ${question}`);
-      } catch (err) {
-        errors.push(`[CRYPTO] ${coin.symbol}: ${err instanceof Error ? err.message : String(err)}`);
+          // Store timeframe label in subType field
+          const analysisWithSubType = { ...analysis, subType: timeframe.label };
+
+          const hash = await walletClient.writeContract({
+            address: CONTRACT_ADDRESS,
+            abi: ARCSIGNAL_ABI,
+            functionName: 'createMarket',
+            args: [marketId, 'CRYPTO', question, JSON.stringify(analysisWithSubType), resolutionTime],
+          });
+
+          await publicClient.waitForTransactionReceipt({ hash });
+          created.push(`[CRYPTO] ${question}`);
+        } catch (err) {
+          errors.push(`[CRYPTO] ${coin.symbol} ${timeframe.label}: ${err instanceof Error ? err.message : String(err)}`);
+        }
       }
     }
   } catch (err) {

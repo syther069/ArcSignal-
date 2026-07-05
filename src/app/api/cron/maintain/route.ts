@@ -8,15 +8,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
   // Step 1: Resolve all expired markets
-  const resolveRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/cron/resolve`, {
+  const resolveRes = await fetch(`${appUrl}/api/cron/resolve`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` },
   });
   const resolveData = await resolveRes.json();
 
   // Step 2: Generate fresh markets to replace resolved/expired ones
-  const generateRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/cron/generate`, {
+  const generateRes = await fetch(`${appUrl}/api/cron/generate`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` },
   });
