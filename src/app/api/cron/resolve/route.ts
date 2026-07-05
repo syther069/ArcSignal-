@@ -132,10 +132,10 @@ export async function POST(req: Request) {
     }
 
     // ── 5. Determine outcome ────────────────────────────────────────────────
-    //   outcome 0 = Follow wins (AI prediction correct)
-    //   outcome 1 = Fade wins  (AI prediction wrong)
+    //   outcome 1 = Follow wins (AI prediction correct)
+    //   outcome 2 = Fade wins  (AI prediction wrong)
     try {
-      let outcome: 0 | 1 = 1; // default: Fade wins if we can't determine
+      let outcome: 1 | 2 = 2; // default: Fade wins if we can't determine
       let outcomeReason = 'default (unable to determine outcome)';
 
       const categoryNorm = market.category.toUpperCase();
@@ -153,9 +153,9 @@ export async function POST(req: Request) {
           );
 
           if (coin) {
-            // outcome 0 = Follow wins = AI was right = price is ABOVE target
-            outcome = coin.current_price > targetPrice ? 0 : 1;
-            outcomeReason = `${coin.symbol.toUpperCase()} price $${coin.current_price} vs target $${targetPrice} → ${outcome === 0 ? 'ABOVE (Follow wins)' : 'BELOW (Fade wins)'}`;
+            // outcome 1 = Follow wins = AI was right = price is ABOVE target
+            outcome = coin.current_price > targetPrice ? 1 : 2;
+            outcomeReason = `${coin.symbol.toUpperCase()} price $${coin.current_price} vs target $${targetPrice} → ${outcome === 1 ? 'ABOVE (Follow wins)' : 'BELOW (Fade wins)'}`;
           } else {
             outcomeReason = `coin not found for symbol "${symbolRaw}", defaulting Fade wins`;
           }
@@ -170,9 +170,9 @@ export async function POST(req: Request) {
         if (!isNaN(fixtureId)) {
           const fixture = completedFixtures.find((f) => f.fixtureId === fixtureId);
           if (fixture && fixture.homeScore !== null && fixture.awayScore !== null) {
-            // outcome 0 = Follow wins = home team won
-            outcome = fixture.homeScore > fixture.awayScore ? 0 : 1;
-            outcomeReason = `fixture ${fixtureId}: ${fixture.homeScore}-${fixture.awayScore} → ${outcome === 0 ? 'Home wins (Follow)' : 'Away/Draw (Fade)'}`;
+            // outcome 1 = Follow wins = home team won
+            outcome = fixture.homeScore > fixture.awayScore ? 1 : 2;
+            outcomeReason = `fixture ${fixtureId}: ${fixture.homeScore}-${fixture.awayScore} → ${outcome === 1 ? 'Home wins (Follow)' : 'Away/Draw (Fade)'}`;
           } else {
             outcomeReason = `fixture ${fixtureId} not in completed list, defaulting Fade wins`;
           }
