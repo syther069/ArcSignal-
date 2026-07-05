@@ -27,7 +27,7 @@ export const publicClient = createPublicClient({
 // always used in production to prevent the wrong contract being called.
 export const ARCSIGNAL_ADDRESS = '0x1321B81F0608A7166062d6AcABC2b64646D80bC1' as `0x${string}`;
 
-export const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_CONTRACT_ADDRESS as `0x${string}`;
+export const USDC_ADDRESS = '0x3600000000000000000000000000000000000000' as `0x${string}`;
 
 export const ARCSIGNAL_ABI = parseAbi([
   'function createMarket(string marketId, string category, string question, string analysisJson, uint256 resolutionTime) external',
