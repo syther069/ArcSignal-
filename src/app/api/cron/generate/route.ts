@@ -69,53 +69,77 @@ export async function POST(req: Request) {
     ];
 
     function getPriceTarget(current: number, timeframe: string): number {
+      // Multipliers represent realistic price movement expectations per window
       const multipliers: Record<string, number> = {
-        '5m':  1.000,
-        '15m': 1.003,
-        '1h':  1.010,
-        '4h':  1.020,
-        '24h': 1.035,
+        '5m':  1.000,  // current price — did it hold?
+        '15m': 1.003,  // +0.3% — small tick up
+        '1h':  1.010,  // +1.0% — moderate hourly move
+        '4h':  1.020,  // +2.0% — meaningful session move
+        '24h': 1.035,  // +3.5% — full daily candle move
       };
       const mult = multipliers[timeframe] ?? 1.015;
       const raw = current * mult;
+      // Round to 2 significant figures for clean price levels
       const magnitude = Math.pow(10, Math.floor(Math.log10(raw)) - 1);
       return Math.round(raw / magnitude) * magnitude;
     }
 
-    function getQuestion(symbol: string, target: number, timeframe: string): string {
-      const formattedTarget = target.toLocaleString('en-US');
+    // Returns a support level slightly below current price (for 5m "hold above" questions)
+    function getSupportLevel(current: number): number {
+      const raw = current * 0.997; // 0.3% below current
+      const magnitude = Math.pow(10, Math.floor(Math.log10(raw)) - 1);
+      return Math.round(raw / magnitude) * magnitude;
+    }
+
+    function getQuestion(symbol: string, current: number, target: number, timeframe: string): string {
+      const fmt = (n: number) => n.toLocaleString('en-US');
 
       if (timeframe === '5m') {
-        return `Will ${symbol} stay above $${formattedTarget} in the next 5 minutes?`;
+        // 5m: Will price hold above current support? (very short, momentum question)
+        const support = getSupportLevel(current);
+        return `Will ${symbol} hold above $${fmt(support)} over the next 5 minutes?`;
       }
 
       if (timeframe === '15m') {
-        return `Will ${symbol} gain 0.3% or more and reach $${formattedTarget} in the next 15 minutes?`;
+        // 15m: Small gain question
+        return `Will ${symbol} reach $${fmt(target)} or higher within the next 15 minutes?`;
       }
 
       if (timeframe === '1h') {
-        return `Will ${symbol} close above $${formattedTarget} in the next 1 hour?`;
+        // 1h: Moderate move — will it break and close above target
+        return `Will ${symbol} break above $${fmt(target)} and close there within the next hour?`;
       }
 
       if (timeframe === '4h') {
-        return `Will ${symbol} close above $${formattedTarget} in the next 4 hours?`;
+        // 4h: Session-level move
+        return `Will ${symbol} trade above $${fmt(target)} by the end of the next 4-hour candle?`;
       }
 
-      return `Will ${symbol} close above $${formattedTarget} in the next 24 hours?`;
+      // 24h: Daily candle close prediction
+      return `Will ${symbol} close above $${fmt(target)} on today\'s daily candle?`;
     }
 
-    function getResolutionCriteria(symbol: string, target: number, timeframe: string, resolutionDate: string): string {
-      const formattedTarget = target.toLocaleString('en-US');
+    function getResolutionCriteria(symbol: string, current: number, target: number, timeframe: string, resolutionDate: string): string {
+      const fmt = (n: number) => n.toLocaleString('en-US');
 
       if (timeframe === '5m') {
-        return `Resolves YES if ${symbol}/USD remains above $${formattedTarget} on CoinGecko at resolution time (${resolutionDate}).`;
+        const support = getSupportLevel(current);
+        return `Resolves YES if ${symbol}/USD price on CoinGecko is at or above $${fmt(support)} at resolution time (${resolutionDate}). Resolves NO if price drops below $${fmt(support)}.`;
       }
 
       if (timeframe === '15m') {
-        return `Resolves YES if ${symbol}/USD gains at least 0.3% from the generation price and reaches $${formattedTarget} on CoinGecko at resolution time (${resolutionDate}).`;
+        return `Resolves YES if ${symbol}/USD price on CoinGecko is at or above $${fmt(target)} at resolution time (${resolutionDate}). Current price at generation: $${fmt(current)}.`;
       }
 
-      return `Resolves YES if ${symbol}/USD is above $${formattedTarget} on CoinGecko at resolution time (${resolutionDate}).`;
+      if (timeframe === '1h') {
+        return `Resolves YES if ${symbol}/USD price on CoinGecko is above $${fmt(target)} at resolution time (${resolutionDate}). This represents a ~1% gain from the current price of $${fmt(current)}.`;
+      }
+
+      if (timeframe === '4h') {
+        return `Resolves YES if ${symbol}/USD price on CoinGecko exceeds $${fmt(target)} at resolution time (${resolutionDate}). This represents approximately a 2% move from the current price of $${fmt(current)}.`;
+      }
+
+      return `Resolves YES if ${symbol}/USD daily close price on CoinGecko is above $${fmt(target)} at resolution time (${resolutionDate}). Current price: $${fmt(current)}. Target represents ~3.5% gain.`;
     }
 
     for (const timeframe of timeframes) {
@@ -135,13 +159,13 @@ export async function POST(req: Request) {
         const target = getPriceTarget(coin.current_price, timeframe.label);
         const resolutionTime = BigInt(now + timeframe.minutes * 60);
         const resolutionDate = new Date(Number(resolutionTime) * 1000).toUTCString();
-        const question = getQuestion(symbolUpper, target, timeframe.label);
+        const question = getQuestion(symbolUpper, coin.current_price, target, timeframe.label);
         const marketId = `${symbolUpper}-PRICE-${timeframe.label}-${now}`;
 
         try {
           const analysis = await generateCryptoAnalysis({
             question,
-            resolutionCriteria: getResolutionCriteria(symbolUpper, target, timeframe.label, resolutionDate),
+            resolutionCriteria: getResolutionCriteria(symbolUpper, coin.current_price, target, timeframe.label, resolutionDate),
             resolutionTime: resolutionDate,
             cryptoData: {
               id: coin.id,
