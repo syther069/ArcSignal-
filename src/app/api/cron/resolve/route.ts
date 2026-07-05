@@ -9,7 +9,7 @@ import type { Address } from 'viem';
 export const dynamic = 'force-dynamic';
 
 // Always use the hardcoded correct deployed contract address
-const CONTRACT_ADDRESS = '0x1321B81F0608A7166062d6AcABC2b64646D80bC1' as Address;
+const CONTRACT_ADDRESS = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as Address;
 
 // Use env RPC or fallback
 const RPC_URL = process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network';

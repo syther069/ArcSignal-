@@ -19,13 +19,13 @@ export const arcTestnet = {
 
 export const publicClient = createPublicClient({
   chain: arcTestnet,
-  transport: http(process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL),
+  transport: http(process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network'),
 });
 
 // Hardcoded to the currently deployed contract. The env var is kept as a named
 // fallback so that local overrides still work — but the hardcoded address is
 // always used in production to prevent the wrong contract being called.
-export const ARCSIGNAL_ADDRESS = '0x1321B81F0608A7166062d6AcABC2b64646D80bC1' as `0x${string}`;
+export const ARCSIGNAL_ADDRESS = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as `0x${string}`;
 
 export const USDC_ADDRESS = '0x3600000000000000000000000000000000000000' as `0x${string}`;
 
