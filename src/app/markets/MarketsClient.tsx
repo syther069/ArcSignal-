@@ -90,8 +90,8 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
             </button>
           </header>
 
-          {/* ── Top filter bar ── */}
-          <div className="flex flex-col gap-4 mb-8">
+          {/* Filters + Sort */}
+          <div className="flex flex-col mb-8 gap-4">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               {/* Category tabs */}
               <div className="inline-flex items-center gap-1 bg-[#0f172a] border border-[#1e293b] rounded-xl p-1">
@@ -113,49 +113,47 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                 ))}
               </div>
 
-              <button className="flex items-center gap-2 bg-[#0f172a] border border-[#1e293b] p-2 rounded-lg text-[#94a3b8] hover:text-[#ddb7ff] hover:border-[#ddb7ff]/30 transition-colors">
-                <Filter className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Timeframe pills — shown when crypto is relevant */}
-            {showCrypto && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Timeframe:
-                </span>
-                <button
-                  onClick={() => setSelectedTimeframe(null)}
-                  className={`px-3 py-1 rounded-full text-xs font-[family-name:var(--font-jetbrains-mono)] font-semibold uppercase tracking-wider transition-all ${
-                    selectedTimeframe === null
-                      ? 'bg-[#ddb7ff]/15 text-[#ddb7ff] border border-[#ddb7ff]/30'
-                      : 'bg-[#0f172a] text-[#94a3b8] border border-[#1e293b] hover:border-[#ddb7ff]/30 hover:text-[#ddb7ff]'
-                  }`}
-                >
-                  All
-                </button>
-                {TIMEFRAMES.map((tf) => {
-                  const meta = TIMEFRAME_META[tf];
-                  const count = getTimeframeCount(tf);
-                  return (
+              {/* Timeframe selector + Filter button on the right */}
+              <div className="flex items-center gap-2.5 flex-wrap w-full md:w-auto md:ml-auto justify-end">
+                {showCrypto && (
+                  <div className="inline-flex items-center gap-1 bg-[#0f172a] border border-[#1e293b] rounded-xl p-1">
                     <button
-                      key={tf}
-                      onClick={() => setSelectedTimeframe(selectedTimeframe === tf ? null : tf)}
-                      className={`px-3 py-1 rounded-full text-xs font-[family-name:var(--font-jetbrains-mono)] font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5 ${
-                        selectedTimeframe === tf
-                          ? `${meta.bg} ${meta.color} ${meta.border} border`
-                          : 'bg-[#0f172a] text-[#94a3b8] border border-[#1e293b] hover:border-[#ddb7ff]/30 hover:text-[#ddb7ff]'
+                      onClick={() => setSelectedTimeframe(null)}
+                      className={`whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-[family-name:var(--font-jetbrains-mono)] font-semibold uppercase tracking-wider transition-all ${
+                        selectedTimeframe === null
+                          ? 'bg-[#ddb7ff]/10 text-[#ddb7ff] border border-[#ddb7ff]/25'
+                          : 'text-[#94a3b8] hover:text-[#e5e2e1] border border-transparent'
                       }`}
                     >
-                      {tf}
-                      <span className="bg-[#1e293b] text-[#94a3b8] text-[10px] px-1.5 py-0.5 rounded-full">
-                        {count}
-                      </span>
+                      All
                     </button>
-                  );
-                })}
+                    {TIMEFRAMES.map((tf) => {
+                      const count = getTimeframeCount(tf);
+                      return (
+                        <button
+                          key={tf}
+                          onClick={() => setSelectedTimeframe(selectedTimeframe === tf ? null : tf)}
+                          className={`whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-[family-name:var(--font-jetbrains-mono)] font-semibold uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+                            selectedTimeframe === tf
+                              ? 'bg-[#ddb7ff]/10 text-[#ddb7ff] border border-[#ddb7ff]/25'
+                              : 'text-[#94a3b8] hover:text-[#e5e2e1] border border-transparent'
+                          }`}
+                        >
+                          {tf}
+                          <span className="bg-[#1e293b] text-[#94a3b8] text-[9px] px-1.5 py-0.5 rounded-full">
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <button className="bg-[#0f172a] border border-[#1e293b] p-2.5 rounded-xl text-[#94a3b8] hover:text-[#ddb7ff] hover:border-[#ddb7ff]/30 transition-colors shrink-0">
+                  <Filter className="w-4 h-4" />
+                </button>
               </div>
-            )}
+            </div>
           </div>
 
           {/* ── CRYPTO SECTIONS (grouped by timeframe) ── */}
