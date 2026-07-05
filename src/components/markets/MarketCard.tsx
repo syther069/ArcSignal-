@@ -33,6 +33,11 @@ function numberToUsdc(value: number) {
   return BigInt(Math.round(value * 1_000_000));
 }
 
+function getTimeframe(marketId: string): string | null {
+  const match = marketId.match(/-PRICE-(5m|15m|1h|4h|24h)-/);
+  return match ? match[1] : null;
+}
+
 export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -59,6 +64,8 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
   const isResolved  = market.resolved;
   const hasAnalysis = !!market.analysis;
 
+  const timeframe = getTimeframe(market.marketId);
+
   return (
     <article className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-5 flex flex-col gap-5 transition-all duration-300 ease-in-out hover:border-[#ddb7ff]/40 hover:shadow-lg hover:shadow-[#ddb7ff]/5">
 
@@ -66,10 +73,15 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
       <div className="space-y-4">
         {/* Badges row */}
         <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="bg-[#ddb7ff]/10 text-[#ddb7ff] border border-[#ddb7ff]/20 px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wider">
               {market.category}
             </span>
+            {timeframe && (
+              <span className="bg-[#4fdbc8]/10 text-[#4fdbc8] border border-[#4fdbc8]/20 px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wider">
+                {timeframe}
+              </span>
+            )}
             {!isResolved && (
               <div className="flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-[#4fdbc8] animate-pulse-dot" />
