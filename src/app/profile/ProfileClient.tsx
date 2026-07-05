@@ -99,30 +99,25 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
       try {
         const chainMarkets = await getMarketsFromChain();
         
-        const followCalls = chainMarkets.map(m => ({
-          address: ARCSIGNAL_ADDRESS,
-          abi: ARCSIGNAL_ABI,
-          functionName: 'followStakes',
-          args: [m.marketId, targetAddress],
-        }));
-        
-        const fadeCalls = chainMarkets.map(m => ({
-          address: ARCSIGNAL_ADDRESS,
-          abi: ARCSIGNAL_ABI,
-          functionName: 'fadeStakes',
-          args: [m.marketId, targetAddress],
-        }));
+        const fetchMarketStake = async (m: any) => {
+          try {
+            const [followStake, fadeStake] = await Promise.all([
+              publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'followStakes', args: [m.marketId, targetAddress] }) as Promise<bigint>,
+              publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'fadeStakes', args: [m.marketId, targetAddress] }) as Promise<bigint>,
+            ]);
+            return { followStake: Number(followStake), fadeStake: Number(fadeStake) };
+          } catch (e) {
+            console.error('Failed to read stakes for market', m.marketId, e);
+            return { followStake: 0, fadeStake: 0 };
+          }
+        };
 
-        const [followResults, fadeResults] = await Promise.all([
-          publicClient.multicall({ contracts: followCalls as any }),
-          publicClient.multicall({ contracts: fadeCalls as any })
-        ]);
+        const results = await Promise.all(chainMarkets.map(fetchMarketStake));
 
         const userStakes: Stake[] = [];
 
         chainMarkets.forEach((m, i) => {
-          const followStake = followResults[i]?.status === 'success' ? Number(followResults[i].result) : 0;
-          const fadeStake = fadeResults[i]?.status === 'success' ? Number(fadeResults[i].result) : 0;
+          const { followStake, fadeStake } = results[i];
 
           const addStake = (side: number, rawAmount: number) => {
             let pnl: number | undefined = undefined;

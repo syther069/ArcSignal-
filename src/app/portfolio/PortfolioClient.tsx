@@ -54,38 +54,27 @@ export default function PortfolioClient() {
         return;
       }
 
-      // Batch all reads: followStakes, fadeStakes, claimed — per market
-      const followCalls = markets.map(m => ({
-        address: ARCSIGNAL_ADDRESS,
-        abi: ARCSIGNAL_ABI,
-        functionName: 'followStakes',
-        args: [m.marketId, address],
-      }));
-      const fadeCalls = markets.map(m => ({
-        address: ARCSIGNAL_ADDRESS,
-        abi: ARCSIGNAL_ABI,
-        functionName: 'fadeStakes',
-        args: [m.marketId, address],
-      }));
-      const claimedCalls = markets.map(m => ({
-        address: ARCSIGNAL_ADDRESS,
-        abi: ARCSIGNAL_ABI,
-        functionName: 'claimed',
-        args: [m.marketId, address],
-      }));
+      // ARC Testnet does not have Multicall3 deployed, so we use Promise.all
+      const fetchMarketData = async (m: any) => {
+        try {
+          const [followRaw, fadeRaw, isClaimed] = await Promise.all([
+            publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'followStakes', args: [m.marketId, address] }) as Promise<bigint>,
+            publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'fadeStakes', args: [m.marketId, address] }) as Promise<bigint>,
+            publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'claimed', args: [m.marketId, address] }) as Promise<boolean>,
+          ]);
+          return { followRaw, fadeRaw, isClaimed };
+        } catch (e) {
+          console.error('Failed to read position for market', m.marketId, e);
+          return { followRaw: 0n, fadeRaw: 0n, isClaimed: false };
+        }
+      };
 
-      const [followRes, fadeRes, claimedRes] = await Promise.all([
-        publicClient.multicall({ contracts: followCalls as any }),
-        publicClient.multicall({ contracts: fadeCalls as any }),
-        publicClient.multicall({ contracts: claimedCalls as any }),
-      ]);
+      const results = await Promise.all(markets.map(fetchMarketData));
 
       const newPositions: Position[] = [];
 
       markets.forEach((market, i) => {
-        const followRaw = followRes[i]?.status === 'success' ? (followRes[i].result as bigint) : 0n;
-        const fadeRaw   = fadeRes[i]?.status === 'success'   ? (fadeRes[i].result   as bigint) : 0n;
-        const isClaimed = claimedRes[i]?.status === 'success' ? (claimedRes[i].result as boolean) : false;
+        const { followRaw, fadeRaw, isClaimed } = results[i];
 
         const addPosition = (side: 0 | 1, stakeRaw: bigint) => {
           const stakeUsdc = Number(formatUnits(stakeRaw, 6));

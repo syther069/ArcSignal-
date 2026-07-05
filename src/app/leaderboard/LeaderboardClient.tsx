@@ -19,7 +19,7 @@ interface LeaderboardClientProps {
 
 export default function LeaderboardClient({ leaderboard, markets }: LeaderboardClientProps) {
   // Stat Card 1: Network Volume
-  const totalVolume = markets.reduce((acc, m) => acc + (m.followPool + m.fadePool), 0);
+  const totalVolume = markets.reduce((acc, m) => acc + (Number(m.followPool) + Number(m.fadePool)) / 1e6, 0);
   
   // Stat Card 2: Active Traders
   const activeTradersCount = leaderboard.length;
@@ -42,7 +42,7 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
         <section className="flex-1 overflow-y-auto px-4 md:px-8 py-10 scrollbar-hide h-[calc(100vh-64px)]">
           {/* Header */}
           <div className="mb-10">
-            <h1 className="font-headline-xl text-3xl font-bold text-on-surface mb-2 tracking-tight">Elite Operators</h1>
+            <h1 className="font-headline-xl text-3xl font-bold text-on-surface mb-2 tracking-tight">Elite Users</h1>
             <p className="text-text-muted font-sans text-base">Real-time performance ranking of the most accurate prediction traders on ARC Testnet.</p>
           </div>
 
@@ -98,7 +98,7 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
                   <thead>
                     <tr className="bg-[#1e293b]/30">
                       <th className="px-6 py-4 font-label-caps text-xs text-text-muted whitespace-nowrap">Rank</th>
-                      <th className="px-6 py-4 font-label-caps text-xs text-text-muted whitespace-nowrap">Operator</th>
+                      <th className="px-6 py-4 font-label-caps text-xs text-text-muted whitespace-nowrap">User</th>
                       <th className="px-6 py-4 font-label-caps text-xs text-text-muted whitespace-nowrap">Win Rate</th>
                       <th className="px-6 py-4 font-label-caps text-xs text-text-muted whitespace-nowrap">Total Staked</th>
                       <th className="px-6 py-4 font-label-caps text-xs text-text-muted whitespace-nowrap">Predictions</th>

@@ -7,10 +7,6 @@ import { Web3Provider } from '@/components/layout/Web3Provider';
 import NetworkSwitcher from '@/components/wallet/NetworkSwitcher';
 import './globals.css';
 
-const LiveTicker = dynamic(() => import('@/components/layout/LiveTicker'), {
-  ssr: false,
-});
-
 const jetBrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-jetbrains-mono',
@@ -49,7 +45,6 @@ export default function RootLayout({
       <body>
         <Web3Provider>
           <Navbar />
-          <LiveTicker />
           <NetworkSwitcher />
           {children}
           <MobileBottomNav />
