@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { arcTestnet, publicClient, ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
+import { arcTestnet, publicClient, ARCSIGNAL_ABI } from '@/lib/contracts';
 import { getMarketsFromChain } from '@/lib/markets';
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchUpcomingFixtures } from '@/lib/apifootball';
 import { generateCryptoAnalysis, generateFootballAnalysis } from '@/lib/gemini';
 import type { Address } from 'viem';
+
+// Always use the hardcoded correct deployed contract address
+const CONTRACT_ADDRESS = '0x1321B81F0608A7166062d6AcABC2b64646D80bC1' as Address;
+
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -31,7 +35,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'RESOLVER_PRIVATE_KEY missing or invalid' }, { status: 500 });
   }
 
-  if (!ARCSIGNAL_ADDRESS || !/^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS)) {
+  if (!/^0x[a-fA-F0-9]{40}$/.test(CONTRACT_ADDRESS)) {
     return NextResponse.json({ error: 'Contract address missing or invalid' }, { status: 500 });
   }
 
@@ -48,7 +52,7 @@ export async function POST(req: Request) {
 
   // Get existing market IDs
   const count = await publicClient.readContract({
-    address: ARCSIGNAL_ADDRESS as Address,
+    address: CONTRACT_ADDRESS,
     abi: ARCSIGNAL_ABI,
     functionName: 'getMarketCount',
   }) as bigint;
@@ -56,7 +60,7 @@ export async function POST(req: Request) {
   const existingIds: string[] = [];
   for (let i = 0; i < Number(count); i++) {
     const id = await publicClient.readContract({
-      address: ARCSIGNAL_ADDRESS as Address,
+      address: CONTRACT_ADDRESS,
       abi: ARCSIGNAL_ABI,
       functionName: 'getMarketIdByIndex',
       args: [BigInt(i)],
@@ -114,7 +118,7 @@ export async function POST(req: Request) {
         });
 
         const hash = await walletClient.writeContract({
-          address: ARCSIGNAL_ADDRESS as Address,
+          address: CONTRACT_ADDRESS,
           abi: ARCSIGNAL_ABI,
           functionName: 'createMarket',
           args: [marketId, 'CRYPTO', question, JSON.stringify(analysis), resolutionTime],
@@ -170,7 +174,7 @@ export async function POST(req: Request) {
         });
 
         const hash = await walletClient.writeContract({
-          address: ARCSIGNAL_ADDRESS as Address,
+          address: CONTRACT_ADDRESS,
           abi: ARCSIGNAL_ABI,
           functionName: 'createMarket',
           args: [marketId, 'FOOTBALL', question, JSON.stringify(analysis), resolutionTime],
