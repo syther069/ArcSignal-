@@ -142,30 +142,75 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
 
       {/* Analysis expand */}
       {expanded && (
-        <div className="mt-5 space-y-4 border-t border-[#1e293b] pt-5 text-sm text-[#94a3b8]">
-          <p>{market.analysis?.summary}</p>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div>
-              <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#4fdbc8] uppercase tracking-wider">
+        <div className="mt-5 space-y-5 border-t border-[#1e293b] pt-5 text-sm text-[#94a3b8]">
+          <p className="leading-relaxed">{market.analysis?.summary}</p>
+          
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="bg-[#1c1b1b] p-3 rounded-lg border border-[#1e293b]/50">
+              <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#4fdbc8] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#4fdbc8]"></span>
                 Bull Case
               </p>
-              <p className="mt-1 text-xs">{market.analysis?.bullCase}</p>
+              <p className="text-xs">{market.analysis?.bullCase}</p>
             </div>
-            <div>
-              <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#ffb4ab] uppercase tracking-wider">
+            <div className="bg-[#1c1b1b] p-3 rounded-lg border border-[#1e293b]/50">
+              <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#ffb4ab] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#ffb4ab]"></span>
                 Bear Case
               </p>
-              <p className="mt-1 text-xs">{market.analysis?.bearCase}</p>
+              <p className="text-xs">{market.analysis?.bearCase}</p>
             </div>
           </div>
-          <ul className="space-y-1.5 text-xs text-[#94a3b8]">
-            {market.analysis?.keyFactors?.map((factor) => (
-              <li key={factor} className="flex items-start gap-1.5">
-                <span className="text-[#ddb7ff] mt-0.5">›</span>
-                {factor}
-              </li>
-            ))}
-          </ul>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#ddb7ff] uppercase tracking-wider mb-2">Key Factors</p>
+              <ul className="space-y-1.5 text-xs">
+                {market.analysis?.keyFactors?.map((factor, i) => (
+                  <li key={`factor-${i}`} className="flex items-start gap-1.5">
+                    <span className="text-[#ddb7ff] mt-0.5">›</span>
+                    {factor}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#fcd34d] uppercase tracking-wider mb-2">Risk Factors</p>
+              <ul className="space-y-1.5 text-xs">
+                {market.analysis?.riskFactors?.map((risk, i) => (
+                  <li key={`risk-${i}`} className="flex items-start gap-1.5">
+                    <span className="text-[#fcd34d] mt-0.5">!</span>
+                    {risk}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 items-start border-t border-[#1e293b]/50 pt-4">
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8] uppercase tracking-wider">Model Confidence</p>
+                <span className="text-xs font-[family-name:var(--font-jetbrains-mono)] font-bold text-white">{market.analysis?.confidence ?? 0}%</span>
+              </div>
+              <div className="h-1.5 w-full bg-[#1e293b] rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-[#ddb7ff] to-[#4fdbc8]" 
+                  style={{ width: `${market.analysis?.confidence ?? 0}%` }}
+                ></div>
+              </div>
+            </div>
+            <div>
+              <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8] uppercase tracking-wider mb-2">Sources</p>
+              <div className="flex flex-wrap gap-2">
+                {market.analysis?.sources?.map((source, i) => (
+                  <span key={`source-${i}`} className="text-[10px] bg-[#1e293b] text-[#94a3b8] px-2 py-0.5 rounded border border-[#1e293b] font-[family-name:var(--font-jetbrains-mono)]">
+                    {source.length > 20 ? source.substring(0, 20) + '...' : source}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

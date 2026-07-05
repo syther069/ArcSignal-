@@ -26,13 +26,11 @@ export default function PortfolioClient() {
     
     try {
       const currentBlock = await publicClient.getBlockNumber();
-      // Our contract was deployed around block 50012000
       const DEPLOYMENT_BLOCK = 50012000n;
       
       let fromBlock = DEPLOYMENT_BLOCK;
       let allLogs: any[] = [];
 
-      // Fetch logs in chunks of 9999 to avoid RPC limits
       while (fromBlock <= currentBlock) {
         let toBlock = fromBlock + 9999n;
         if (toBlock > currentBlock) {
@@ -78,9 +76,7 @@ export default function PortfolioClient() {
         amountUsdc: formatUnits(s.amountUsdc, 6)
       }));
       
-      // Sort by newest (assuming logs order)
       finalStakes.reverse();
-
       setStakes(finalStakes);
     } catch (err) {
       console.error("Failed to fetch stakes:", err);
@@ -93,7 +89,6 @@ export default function PortfolioClient() {
     fetchPortfolio();
   }, [address, publicClient]);
 
-  // Multicall to get live on-chain status for each market
   const contractsToRead = stakes.flatMap(stake => [
     {
       address: ARCSIGNAL_ADDRESS,
@@ -129,8 +124,6 @@ export default function PortfolioClient() {
       });
       const hash = await walletClient.writeContract(request);
       await publicClient.waitForTransactionReceipt({ hash });
-      
-      // Refresh state
       await refetchChainData();
     } catch (err: any) {
       console.error('Claim failed:', err);
@@ -141,31 +134,49 @@ export default function PortfolioClient() {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-[#131313] text-[#e5e2e1]">
       <Sidebar />
       <main className="lg:ml-[264px] pt-24 px-6 md:px-8 pb-16 flex-1 min-w-0">
-        <h1 className="text-3xl font-bold text-white mb-2">PORTFOLIO</h1>
-        <p className="font-mono text-sm text-slate-400 mb-8 tracking-widest">ON-CHAIN POSITIONS</p>
+        {/* Header */}
+        <div className="mb-10">
+          <h1 className="font-[family-name:var(--font-hanken)] text-3xl font-bold text-white mb-2">Portfolio</h1>
+          <p className="font-[family-name:var(--font-jetbrains-mono)] text-sm text-[#94a3b8] tracking-widest uppercase">On-Chain Positions</p>
+        </div>
 
         {loading ? (
-          <div className="text-center p-12"><span className="animate-spin inline-block text-2xl text-[#38bdf8]">↻</span></div>
+          <div className="flex items-center justify-center p-16">
+            <div className="flex flex-col items-center gap-4">
+              <span className="w-8 h-8 rounded-full border-2 border-[#ddb7ff] border-t-transparent animate-spin"></span>
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#94a3b8] uppercase tracking-widest">Fetching positions...</span>
+            </div>
+          </div>
         ) : !address ? (
-          <div className="glass-card p-12 text-center text-slate-400 font-mono">PLEASE CONNECT WALLET TO VIEW PORTFOLIO</div>
+          <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-12 text-center">
+            <p className="font-[family-name:var(--font-jetbrains-mono)] text-sm text-[#94a3b8] tracking-widest">Please connect wallet to view portfolio</p>
+          </div>
         ) : stakes.length === 0 ? (
-          <div className="glass-card p-12 text-center text-slate-400 font-mono">NO OPEN POSITIONS</div>
+          <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-12 text-center">
+            <p className="font-[family-name:var(--font-hanken)] text-lg text-[#94a3b8] mb-2">No open positions</p>
+            <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#94a3b8]/60">Stake on a market to get started</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {stakes.map((stake, i) => {
               const marketObj = chainData?.[i * 2]?.result as any;
               const isClaimed = chainData?.[i * 2 + 1]?.result as boolean;
               
-              const isResolved = marketObj ? marketObj.resolved : stake.markets?.resolved;
-              const outcome = marketObj ? marketObj.outcome : 0;
+              const isResolved = marketObj ? marketObj.resolved : false;
+              // Contract: outcome 0 = FOLLOW wins, outcome 1 = FADE wins
+              const outcome = marketObj ? marketObj.outcome : -1;
               const sideText = stake.side === 0 ? 'FOLLOW' : 'FADE';
               const isFollow = stake.side === 0;
               
-              const userWon = isResolved && outcome === (stake.side + 1); // side 0 -> outcome 1, side 1 -> outcome 2
-              const userLost = isResolved && outcome !== (stake.side + 1) && outcome !== 0;
+              // Win: user's side (0=FOLLOW, 1=FADE) matches outcome (0=FOLLOW wins, 1=FADE wins)
+              const userWon = isResolved && outcome === stake.side;
+              const userLost = isResolved && outcome !== stake.side;
+
+              // AI always picks FOLLOW (side 0), so AI is correct when outcome is 0
+              const aiCorrect = isResolved && outcome === 0;
 
               let payoutAmount = 0;
               if (userWon && marketObj) {
@@ -177,52 +188,105 @@ export default function PortfolioClient() {
               }
 
               return (
-                <div key={stake.id} className="glass-card p-5 border-white/5 bg-[#101416]/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant={marketObj?.category || 'crypto'} label={marketObj?.category || 'MARKET'} />
-                      {isResolved ? (
-                        <Badge variant="resolved" label="RESOLVED" />
-                      ) : (
-                        <span className="bg-[#38bdf8]/10 text-[#38bdf8] px-2 py-0.5 font-mono text-[10px] rounded tracking-widest border border-[#38bdf8]/20 animate-pulse">LIVE</span>
-                      )}
+                <div
+                  key={stake.id}
+                  className={`bg-[#0f172a] border rounded-xl p-5 flex flex-col gap-4 transition-all ${
+                    userWon && !isClaimed
+                      ? 'border-[#4fdbc8]/40 shadow-[0_0_20px_rgba(79,219,200,0.05)]'
+                      : userLost
+                      ? 'border-[#1e293b]'
+                      : 'border-[#1e293b]'
+                  }`}
+                >
+                  {/* Top: Market info */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <Badge variant={marketObj?.category?.toLowerCase() || 'crypto'} label={marketObj?.category || 'MARKET'} />
+                        {isResolved ? (
+                          <Badge variant="resolved" label="RESOLVED" />
+                        ) : (
+                          <span className="bg-[#4fdbc8]/10 text-[#4fdbc8] px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] rounded tracking-widest border border-[#4fdbc8]/20 animate-pulse">LIVE</span>
+                        )}
+                        {isResolved && (
+                          <span className={`px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] rounded border tracking-widest ${
+                            aiCorrect
+                              ? 'bg-[#ddb7ff]/10 text-[#ddb7ff] border-[#ddb7ff]/20'
+                              : 'bg-[#ffb4ab]/10 text-[#ffb4ab] border-[#ffb4ab]/20'
+                          }`}>
+                            AI {aiCorrect ? '✓ CORRECT' : '✗ WRONG'}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-[family-name:var(--font-hanken)] font-bold text-white text-base leading-snug mb-1">
+                        {marketObj?.question || stake.marketId}
+                      </h3>
                     </div>
-                    <h3 className="font-bold text-white text-lg leading-tight mb-1">{marketObj?.question || stake.marketId}</h3>
-                    <p className="font-mono text-xs text-slate-500">Staked on: {new Date(stake.createdAt).toLocaleDateString()}</p>
                   </div>
 
-                  <div className="flex items-center gap-6 md:gap-12 bg-white/[0.02] p-4 rounded border border-white/5">
-                    <div className="flex flex-col items-center">
-                      <span className="font-mono text-[10px] text-slate-500 tracking-widest mb-1">POSITION</span>
-                      <span className={`font-mono font-bold tracking-widest ${isFollow ? 'text-[#34d399]' : 'text-[#f87171]'}`}>{sideText}</span>
+                  {/* Stats row */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-[#131313] border border-[#1e293b] rounded-lg p-3">
+                      <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#94a3b8] uppercase tracking-widest mb-1">Position</p>
+                      <p className={`font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm ${isFollow ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'}`}>
+                        {sideText}
+                      </p>
                     </div>
-                    <div className="flex flex-col items-center">
-                      <span className="font-mono text-[10px] text-slate-500 tracking-widest mb-1">STAKED</span>
-                      <span className="font-mono font-bold text-white">{Number(stake.amountUsdc).toFixed(2)} USDC</span>
+                    <div className="bg-[#131313] border border-[#1e293b] rounded-lg p-3">
+                      <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#94a3b8] uppercase tracking-widest mb-1">Staked</p>
+                      <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm text-white">
+                        {Number(stake.amountUsdc).toFixed(2)} <span className="text-[#94a3b8] text-xs">USDC</span>
+                      </p>
                     </div>
-                    <div className="flex flex-col items-center">
-                      <span className="font-mono text-[10px] text-slate-500 tracking-widest mb-1">STATUS</span>
+                    <div className="bg-[#131313] border border-[#1e293b] rounded-lg p-3">
+                      <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#94a3b8] uppercase tracking-widest mb-1">Outcome</p>
                       {!isResolved ? (
-                        <span className="font-mono font-bold text-slate-400">PENDING</span>
+                        <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm text-[#94a3b8]">PENDING</p>
                       ) : userWon ? (
-                        <span className="font-mono font-bold text-[#34d399]">WON {payoutAmount.toFixed(2)} USDC</span>
+                        <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm text-[#4fdbc8]">WON</p>
                       ) : (
-                        <span className="font-mono font-bold text-[#f87171]">LOST</span>
+                        <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm text-[#ffb4ab]">LOST</p>
+                      )}
+                    </div>
+                    <div className="bg-[#131313] border border-[#1e293b] rounded-lg p-3">
+                      <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#94a3b8] uppercase tracking-widest mb-1">
+                        {userWon ? 'Payout' : 'P&L'}
+                      </p>
+                      {!isResolved ? (
+                        <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm text-[#94a3b8]">—</p>
+                      ) : userWon ? (
+                        <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm text-[#4fdbc8]">
+                          +{payoutAmount.toFixed(2)} <span className="text-xs">USDC</span>
+                        </p>
+                      ) : (
+                        <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm text-[#ffb4ab]">
+                          -{Number(stake.amountUsdc).toFixed(2)} <span className="text-xs">USDC</span>
+                        </p>
                       )}
                     </div>
                   </div>
 
+                  {/* Claim / Claimed */}
                   {userWon && !isClaimed && (
                     <button
                       onClick={() => handleClaim(stake.marketId)}
                       disabled={claiming[stake.marketId]}
-                      className="px-6 py-4 bg-[#34d399]/20 hover:bg-[#34d399]/30 text-[#34d399] font-mono text-sm font-bold tracking-widest rounded border border-[#34d399]/30 transition-all flex items-center justify-center min-w-[140px]"
+                      className="w-full md:w-auto self-end px-6 py-3 bg-[#4fdbc8]/15 hover:bg-[#4fdbc8]/25 text-[#4fdbc8] font-[family-name:var(--font-jetbrains-mono)] text-sm font-bold tracking-widest rounded-lg border border-[#4fdbc8]/40 transition-all flex items-center justify-center gap-2"
                     >
-                      {claiming[stake.marketId] ? 'CLAIMING...' : 'CLAIM REWARD'}
+                      {claiming[stake.marketId] ? (
+                        <>
+                          <span className="w-4 h-4 rounded-full border-2 border-[#4fdbc8] border-t-transparent animate-spin"></span>
+                          CLAIMING...
+                        </>
+                      ) : (
+                        <>
+                          ↑ CLAIM {payoutAmount.toFixed(2)} USDC
+                        </>
+                      )}
                     </button>
                   )}
                   {userWon && isClaimed && (
-                    <div className="px-6 py-4 bg-transparent text-slate-500 font-mono text-sm font-bold tracking-widest rounded border border-white/10 flex items-center justify-center min-w-[140px]">
+                    <div className="w-full md:w-auto self-end px-6 py-3 bg-transparent text-[#94a3b8] font-[family-name:var(--font-jetbrains-mono)] text-sm font-bold tracking-widest rounded-lg border border-[#1e293b] flex items-center justify-center gap-2">
                       ✓ CLAIMED
                     </div>
                   )}

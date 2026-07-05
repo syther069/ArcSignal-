@@ -9,10 +9,12 @@ import { formatUnits } from 'viem';
 import ConnectWalletButton from '../wallet/ConnectWalletButton';
 import Logo from '../ui/Logo';
 import { Search, Layout, Bell, Settings, Menu, X } from 'lucide-react';
+import { useUnclaimedWinnings } from '@/hooks/useUnclaimedWinnings';
 
 export default function Navbar() {
   const pathname = usePathname();
   const { address, isConnected } = useAccount();
+  const unclaimedCount = useUnclaimedWinnings();
   const { data: usdcRaw } = useReadContract({
     address: USDC_ADDRESS,
     abi: USDC_ABI,
@@ -83,9 +85,17 @@ export default function Navbar() {
             <button className="hover:text-[#e5e2e1] transition-colors">
               <Layout className="w-5 h-5" />
             </button>
-            <button className="hover:text-[#e5e2e1] transition-colors">
+            <Link href="/portfolio" className="relative hover:text-[#e5e2e1] transition-colors">
               <Bell className="w-5 h-5" />
-            </button>
+              {unclaimedCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ffb4ab] opacity-60"></span>
+                  <span className="relative flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#ffb4ab] text-[#131313] font-bold" style={{ fontSize: '8px' }}>
+                    {unclaimedCount > 9 ? '9+' : unclaimedCount}
+                  </span>
+                </span>
+              )}
+            </Link>
             <button className="hover:text-[#e5e2e1] transition-colors">
               <Settings className="w-5 h-5" />
             </button>
