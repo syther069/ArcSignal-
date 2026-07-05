@@ -2,17 +2,20 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAccount, useReadContract } from 'wagmi';
+import { useDebounce } from '@/hooks/useDebounce';
 import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import { formatUnits } from 'viem';
 import ConnectWalletButton from '../wallet/ConnectWalletButton';
 import Logo from '../ui/Logo';
 import { Search, Layout, Bell, Settings, Menu, X } from 'lucide-react';
 import { useUnclaimedWinnings } from '@/hooks/useUnclaimedWinnings';
+import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { address, isConnected } = useAccount();
   const unclaimedCount = useUnclaimedWinnings();
   const { data: usdcRaw } = useReadContract({
@@ -35,6 +38,20 @@ export default function Navbar() {
     { name: 'Analytics', href: '/analytics' },
     { name: 'Docs',      href: '/docs' },
   ];
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 500);
+
+  const { data: searchAddressResult, isFetching: isSearching } = useReadContract({
+    address: ARCSIGNAL_ADDRESS,
+    abi: ARCSIGNAL_ABI,
+    functionName: 'getAddressByUsername',
+    args: debouncedSearch ? [debouncedSearch] : undefined,
+    query: { enabled: debouncedSearch.length > 0 },
+  });
+
+  const searchAddress = searchAddressResult as string | undefined;
+  const hasResult = searchAddress && searchAddress !== '0x0000000000000000000000000000000000000000';
 
   return (
     <header className="fixed top-0 w-full z-50 bg-[#131313] border-b border-[#1e293b] shadow-2xl shadow-black/40">
@@ -76,9 +93,38 @@ export default function Navbar() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8] w-4 h-4" />
             <input
               type="text"
-              placeholder="Search markets..."
+              placeholder="Search user..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-64 bg-[#0f172a] border border-[#1e293b] rounded-lg py-2 pl-9 pr-4 text-sm focus:outline-none focus:border-[#ddb7ff]/50 text-[#e5e2e1] placeholder:text-[#94a3b8] transition-colors"
             />
+            {debouncedSearch.length > 0 && (
+              <div className="absolute top-full mt-2 w-full bg-[#0f172a] border border-[#1e293b] rounded-lg shadow-xl p-2 z-50">
+                {isSearching ? (
+                  <div className="text-xs text-[#94a3b8] p-2">Searching...</div>
+                ) : hasResult ? (
+                  <button
+                    onClick={() => {
+                      router.push(`/profile/${searchAddress}`);
+                      setSearchQuery('');
+                    }}
+                    className="w-full text-left p-2 hover:bg-[#1e293b] rounded-md transition-colors flex items-center gap-2"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-[#ddb7ff]/20 text-[#ddb7ff] flex items-center justify-center text-[10px] font-bold">
+                      {searchAddress.slice(2,4).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm text-[#e5e2e1]">{debouncedSearch}</p>
+                      <p className="text-xs text-[#94a3b8] font-[family-name:var(--font-jetbrains-mono)]">
+                        {searchAddress.slice(0,6)}...{searchAddress.slice(-4)}
+                      </p>
+                    </div>
+                  </button>
+                ) : (
+                  <div className="text-xs text-[#94a3b8] p-2">No user found</div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-4 text-[#94a3b8]">

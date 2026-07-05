@@ -38,10 +38,14 @@ export const ARCSIGNAL_ABI = parseAbi([
   'function followStakes(string marketId, address user) external view returns (uint256)',
   'function fadeStakes(string marketId, address user) external view returns (uint256)',
   'function claimed(string marketId, address user) external view returns (bool)',
+  'function setProfile(string username, string bio, string avatarUrl) external',
+  'function getAddressByUsername(string username) external view returns (address)',
+  'function getProfile(address user) external view returns ((string username, string bio, string avatarUrl))',
   'event MarketCreated(string marketId, string category, string question, uint256 resolutionTime)',
   'event Staked(string marketId, address user, uint8 side, uint256 amount)',
   'event MarketResolved(string marketId, uint8 outcome)',
   'event Claimed(string marketId, address user, uint256 amount)',
+  'event ProfileUpdated(address indexed user, string username, string bio, string avatarUrl)',
 ]);
 
 export const USDC_ABI = parseAbi([

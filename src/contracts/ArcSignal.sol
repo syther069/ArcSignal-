@@ -25,10 +25,19 @@ contract ARCSignal is Ownable {
     mapping(string => mapping(address => uint256)) public fadeStakes;
     mapping(string => mapping(address => bool)) public claimed;
 
+    struct UserProfile {
+        string username;
+        string bio;
+        string avatarUrl;
+    }
+    mapping(address => UserProfile) public profiles;
+    mapping(string => address) public usernameToAddress;
+
     event MarketCreated(string marketId, string category, string question, uint256 resolutionTime);
     event Staked(string marketId, address user, uint8 side, uint256 amount);
     event MarketResolved(string marketId, uint8 outcome);
     event Claimed(string marketId, address user, uint256 amount);
+    event ProfileUpdated(address indexed user, string username, string bio, string avatarUrl);
 
     constructor(address _usdc) Ownable(msg.sender) {
         usdc = IERC20(_usdc);
@@ -139,5 +148,28 @@ contract ARCSignal is Ownable {
 
     function getAllMarketIds() external view returns (string[] memory) {
         return marketIds;
+    }
+
+    function setProfile(string calldata username, string calldata bio, string calldata avatarUrl) external {
+        string memory oldUsername = profiles[msg.sender].username;
+        if (bytes(oldUsername).length > 0) {
+            delete usernameToAddress[oldUsername];
+        }
+        
+        if (bytes(username).length > 0) {
+            require(usernameToAddress[username] == address(0) || usernameToAddress[username] == msg.sender, "Username taken");
+            usernameToAddress[username] = msg.sender;
+        }
+        
+        profiles[msg.sender] = UserProfile(username, bio, avatarUrl);
+        emit ProfileUpdated(msg.sender, username, bio, avatarUrl);
+    }
+
+    function getAddressByUsername(string calldata username) external view returns (address) {
+        return usernameToAddress[username];
+    }
+    
+    function getProfile(address user) external view returns (UserProfile memory) {
+        return profiles[user];
     }
 }
