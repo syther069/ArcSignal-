@@ -1,8 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron/generate",
-      "schedule": "0 0 * * *"
+      "path": "/api/cron/maintain",
+      "schedule": "0 * * * *"
     }
   ]
 }
