@@ -2,10 +2,9 @@
 
 import React from 'react';
 import Sidebar from '@/components/layout/Sidebar';
-import { StatCard } from '@/components/ui/StatCard';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, PieChart, Pie, Cell, Legend
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  LineChart, Line
 } from 'recharts';
 
 interface AnalyticsClientProps {
@@ -18,169 +17,275 @@ interface AnalyticsClientProps {
     avgConfidence: number;
     activeMarkets: number;
     totalStakes: number;
+    
+    totalStakedUsdc?: number;
+    pendingCount?: number;
+    totalMarkets?: number;
+    aiAccuracy?: number;
+    resolvedCount?: number;
+    followPercent?: number;
+    fadePercent?: number;
   };
+  resolvedMarkets?: any[];
+  markets?: any[];
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-[#0a1628] border border-white/10 p-3 shadow-xl rounded font-mono text-xs">
-        <p className="text-slate-400 mb-1">{label}</p>
-        <p className="text-[#38bdf8] font-bold">
-          {payload[0].name === 'volume' || payload[0].name === 'value' 
-            ? `$${payload[0].value.toLocaleString()}` 
-            : `${payload[0].value}%`}
-        </p>
+const StatCardCustom = ({ title, value, subtext, icon, emptyMsg }: any) => (
+  <div className="bg-surface-charcoal border border-border-subtle p-6 relative overflow-hidden flex flex-col h-full rounded">
+    <div className="absolute top-4 right-4 opacity-5 text-[64px] material-symbols-outlined pointer-events-none">
+      {icon}
+    </div>
+    <div className="text-text-muted font-headline-md mb-4">{title}</div>
+    {value === null || value === undefined || value === 0 || value === '0 USDC' ? (
+      <div className="text-text-muted font-code-sm mt-auto">{emptyMsg}</div>
+    ) : (
+      <div className="mt-auto">
+        <div className="text-primary font-code-sm text-3xl mb-1">{value}</div>
+        {subtext && <div className="text-text-muted font-label-caps">{subtext}</div>}
       </div>
-    );
-  }
-  return null;
-};
+    )}
+  </div>
+);
 
 export default function AnalyticsClient({
   agentWinRates,
   volumeData,
   ratioData,
   topMarketsData,
-  stats
+  stats,
+  resolvedMarkets,
+  markets
 }: AnalyticsClientProps) {
 
+  const totalStakedUsdc = stats.totalStakedUsdc ?? stats.totalVolume ?? 0;
+  const pendingCount = stats.pendingCount ?? stats.activeMarkets ?? 0;
+  const totalMarkets = stats.totalMarkets ?? stats.activeMarkets ?? 0;
+  const aiAccuracy = stats.aiAccuracy ?? (agentWinRates.length > 0 ? agentWinRates[0].rate : null);
+  const resolvedCount = stats.resolvedCount ?? 0;
+  
+  const followVal = ratioData[0]?.value || 0;
+  const fadeVal = ratioData[1]?.value || 0;
+  const totalRatio = followVal + fadeVal;
+  const followPercent = stats.followPercent ?? (totalRatio > 0 ? Math.round((followVal / totalRatio) * 100) : 0);
+  const fadePercent = stats.fadePercent ?? (totalRatio > 0 ? Math.round((fadeVal / totalRatio) * 100) : 0);
+
   return (
-    <div className="flex min-h-screen bg-[#101416]">
+    <div className="flex min-h-screen bg-[#131313]">
+      <style dangerouslySetInnerHTML={{ __html: `
+        .chart-grid {
+          background-image: linear-gradient(to right, #1e293b 1px, transparent 1px),
+                            linear-gradient(to bottom, #1e293b 1px, transparent 1px);
+          background-size: 24px 24px;
+        }
+        .bg-surface-charcoal { background-color: #1c1b1b; }
+        .border-border-subtle { border-color: #1e293b; }
+        .text-primary { color: #ddb7ff; }
+        .text-tertiary { color: #4fdbc8; }
+        .text-error { color: #ffb4ab; }
+        .text-text-muted { color: #94a3b8; }
+        .font-code-sm { font-family: var(--font-jetbrains-mono), monospace; font-size: 0.875rem; }
+        .font-label-caps { font-family: var(--font-inter), sans-serif; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .font-headline-md { font-family: var(--font-hanken), sans-serif; font-size: 1.125rem; font-weight: 700; }
+        .font-headline-lg { font-family: var(--font-hanken), sans-serif; font-size: 1.5rem; font-weight: 700; }
+      `}} />
+      
       <Sidebar />
 
       <main className="flex-1 lg:ml-[264px] pt-24 px-8 pb-16 overflow-y-auto min-h-screen">
-        {/* Header Section */}
-        <div className="mb-12">
-          <h1 className="text-[32px] font-black tracking-tight text-[#38bdf8] mb-1 italic flex items-center gap-3">
-            <span className="material-symbols-outlined text-[32px]">query_stats</span>
-            NETWORK ANALYTICS
-          </h1>
-          <p className="font-mono text-sm text-slate-400">
-            Platform-wide metrics, agent performance, and liquidity flows.
-          </p>
-        </div>
-
-        {/* Stat Cards Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard
-            label="TOTAL VOLUME"
-            value={`$${(stats.totalVolume / 1000).toFixed(1)}K`}
-            change="+14.2%"
-            changePositive={true}
+        
+        {/* Section 1: Stat Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 h-[160px]">
+          <StatCardCustom 
+            title="Total Volume Staked" 
+            value={totalStakedUsdc ? `${totalStakedUsdc} USDC` : null} 
+            emptyMsg="No stakes yet" 
+            icon="monitoring" 
           />
-          <StatCard
-            label="TOTAL STAKES"
-            value={stats.totalStakes.toLocaleString()}
-            change="+82 today"
-            changePositive={true}
+          <StatCardCustom 
+            title="Active Markets" 
+            value={pendingCount} 
+            subtext={`of ${totalMarkets} total`} 
+            icon="query_stats" 
+            emptyMsg="0" 
           />
-          <StatCard
-            label="ACTIVE MARKETS"
-            value={stats.activeMarkets.toString()}
-            change="Stable"
-            changePositive={true}
+          <StatCardCustom 
+            title="AI Win Rate" 
+            value={aiAccuracy !== null ? `${aiAccuracy}%` : null} 
+            emptyMsg="Pending first resolution" 
+            icon="psychology" 
           />
-          <StatCard
-            label="AVG AGENT CONFIDENCE"
-            value={`${stats.avgConfidence}%`}
-            change="+1.2%"
-            changePositive={true}
+          <StatCardCustom 
+            title="Markets Resolved" 
+            value={resolvedCount} 
+            emptyMsg="0" 
+            icon="done_all" 
           />
         </div>
 
-        {/* Charts 2x2 Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          
-          {/* Chart 1: Staking Volume Over Time */}
-          <div className="glass-card p-6 bg-[#0f1f38] border-white/5">
-            <h3 className="font-mono text-sm font-bold text-slate-300 mb-6 tracking-widest uppercase">
-              Staking Volume (7D)
-            </h3>
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={volumeData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                  <XAxis dataKey="date" stroke="rgba(255,255,255,0.2)" tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'monospace' }} />
-                  <YAxis stroke="rgba(255,255,255,0.2)" tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'monospace' }} tickFormatter={(val) => `$${val/1000}k`} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line type="monotone" dataKey="volume" stroke="#38bdf8" strokeWidth={3} dot={{ r: 4, fill: '#0f1f38', stroke: '#38bdf8', strokeWidth: 2 }} activeDot={{ r: 6, fill: '#38bdf8' }} />
-                </LineChart>
-              </ResponsiveContainer>
+        {/* Section 2: Bento Grid top */}
+        <div className="grid grid-cols-12 gap-6 mb-6">
+          <div className="col-span-12 lg:col-span-8 bg-surface-charcoal border border-border-subtle p-6 rounded relative overflow-hidden chart-grid min-h-[360px] flex flex-col">
+            <h3 className="font-headline-lg text-primary mb-6">AI Performance Accuracy</h3>
+            <div className="flex-1 w-full">
+              {(!resolvedMarkets || resolvedMarkets.length === 0) ? (
+                <div className="h-full flex items-center justify-center text-text-muted font-code-sm">
+                  Resolving first markets — check back soon
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={resolvedMarkets} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="resolutionDate" stroke="#94a3b8" tick={{ fontSize: 12 }} />
+                    <YAxis stroke="#94a3b8" tick={{ fontSize: 12 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1c1b1b', borderColor: '#1e293b' }} />
+                    <Line type="monotone" dataKey="cryptoAccuracy" stroke="#ddb7ff" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="footballAccuracy" stroke="#4fdbc8" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
-          {/* Chart 2: Follow vs Fade Ratio */}
-          <div className="glass-card p-6 bg-[#0f1f38] border-white/5">
-            <h3 className="font-mono text-sm font-bold text-slate-300 mb-6 tracking-widest uppercase">
-              Global Pool Ratio
-            </h3>
-            <div className="h-[300px] w-full flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={ratioData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={80}
-                    outerRadius={110}
-                    paddingAngle={5}
-                    dataKey="value"
-                    stroke="none"
-                  >
-                    {ratioData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontFamily: 'monospace', fontSize: '12px', color: '#94a3b8' }} />
-                </PieChart>
-              </ResponsiveContainer>
-              {/* Center Text overlay */}
-              <div className="absolute flex flex-col items-center justify-center pointer-events-none mb-8">
-                 <span className="text-white font-bold text-xl">{Math.round((ratioData[0].value / (ratioData[0].value + ratioData[1].value)) * 100)}%</span>
-                 <span className="font-mono text-[10px] text-[#34d399] tracking-widest">FOLLOW</span>
+          <div className="col-span-12 lg:col-span-4 bg-surface-charcoal border border-border-subtle p-6 rounded flex flex-col items-center min-h-[360px]">
+            <h3 className="font-headline-lg text-primary w-full text-left mb-auto">Follow vs Fade</h3>
+            {(stats.totalStakes === 0 && !totalStakedUsdc) ? (
+              <div className="flex-1 flex items-center justify-center text-text-muted font-code-sm">
+                No positions placed yet
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="relative w-48 h-48 my-auto">
+                  <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+                    <path
+                      className="text-tertiary"
+                      strokeDasharray={`${fadePercent}, 100`}
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="text-primary"
+                      strokeDasharray={`${followPercent}, 100`}
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      strokeDashoffset={-fadePercent}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="font-code-sm text-3xl text-primary">{followPercent > fadePercent ? followPercent : fadePercent}%</span>
+                  </div>
+                </div>
+                <div className="flex gap-6 w-full justify-center mt-auto font-label-caps">
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-primary"></div> FOLLOW {followPercent}%</div>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-tertiary"></div> FADE {fadePercent}%</div>
+                </div>
+              </>
+            )}
           </div>
-
-          {/* Chart 3: Agent Win Rate by Category */}
-          <div className="glass-card p-6 bg-[#0f1f38] border-white/5">
-            <h3 className="font-mono text-sm font-bold text-slate-300 mb-6 tracking-widest uppercase">
-              Agent Win Rate by Sector
-            </h3>
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={agentWinRates} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                  <XAxis dataKey="category" stroke="rgba(255,255,255,0.2)" tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'monospace' }} />
-                  <YAxis stroke="rgba(255,255,255,0.2)" domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'monospace' }} tickFormatter={(val) => `${val}%`} />
-                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.02)' }} content={<CustomTooltip />} />
-                  <Bar dataKey="rate" fill="#818cf8" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Chart 4: Top Markets by Volume (Horizontal Bar) */}
-          <div className="glass-card p-6 bg-[#0f1f38] border-white/5">
-            <h3 className="font-mono text-sm font-bold text-slate-300 mb-6 tracking-widest uppercase">
-              Top Markets by Volume
-            </h3>
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topMarketsData} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
-                  <XAxis type="number" stroke="rgba(255,255,255,0.2)" tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'monospace' }} tickFormatter={(val) => `$${val/1000}k`} />
-                  <YAxis type="category" dataKey="name" stroke="none" tick={{ fill: '#e2e8f0', fontSize: 11, fontWeight: 'bold' }} width={120} />
-                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.02)' }} content={<CustomTooltip />} />
-                  <Bar dataKey="volume" fill="#38bdf8" radius={[0, 4, 4, 0]} barSize={24} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
         </div>
+
+        {/* Section 3: Bento Grid bottom */}
+        <div className="grid grid-cols-12 gap-6 mb-6">
+          <div className="col-span-12 lg:col-span-8 bg-surface-charcoal border border-border-subtle p-6 rounded min-h-[320px] flex flex-col">
+            <h3 className="font-headline-lg text-primary mb-6">Top Markets by Volume</h3>
+            <div className="flex-1 w-full">
+              {(!markets || markets.length === 0 || markets.every(m => (m.followPool + m.fadePool) === 0)) ? (
+                <div className="h-full flex items-center justify-center text-text-muted font-code-sm">
+                  No stakes placed yet
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[...markets].sort((a,b)=>(b.followPool+b.fadePool)-(a.followPool+a.fadePool))} layout="vertical" margin={{ left: 0 }}>
+                    <XAxis type="number" hide />
+                    <YAxis type="category" dataKey={(m) => m.title?.length > 40 ? m.title.substring(0, 40) + '...' : m.title} width={180} tick={{ fill: '#e5e2e1', fontSize: 11 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1c1b1b', borderColor: '#1e293b' }} formatter={(val) => `${val} USDC`} />
+                    <Bar dataKey={(m) => m.followPool + m.fadePool} fill="#ddb7ff" radius={[0, 4, 4, 0]} barSize={24} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          <div className="col-span-12 lg:col-span-4 bg-surface-charcoal border border-border-subtle p-6 rounded min-h-[320px] flex flex-col">
+            <h3 className="font-headline-lg text-primary mb-6">Recent Resolved</h3>
+            <div className="flex flex-col gap-4 flex-1">
+              {(!resolvedMarkets || resolvedMarkets.length === 0) ? (
+                <div className="flex-1 flex items-center justify-center text-text-muted font-code-sm">
+                  No resolved markets yet
+                </div>
+              ) : (
+                resolvedMarkets.slice(0, 5).map((rm, i) => (
+                  <div key={i} className="flex justify-between items-center border-b border-border-subtle pb-3 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <span className="font-code-sm text-text-muted">#{i + 1}</span>
+                      <span className="text-sm truncate w-[140px]" title={rm.title}>{rm.title?.length > 40 ? rm.title.substring(0, 40) + '...' : rm.title}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`font-label-caps px-2 py-1 rounded ${rm.outcome === 'FOLLOW' ? 'bg-[#ddb7ff]/10 text-primary' : 'bg-[#4fdbc8]/10 text-tertiary'}`}>
+                        {rm.outcome}
+                      </span>
+                      {rm.aiCorrect ? <span className="text-tertiary material-symbols-outlined text-sm">check_circle</span> : <span className="text-error material-symbols-outlined text-sm">cancel</span>}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Section 4: Market Activity */}
+        <div className="col-span-12 bg-surface-charcoal border border-border-subtle p-6 rounded mt-6">
+          <h3 className="font-headline-lg text-primary mb-6">Market Activity</h3>
+          {(!markets || markets.length === 0) ? (
+            <div className="w-full py-12 flex items-center justify-center text-text-muted font-code-sm">
+              No market activity found
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[800px]">
+                <thead>
+                  <tr className="border-b border-border-subtle text-text-muted font-label-caps">
+                    <th className="py-3 font-normal">Market Title</th>
+                    <th className="py-3 font-normal">Category</th>
+                    <th className="py-3 font-normal">AI Signal</th>
+                    <th className="py-3 font-normal">Total Staked</th>
+                    <th className="py-3 font-normal">Outcome</th>
+                    <th className="py-3 font-normal">Resolution Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {markets.map((m, i) => (
+                    <tr key={i} className="border-b border-border-subtle/50 last:border-0 text-sm hover:bg-white/[0.02] transition-colors">
+                      <td className="py-4 font-medium pr-4">{m.title}</td>
+                      <td className="py-4"><span className="bg-[#1e293b] text-text-muted px-2 py-1 rounded text-xs uppercase tracking-wider">{m.category}</span></td>
+                      <td className="py-4 font-code-sm text-primary">{m.aiSignal || 'PENDING'}</td>
+                      <td className="py-4 font-code-sm">{(m.followPool + m.fadePool).toLocaleString()} USDC</td>
+                      <td className="py-4"><span className="font-label-caps px-2 py-1 bg-[#1e293b] rounded">{m.outcome || 'PENDING'}</span></td>
+                      <td className="py-4 font-code-sm text-text-muted">{m.resolutionDate || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <footer className="mt-12 flex justify-between items-center py-6 border-t border-border-subtle text-xs font-label-caps text-text-muted">
+          <div className="flex items-center gap-2">
+            NETWORK: ARC TESTNET
+            <div className="w-2 h-2 rounded-full bg-tertiary animate-pulse"></div>
+            SYNCHRONIZED
+          </div>
+          <div className="flex gap-4">
+            <a href="#" className="hover:text-primary transition-colors">DOCS</a>
+            <a href="#" className="hover:text-primary transition-colors">PRIVACY</a>
+            <a href="#" className="hover:text-primary transition-colors">TERMS</a>
+          </div>
+        </footer>
+
       </main>
     </div>
   );
