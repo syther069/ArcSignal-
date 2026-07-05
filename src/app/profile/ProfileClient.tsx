@@ -205,18 +205,51 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
   // ─── Edit Modal ─────────────────────────────────────────────────────────────
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ username: '', bio: '', avatarUrl: '' });
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const { writeContractAsync, isPending: isSaving } = useWriteContract();
 
   const handleEditClick = () => {
     setEditForm({ username, bio, avatarUrl });
+    setAvatarPreview(avatarUrl || null);
     setIsEditing(true);
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Show local preview immediately
+    const localUrl = URL.createObjectURL(file);
+    setAvatarPreview(localUrl);
+
+    // Upload to imgbb for a permanent public URL
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      // Public free imgbb API key (no account required for basic uploads)
+      const res = await fetch('https://api.imgbb.com/1/upload?key=2c45e0f5e98e44a1de5d7c1c2e7fc870', {
+        method: 'POST',
+        body: formData,
+      });
+      const json = await res.json();
+      if (json.success) {
+        setEditForm(f => ({ ...f, avatarUrl: json.data.url }));
+        setAvatarPreview(json.data.url);
+      }
+    } catch (err) {
+      console.error('Upload failed, keeping local preview', err);
+    }
+    setIsUploading(false);
   };
 
   const handleSave = async () => {
     if (!targetAddress) return;
     try {
-      const tx = await writeContractAsync({
+      await writeContractAsync({
         address: ARCSIGNAL_ADDRESS,
         abi: ARCSIGNAL_ABI,
         functionName: 'setProfile',
@@ -407,47 +440,161 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
 
       {/* ─── Edit Modal Overlay ─── */}
       {isEditing && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-surface-charcoal border border-border-subtle rounded-2xl w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-border-subtle flex justify-between items-center">
-              <h2 className="text-lg font-headline-md">Edit Profile</h2>
-              <button onClick={() => setIsEditing(false)} className="text-text-muted hover:text-white">✕</button>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.80)', backdropFilter: 'blur(8px)' }}
+        >
+          <div
+            className="relative w-full max-w-[520px] overflow-hidden rounded-lg shadow-2xl"
+            style={{ background: '#131313', border: '1px solid #3a3939' }}
+          >
+            {/* Header */}
+            <div
+              className="flex items-center justify-between px-6 py-5"
+              style={{ borderBottom: '1px solid #3a3939' }}
+            >
+              <h2 className="text-xl font-bold tracking-tight text-white uppercase" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
+                Edit Profile
+              </h2>
+              <button
+                onClick={() => setIsEditing(false)}
+                className="transition-colors hover:text-white"
+                style={{ color: '#8e8e8e' }}
+                type="button"
+              >
+                <svg fill="none" height="20" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="20">
+                  <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                </svg>
+              </button>
             </div>
-            <div className="p-6 flex flex-col gap-4">
-              <div>
-                <label className="text-xs font-label-caps text-text-muted block mb-1">Username</label>
+
+            {/* Form Body */}
+            <div className="p-6 space-y-6">
+
+              {/* Avatar Upload */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: '#8e8e8e', fontFamily: 'JetBrains Mono, monospace' }}>
+                  Avatar
+                </label>
+                <div className="flex items-center gap-4">
+                  {/* Preview */}
+                  <div
+                    className="w-16 h-16 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center"
+                    style={{ background: '#1c1b1b', border: '1px solid #3a3939' }}
+                  >
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt="Avatar preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <svg fill="none" height="24" stroke="#8e8e8e" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24" width="24">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                      </svg>
+                    )}
+                  </div>
+                  {/* Upload button */}
+                  <div className="flex flex-col gap-2 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="w-full px-4 py-2.5 text-sm font-bold uppercase tracking-wider rounded transition-all"
+                      style={{
+                        background: '#1c1b1b',
+                        border: '1px solid #3a3939',
+                        color: isUploading ? '#8e8e8e' : 'white',
+                        fontFamily: 'JetBrains Mono, monospace',
+                      }}
+                    >
+                      {isUploading ? 'Uploading…' : 'Upload Photo'}
+                    </button>
+                    <p className="text-[10px] uppercase tracking-wider" style={{ color: '#8e8e8e', fontFamily: 'JetBrains Mono, monospace' }}>
+                      Supports .jpg, .png and .gif
+                    </p>
+                  </div>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </div>
+
+              {/* Username */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: '#8e8e8e', fontFamily: 'JetBrains Mono, monospace' }}>
+                  Username
+                </label>
                 <input
                   type="text"
                   value={editForm.username}
-                  onChange={e => setEditForm({...editForm, username: e.target.value})}
-                  className="w-full bg-surface-base border border-border-subtle rounded-lg px-4 py-2 font-code-sm outline-none focus:border-primary transition-colors"
+                  onChange={e => setEditForm({ ...editForm, username: e.target.value })}
                   placeholder="elite_operator"
+                  className="w-full text-white text-sm px-4 py-3 rounded outline-none transition-all"
+                  style={{
+                    background: '#0e0e0e',
+                    border: '1px solid #3a3939',
+                    fontFamily: 'JetBrains Mono, monospace',
+                  }}
+                  onFocus={e => (e.target.style.borderColor = '#a855f7')}
+                  onBlur={e => (e.target.style.borderColor = '#3a3939')}
                 />
               </div>
-              <div>
-                <label className="text-xs font-label-caps text-text-muted block mb-1">Bio</label>
+
+              {/* Bio */}
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: '#8e8e8e', fontFamily: 'JetBrains Mono, monospace' }}>
+                  Bio
+                </label>
                 <textarea
                   value={editForm.bio}
-                  onChange={e => setEditForm({...editForm, bio: e.target.value})}
-                  className="w-full bg-surface-base border border-border-subtle rounded-lg px-4 py-2 text-sm outline-none focus:border-primary transition-colors min-h-[80px]"
+                  onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
                   placeholder="Tell us about your strategy..."
+                  rows={4}
+                  className="w-full text-white text-sm px-4 py-3 rounded outline-none transition-all resize-none"
+                  style={{
+                    background: '#0e0e0e',
+                    border: '1px solid #3a3939',
+                    fontFamily: 'JetBrains Mono, monospace',
+                  }}
+                  onFocus={e => (e.target.style.borderColor = '#a855f7')}
+                  onBlur={e => (e.target.style.borderColor = '#3a3939')}
                 />
               </div>
-              <div>
-                <label className="text-xs font-label-caps text-text-muted block mb-1">Avatar URL</label>
-                <input
-                  type="text"
-                  value={editForm.avatarUrl}
-                  onChange={e => setEditForm({...editForm, avatarUrl: e.target.value})}
-                  className="w-full bg-surface-base border border-border-subtle rounded-lg px-4 py-2 font-code-sm text-xs outline-none focus:border-primary transition-colors"
-                  placeholder="https://example.com/avatar.png"
-                />
-              </div>
+
             </div>
-            <div className="p-6 border-t border-border-subtle bg-surface-base flex justify-end gap-3">
-              <button onClick={() => setIsEditing(false)} className="px-6 py-2 rounded-lg border border-border-subtle text-sm font-label-caps hover:bg-white/5">Cancel</button>
-              <button onClick={handleSave} disabled={isSaving} className="px-6 py-2 rounded-lg bg-primary text-black text-sm font-label-caps disabled:opacity-50">
-                {isSaving ? 'Saving...' : 'Save Profile'}
+
+            {/* Footer */}
+            <div
+              className="flex items-center justify-end gap-4 px-6 py-5"
+              style={{ borderTop: '1px solid #3a3939' }}
+            >
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className="px-6 py-2.5 text-sm font-bold uppercase tracking-wider rounded transition-all"
+                style={{
+                  border: '1px solid #3a3939',
+                  color: 'white',
+                  fontFamily: 'JetBrains Mono, monospace',
+                }}
+                onMouseEnter={e => ((e.target as HTMLElement).style.background = 'rgba(255,255,255,0.05)')}
+                onMouseLeave={e => ((e.target as HTMLElement).style.background = 'transparent')}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving || isUploading}
+                className="px-8 py-2.5 text-white text-sm font-bold uppercase tracking-wider rounded transition-all active:scale-[0.98] disabled:opacity-50"
+                style={{
+                  background: '#a855f7',
+                  boxShadow: '0 0 15px rgba(168,85,247,0.3)',
+                  fontFamily: 'JetBrains Mono, monospace',
+                }}
+              >
+                {isSaving ? 'Saving…' : 'Save Profile'}
               </button>
             </div>
           </div>
