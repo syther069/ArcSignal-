@@ -19,11 +19,6 @@ function resolutionTimestamp(hoursFromNow: number): bigint {
   return BigInt(Math.floor(Date.now() / 1000) + hoursFromNow * 3600);
 }
 
-function priceTarget(current: number): number {
-  const magnitude = Math.pow(10, Math.floor(Math.log10(current)) - 1);
-  return Math.round((current * 1.015) / magnitude) * magnitude;
-}
-
 export async function POST(req: Request) {
   const auth = req.headers.get('authorization');
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -50,33 +45,21 @@ export async function POST(req: Request) {
   const errors: string[] = [];
   const now = Math.floor(Date.now() / 1000);
 
-  // Get existing market IDs
-  const count = await publicClient.readContract({
-    address: CONTRACT_ADDRESS,
-    abi: ARCSIGNAL_ABI,
-    functionName: 'getMarketCount',
-  }) as bigint;
-
-  const existingIds: string[] = [];
-  for (let i = 0; i < Number(count); i++) {
-    const id = await publicClient.readContract({
-      address: CONTRACT_ADDRESS,
-      abi: ARCSIGNAL_ABI,
-      functionName: 'getMarketIdByIndex',
-      args: [BigInt(i)],
-    }) as string;
-    existingIds.push(id);
-  }
-
   // Fetch full market data for accurate deduplication based on expiration
   const existingMarkets = await getMarketsFromChain();
 
 
   // CRYPTO MARKETS
   try {
-    const coins = await fetchCryptoMarkets();
-    const selected = coins.slice(0, 6);
-    
+    const requiredSymbols = ['BTC', 'ETH', 'SOL', 'XRP', 'SUI', 'AVAX'];
+    const cryptoMarkets = await fetchCryptoMarkets();
+    const marketsBySymbol = new Map(
+      cryptoMarkets.map((coin) => [coin.symbol.toUpperCase(), coin]),
+    );
+    const selected = requiredSymbols
+      .map((symbol) => marketsBySymbol.get(symbol))
+      .filter((coin): coin is NonNullable<typeof coin> => Boolean(coin));
+
     const timeframes = [
       { label: '5m',  minutes: 5 },
       { label: '15m', minutes: 15 },
@@ -99,6 +82,42 @@ export async function POST(req: Request) {
       return Math.round(raw / magnitude) * magnitude;
     }
 
+    function getQuestion(symbol: string, target: number, timeframe: string): string {
+      const formattedTarget = target.toLocaleString('en-US');
+
+      if (timeframe === '5m') {
+        return `Will ${symbol} stay above $${formattedTarget} in the next 5 minutes?`;
+      }
+
+      if (timeframe === '15m') {
+        return `Will ${symbol} gain 0.3% or more and reach $${formattedTarget} in the next 15 minutes?`;
+      }
+
+      if (timeframe === '1h') {
+        return `Will ${symbol} close above $${formattedTarget} in the next 1 hour?`;
+      }
+
+      if (timeframe === '4h') {
+        return `Will ${symbol} close above $${formattedTarget} in the next 4 hours?`;
+      }
+
+      return `Will ${symbol} close above $${formattedTarget} in the next 24 hours?`;
+    }
+
+    function getResolutionCriteria(symbol: string, target: number, timeframe: string, resolutionDate: string): string {
+      const formattedTarget = target.toLocaleString('en-US');
+
+      if (timeframe === '5m') {
+        return `Resolves YES if ${symbol}/USD remains above $${formattedTarget} on CoinGecko at resolution time (${resolutionDate}).`;
+      }
+
+      if (timeframe === '15m') {
+        return `Resolves YES if ${symbol}/USD gains at least 0.3% from the generation price and reaches $${formattedTarget} on CoinGecko at resolution time (${resolutionDate}).`;
+      }
+
+      return `Resolves YES if ${symbol}/USD is above $${formattedTarget} on CoinGecko at resolution time (${resolutionDate}).`;
+    }
+
     for (const timeframe of timeframes) {
       for (const coin of selected) {
         const symbolUpper = coin.symbol.toUpperCase();
@@ -116,19 +135,13 @@ export async function POST(req: Request) {
         const target = getPriceTarget(coin.current_price, timeframe.label);
         const resolutionTime = BigInt(now + timeframe.minutes * 60);
         const resolutionDate = new Date(Number(resolutionTime) * 1000).toUTCString();
-        
-        let questionVerb = 'close above';
-        if (timeframe.label === '5m') {
-          questionVerb = 'stay above';
-        }
-        
-        const question = `Will ${symbolUpper} ${questionVerb} $${target.toLocaleString('en-US')} in the next ${timeframe.label}?`;
+        const question = getQuestion(symbolUpper, target, timeframe.label);
         const marketId = `${symbolUpper}-PRICE-${timeframe.label}-${now}`;
 
         try {
           const analysis = await generateCryptoAnalysis({
             question,
-            resolutionCriteria: `Resolves YES if ${coin.symbol.toUpperCase()}/USD price on CoinGecko is above $${target.toLocaleString('en-US')} at resolution time (${resolutionDate}).`,
+            resolutionCriteria: getResolutionCriteria(symbolUpper, target, timeframe.label, resolutionDate),
             resolutionTime: resolutionDate,
             cryptoData: {
               id: coin.id,
