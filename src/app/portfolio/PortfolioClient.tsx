@@ -79,32 +79,34 @@ export default function PortfolioClient() {
         const addPosition = (side: 0 | 1, stakeRaw: bigint) => {
           const stakeUsdc = Number(formatUnits(stakeRaw, 6));
           const isResolved = market.resolved;
-          // Contract: outcome 1 = follow wins, 2 = fade wins
-          const outcome = isResolved
-            ? (market.outcome === 'FOLLOW' ? 1 : market.outcome === 'FADE' ? 2 : 0)
-            : 0;
-
+          const userSide = side === 0 ? 'FOLLOW' : 'FADE';
+          
           let userWon: boolean | null = null;
           let payout = 0;
           let netPnl = 0;
 
-          if (isResolved && outcome > 0) {
-            const winningSide = outcome === 1 ? 0 : 1;
-            userWon = side === winningSide;
+          if (isResolved) {
+            userWon = (market.outcome === 'FOLLOW' && userSide === 'FOLLOW') ||
+                      (market.outcome === 'FADE' && userSide === 'FADE');
 
-            const followPoolUsdc = Number(formatUnits(market.followPool as bigint, 6));
-            const fadePoolUsdc   = Number(formatUnits(market.fadePool   as bigint, 6));
-            const winPool  = winningSide === 0 ? followPoolUsdc : fadePoolUsdc;
-            const losePool = winningSide === 0 ? fadePoolUsdc   : followPoolUsdc;
-
-            if (userWon && winPool > 0) {
-              // Matches contract: payout = userStake + (userStake * losePool) / winPool
-              payout  = stakeUsdc + (stakeUsdc * losePool) / winPool;
-              netPnl  = payout - stakeUsdc;
-            } else if (!userWon) {
+            if (userWon) {
+              const followPoolUsdc = Number(formatUnits(market.followPool as bigint, 6));
+              const fadePoolUsdc   = Number(formatUnits(market.fadePool   as bigint, 6));
+              
+              const winPool  = userSide === 'FOLLOW' ? followPoolUsdc : fadePoolUsdc;
+              const losePool = userSide === 'FOLLOW' ? fadePoolUsdc   : followPoolUsdc;
+              
+              if (winPool > 0) {
+                payout = stakeUsdc + (stakeUsdc * losePool) / winPool;
+                netPnl = payout - stakeUsdc;
+              }
+            } else {
               netPnl = -stakeUsdc;
             }
           }
+
+          // We'll preserve outcome as a numeric code just in case other parts of the UI rely on it (though we just refactored it out of use mostly)
+          const outcome = isResolved ? (market.outcome === 'FOLLOW' ? 1 : market.outcome === 'FADE' ? 2 : 0) : 0;
 
           newPositions.push({ market, side, stakeRaw, stakeUsdc, claimed: isClaimed, isResolved, outcome, userWon, payout, netPnl });
         };
@@ -338,27 +340,22 @@ function PositionCard({ pos, onClaim, claiming }: { pos: Position; onClaim: (id:
 
             {/* Status */}
             {!pos.isResolved && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#34d399]/30 text-[#34d399] bg-[#34d399]/10 animate-pulse">
-                LIVE
-              </span>
-            )}
-            {canClaim && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#a855f7]/50 text-[#a855f7] bg-[#a855f7]/10">
-                UNCLAIMED
-              </span>
-            )}
-            {alreadyClaimed && (
               <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#8e8e8e]/30 text-[#8e8e8e]">
-                ✓ CLAIMED
+                PENDING
               </span>
             )}
-            {pos.isResolved && pos.userWon === true && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#34d399]/30 text-[#34d399]">
+            {pos.isResolved && pos.userWon === true && !pos.claimed && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#34d399]/30 text-[#34d399] bg-[#34d399]/10">
                 WON
               </span>
             )}
+            {pos.isResolved && pos.userWon === true && pos.claimed && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#8e8e8e]/30 text-[#8e8e8e]">
+                CLAIMED
+              </span>
+            )}
             {pos.isResolved && pos.userWon === false && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#f87171]/30 text-[#f87171]">
+              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#f87171]/30 text-[#f87171] bg-[#f87171]/10">
                 LOST
               </span>
             )}
@@ -405,7 +402,7 @@ function PositionCard({ pos, onClaim, claiming }: { pos: Position; onClaim: (id:
                 Claiming…
               </>
             ) : (
-              `↑ Claim ${pos.payout.toFixed(2)} USDC`
+              `Claim Winnings (${pos.payout.toFixed(2)} USDC)`
             )}
           </button>
         )}
