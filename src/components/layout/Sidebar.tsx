@@ -12,6 +12,7 @@ import {
   Plus,
   HelpCircle,
   Zap,
+  User,
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -22,6 +23,7 @@ export default function Sidebar() {
     { name: 'Portfolio',   icon: Wallet,     href: '/portfolio' },
     { name: 'Analytics',   icon: BarChart2,  href: '/analytics' },
     { name: 'Leaderboard', icon: Trophy,     href: '/leaderboard' },
+    { name: 'Profile',     icon: User,       href: '/profile' },
     { name: 'Docs',        icon: FileText,   href: '/docs' },
   ];
 
