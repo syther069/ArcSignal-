@@ -51,7 +51,7 @@ export default function FeedClient({ initialStakes, markets: _markets }: FeedCli
     <div className="flex min-h-screen bg-[#101416]">
       <Sidebar />
 
-      <main className="flex-1 lg:ml-[264px] pt-24 px-8 pb-16 overflow-y-auto min-h-screen">
+      <main className="flex-1 lg:ml-[264px] pt-24 pb-16 overflow-y-auto min-h-screen">\n        <div className="max-w-[1440px] mx-auto w-full px-4 lg:px-8">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6">
           <div>
@@ -232,6 +232,7 @@ export default function FeedClient({ initialStakes, markets: _markets }: FeedCli
             <span>tail -f activity_stream.log --filter="live_stakes"</span>
             <span className="inline-block w-2 h-3 bg-[#38bdf8] animate-pulse"></span>
           </div>
+        </div>
         </div>
       </main>
     </div>

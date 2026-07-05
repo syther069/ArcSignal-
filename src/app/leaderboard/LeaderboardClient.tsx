@@ -38,6 +38,7 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
       <Sidebar />
 
       <main className="flex-1 lg:ml-[264px] pt-16 flex overflow-hidden">
+        <div className="w-full flex">
         {/* Central Content Area */}
         <section className="flex-1 overflow-y-auto px-4 md:px-8 py-10 scrollbar-hide h-[calc(100vh-64px)]">
           {/* Header */}
@@ -217,6 +218,7 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
             </div>
           </div>
         </aside>
+      </div>
       </main>
     </div>
   );

@@ -39,7 +39,7 @@ export default function DashboardClient({ markets, aiAccuracy }: DashboardClient
       <Sidebar />
 
       {/* Main Content Area */}
-      <main className="lg:ml-[264px] xl:mr-[320px] pt-24 p-8 flex-1 min-w-0 min-h-screen">
+      <main className="lg:ml-[264px] xl:mr-[320px] pt-24 flex-1 min-w-0 min-h-screen">\n        <div className="p-8 max-w-[1600px] mx-auto w-full">
         <header className="mb-10 flex items-end justify-between">
           <div>
             <h1 className="text-3xl font-bold text-on-surface tracking-tight mb-2">Live Markets</h1>
@@ -124,6 +124,7 @@ export default function DashboardClient({ markets, aiAccuracy }: DashboardClient
 
         <div className="mt-12">
           <Footer />
+        </div>
         </div>
       </main>
 

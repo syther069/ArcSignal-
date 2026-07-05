@@ -36,7 +36,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
     <div className="flex min-h-screen bg-[#131313]">
       <Sidebar />
 
-      <main className="lg:ml-[264px] pt-24 p-6 lg:p-8 flex-1 min-w-0 min-h-screen max-w-[1440px] mx-auto w-full pb-24 md:pb-8">
+      <main className="lg:ml-[264px] pt-24 pb-24 md:pb-8 flex-1 min-w-0 min-h-screen">\n        <div className="max-w-[1440px] mx-auto w-full p-6 lg:p-8">
         {/* Page header */}
         <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -112,6 +112,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
 
         <div className="mt-16">
           <Footer />
+        </div>
         </div>
       </main>
 

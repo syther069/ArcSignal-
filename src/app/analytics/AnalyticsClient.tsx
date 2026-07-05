@@ -91,7 +91,7 @@ export default function AnalyticsClient({
       
       <Sidebar />
 
-      <main className="flex-1 lg:ml-[264px] pt-24 px-8 pb-16 overflow-y-auto min-h-screen">
+      <main className="flex-1 lg:ml-[264px] pt-24 pb-16 overflow-y-auto min-h-screen">\n        <div className="max-w-[1440px] mx-auto w-full px-4 lg:px-8">
         
         {/* Section 1: Stat Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 h-[160px]">
@@ -286,6 +286,7 @@ export default function AnalyticsClient({
           </div>
         </footer>
 
+        </div>
       </main>
     </div>
   );

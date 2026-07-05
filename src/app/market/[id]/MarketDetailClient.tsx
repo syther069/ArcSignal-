@@ -76,8 +76,8 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
       <Sidebar />
 
       {/* Main Content Shell */}
-      <main className="lg:ml-[264px] min-h-screen flex flex-col flex-1">
-        <div className="flex flex-col lg:flex-row flex-1 p-gutter gap-gutter max-w-[1600px] w-full mx-auto">
+      <main className="lg:ml-[264px] min-h-screen pt-24 pb-16 flex flex-col flex-1">
+        <div className="flex flex-col lg:flex-row flex-1 px-4 lg:px-8 gap-6 w-full mx-auto">
           
           {/* Center Content */}
           <div className="flex-1 space-y-margin-desktop min-w-0">

@@ -24,6 +24,7 @@ import {
   ArrowRight,
   Share,
 } from 'lucide-react';
+import Sidebar from '@/components/layout/Sidebar';
 import ConnectWalletButton from '@/components/wallet/ConnectWalletButton';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { getMarketsFromChain } from '@/lib/markets';
@@ -310,7 +311,10 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
   }
 
   return (
-    <div className="min-h-screen pt-24 pb-20 px-6 max-w-7xl mx-auto flex flex-col md:flex-row gap-8">
+    <div className="min-h-screen bg-background flex">
+      <Sidebar />
+      <main className="lg:ml-[264px] flex-1 pt-24 pb-20 px-6 overflow-y-auto">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-8">
       
       {/* ─── LEFT COLUMN: IDENTITY ─── */}
       <aside className="w-full md:w-80 flex-shrink-0 flex flex-col gap-6">
@@ -470,7 +474,9 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
         )}
 
       </main>
-
+      </div>
+      </main>
+      
       {/* ─── Edit Modal Overlay ─── */}
       {isEditing && (
         <div

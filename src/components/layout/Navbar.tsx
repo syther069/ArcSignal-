@@ -56,7 +56,7 @@ export default function Navbar() {
 
   return (
     <header className="fixed top-0 w-full z-50 bg-[#131313] border-b border-[#1e293b] shadow-2xl shadow-black/40">
-      <div className="flex justify-between items-center h-16 px-6 max-w-[1440px] mx-auto w-full">
+      <div className="flex justify-between items-center h-16 px-6 lg:px-8 w-full">
         {/* Left: Logo + Nav */}
         <div className="flex items-center gap-10">
           <Link href="/" className="flex items-center gap-2">
