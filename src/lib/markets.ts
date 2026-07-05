@@ -6,8 +6,8 @@ export type { SerializableMarket };
 
 function mapOutcome(resolved: boolean, outcome: number): MarketOutcome {
   if (!resolved) return 'PENDING';
-  if (outcome === 0) return 'FOLLOW';
-  if (outcome === 1) return 'FADE';
+  if (outcome === 1) return 'FOLLOW';
+  if (outcome === 2) return 'FADE';
   return 'CANCELLED';
 }
 

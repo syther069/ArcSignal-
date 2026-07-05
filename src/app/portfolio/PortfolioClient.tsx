@@ -173,12 +173,12 @@ export default function PortfolioClient() {
     });
 
     const winRate = resolved > 0 ? (wins / resolved) * 100 : 0;
-    return { totalStaked, totalPnl, winRate, unclaimed, wins, resolved, openCount: positions.filter(p => !p.isResolved).length };
+    return { totalStaked, totalPnl, winRate, unclaimed, wins, resolved, openCount: positions.filter(p => !p.isResolved || (p.isResolved && p.userWon && !p.claimed)).length };
   }, [positions]);
 
   // ─── Filtered Positions ─────────────────────────────────────────────────────
   const displayed = useMemo(() => {
-    if (activeTab === 'open')     return positions.filter(p => !p.isResolved);
+    if (activeTab === 'open')     return positions.filter(p => !p.isResolved || (p.isResolved && p.userWon && !p.claimed));
     if (activeTab === 'resolved') return positions.filter(p => p.isResolved);
     return positions;
   }, [positions, activeTab]);

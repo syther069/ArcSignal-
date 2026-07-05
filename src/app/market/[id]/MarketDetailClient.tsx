@@ -285,56 +285,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
           {/* Right: Pool & CTA */}
           <div className="lg:col-span-4 space-y-6">
 
-            {/* ── Claim Winnings Panel ── */}
-            {(() => {
-              if (!address || !resolved) return null;
-              const chainOutcome = chainMarket ? Number(chainMarket[6]) : 0;
-              // outcome 1 = follow wins, 2 = fade wins
-              const userWonFollow = chainOutcome === 1 && userFollowStake > 0;
-              const userWonFade   = chainOutcome === 2 && userFadeStake   > 0;
-              const userWon = userWonFollow || userWonFade;
-              if (!userWon) return null;
 
-              const userStake = userWonFollow ? userFollowStake : userFadeStake;
-              const winPool   = userWonFollow ? followPool : fadePool;
-              const losePool  = userWonFollow ? fadePool   : followPool;
-              const payout    = winPool > 0 ? userStake + (userStake * losePool) / winPool : userStake;
-
-              if (alreadyClaimed) {
-                return (
-                  <div className="glass-card p-5 border-[#34d399]/20 bg-[#34d399]/5">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[#34d399] text-xl">✓</span>
-                      <div>
-                        <p className="font-mono text-xs font-bold text-[#34d399] tracking-widest uppercase">Winnings Claimed</p>
-                        <p className="font-mono text-xs text-slate-400 mt-0.5">{payout.toFixed(2)} USDC received</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-
-              return (
-                <div className="glass-card p-5 border-[#a855f7]/40 bg-[#a855f7]/5 shadow-[0_0_24px_rgba(168,85,247,0.15)] relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-[#a855f7] opacity-10 blur-2xl" />
-                  <p className="font-mono text-[10px] text-[#a855f7] tracking-widest uppercase mb-1">You Won!</p>
-                  <p className="font-bold text-white text-xl mb-1">{payout.toFixed(2)} <span className="text-sm font-mono text-slate-400">USDC</span></p>
-                  <p className="font-mono text-[10px] text-slate-400 mb-4">Staked {userStake.toFixed(2)} · Profit +{(payout - userStake).toFixed(2)}</p>
-                  <button
-                    onClick={handleClaim}
-                    disabled={claiming}
-                    className="w-full py-3 rounded font-mono text-sm font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    style={{ background: 'linear-gradient(135deg,#a855f7,#34d399)', color: 'white', boxShadow: claiming ? 'none' : '0 0 16px rgba(168,85,247,0.4)' }}
-                  >
-                    {claiming ? (
-                      <><span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />Claiming…</>
-                    ) : (
-                      `↑ Claim ${payout.toFixed(2)} USDC`
-                    )}
-                  </button>
-                </div>
-              );
-            })()}
 
             {/* AI Confidence (separate from pool) */}
             <div className="glass-card p-5 bg-[#101416]/80 border-white/5">
