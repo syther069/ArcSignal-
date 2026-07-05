@@ -25,9 +25,7 @@ export const publicClient = createPublicClient({
 // Hardcoded to the currently deployed contract. The env var is kept as a named
 // fallback so that local overrides still work — but the hardcoded address is
 // always used in production to prevent the wrong contract being called.
-export const ARCSIGNAL_ADDRESS = (
-  process.env.NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDRESS ?? '0x1321B81F0608A7166062d6AcABC2b64646D80bC1'
-) as `0x${string}`;
+export const ARCSIGNAL_ADDRESS = '0x1321B81F0608A7166062d6AcABC2b64646D80bC1' as `0x${string}`;
 
 export const USDC_ADDRESS = process.env.NEXT_PUBLIC_USDC_CONTRACT_ADDRESS as `0x${string}`;
 
