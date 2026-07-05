@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import ConnectWalletButton from '@/components/wallet/ConnectWalletButton';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import { getMarketsFromChain } from '@/lib/markets';
 import { Stake } from '@/types';
 import toast from 'react-hot-toast';
 
@@ -96,74 +97,69 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
       if (!targetAddress || !publicClient) return;
       setLoadingPositions(true);
       try {
-        const currentBlock = await publicClient.getBlockNumber();
-        const fromBlock = currentBlock > 10000n ? currentBlock - 10000n : 0n;
-
-        const logs = await publicClient.getLogs({
-          address: ARCSIGNAL_ADDRESS,
-          event: ARCSIGNAL_ABI.find(x => x.type === 'event' && x.name === 'Staked') as any,
-          args: { user: targetAddress },
-          fromBlock,
-        });
-
-        // Multicall to get market details
-        const uniqueMarketIds = Array.from(new Set(logs.map((l: any) => l.args.marketId!)));
+        const chainMarkets = await getMarketsFromChain();
         
-        const marketData = await publicClient.multicall({
-          contracts: uniqueMarketIds.map(id => ({
-            address: ARCSIGNAL_ADDRESS,
-            abi: ARCSIGNAL_ABI,
-            functionName: 'getMarket',
-            args: [id],
-          })),
-        });
+        const followCalls = chainMarkets.map(m => ({
+          address: ARCSIGNAL_ADDRESS,
+          abi: ARCSIGNAL_ABI,
+          functionName: 'followStakes',
+          args: [m.marketId, targetAddress],
+        }));
+        
+        const fadeCalls = chainMarkets.map(m => ({
+          address: ARCSIGNAL_ADDRESS,
+          abi: ARCSIGNAL_ABI,
+          functionName: 'fadeStakes',
+          args: [m.marketId, targetAddress],
+        }));
 
-        const marketMap = new Map();
-        uniqueMarketIds.forEach((id, i) => {
-          if (marketData[i].status === 'success') {
-            marketMap.set(id, marketData[i].result);
-          }
-        });
+        const [followResults, fadeResults] = await Promise.all([
+          publicClient.multicall({ contracts: followCalls as any }),
+          publicClient.multicall({ contracts: fadeCalls as any })
+        ]);
 
-        // Reconstruct Stake objects
-        const resolvedStakes = logs.map((log: any) => {
-          const m = marketMap.get(log.args.marketId!) as any;
-          let pnl: number | undefined = undefined;
-          
-          // getMarket returns a named struct: { marketId, category, question, analysisJson,
-          //   resolutionTime, followPool, fadePool, resolved, outcome }
-          if (m && m.resolved) {
-            // outcome uint8: 1 = follow wins, 2 = fade wins
-            const outcome = Number(m.outcome);
-            const userSide = Number(log.args.side); // 0 = follow, 1 = fade
-            const winningSide = outcome === 1 ? 0 : 1; // 1→follow(0), 2→fade(1)
-            const isWin = userSide === winningSide;
-            
-            // USDC uses 6 decimals
-            const amt = Number(log.args.amount) / 1e6;
-            if (isWin) {
-              const winPool  = Number(winningSide === 0 ? m.followPool : m.fadePool) / 1e6;
-              const losePool = Number(winningSide === 0 ? m.fadePool  : m.followPool) / 1e6;
-              pnl = winPool > 0 ? (amt * losePool) / winPool : 0; // net profit
-            } else {
-              pnl = -(Number(log.args.amount) / 1e6);
+        const userStakes: Stake[] = [];
+
+        chainMarkets.forEach((m, i) => {
+          const followStake = followResults[i]?.status === 'success' ? Number(followResults[i].result) : 0;
+          const fadeStake = fadeResults[i]?.status === 'success' ? Number(fadeResults[i].result) : 0;
+
+          const addStake = (side: number, rawAmount: number) => {
+            let pnl: number | undefined = undefined;
+            const amt = rawAmount / 1e6;
+
+            if (m.resolved) {
+              const outcome = Number(m.outcome);
+              const winningSide = outcome === 1 ? 0 : 1;
+              const isWin = side === winningSide;
+              
+              if (isWin) {
+                const winPool  = Number(winningSide === 0 ? m.followPool : m.fadePool) / 1e6;
+                const losePool = Number(winningSide === 0 ? m.fadePool  : m.followPool) / 1e6;
+                pnl = winPool > 0 ? (amt * losePool) / winPool : 0;
+              } else {
+                pnl = -amt;
+              }
             }
-          }
 
-          return {
-            id: log.transactionHash,
-            walletAddress: targetAddress,
-            txHash: log.transactionHash,
-            createdAt: new Date().toISOString(),
-            marketId: log.args.marketId!,
-            side: Number(log.args.side),
-            amountUsdc: Number(log.args.amount) / 1e6, // USDC = 6 decimals
-            timestamp: new Date().toISOString(),
-            pnl,
-          } as unknown as Stake;
+            userStakes.push({
+              id: `${m.marketId}-${side}`,
+              walletAddress: targetAddress,
+              txHash: '',
+              createdAt: new Date().toISOString(),
+              marketId: m.marketId,
+              side,
+              amountUsdc: amt,
+              timestamp: new Date().toISOString(),
+              pnl,
+            } as unknown as Stake);
+          };
+
+          if (followStake > 0) addStake(0, followStake);
+          if (fadeStake > 0) addStake(1, fadeStake);
         });
 
-        setStakes(resolvedStakes.reverse()); // newest first
+        setStakes(userStakes.reverse());
       } catch (err) {
         console.error(err);
       }
@@ -252,7 +248,6 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
     setIsUploading(false);
   };
 
-  const [isConfirming, setIsConfirming] = useState(false);
 
   const handleSave = async () => {
     if (!targetAddress) return;
@@ -289,30 +284,19 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
     }
 
     try {
-      const hash = await writeContractAsync({
+      await writeContractAsync({
         address: ARCSIGNAL_ADDRESS,
         abi: ARCSIGNAL_ABI,
         functionName: 'setProfile',
         args: [newUsername, editForm.bio, editForm.avatarUrl],
       });
       
-      setIsConfirming(true);
-      if (publicClient) {
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-        if (receipt.status === 'reverted') {
-          throw new Error('Transaction reverted on-chain.');
-        }
-      }
-      
-      toast.success('Profile updated successfully!');
+      toast.success('Profile updated! Transaction sent.');
       setIsEditing(false);
       setLocalProfile({ username: newUsername, bio: editForm.bio, avatarUrl: editForm.avatarUrl });
-      refetchProfile();
     } catch (e: any) {
       console.error('Failed to save profile', e);
       toast.error('Update failed: ' + (e?.shortMessage || e?.message || 'Unknown error'));
-    } finally {
-      setIsConfirming(false);
     }
   };
 
@@ -640,7 +624,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={isUploading || isSaving || isConfirming}
+                disabled={isUploading || isSaving}
                 className="px-8 py-2.5 text-white text-sm font-bold uppercase tracking-wider rounded transition-all active:scale-[0.98] disabled:opacity-50"
                 style={{
                   background: '#a855f7',
@@ -648,7 +632,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
                   fontFamily: 'JetBrains Mono, monospace',
                 }}
               >
-                {isUploading ? 'Uploading...' : isSaving ? 'Sign in Wallet...' : isConfirming ? 'Confirming...' : 'Save Profile'}
+                {isUploading ? 'Uploading...' : isSaving ? 'Sign in Wallet...' : 'Save Profile'}
               </button>
             </div>
           </div>
