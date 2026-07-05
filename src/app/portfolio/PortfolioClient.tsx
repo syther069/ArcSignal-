@@ -1,85 +1,133 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
-import { useAccount, useReadContracts, useWalletClient, usePublicClient } from 'wagmi';
+import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
-import { Badge } from '@/components/ui/Badge';
-import { formatUnits, parseAbiItem } from 'viem';
+import { getMarketsFromChain } from '@/lib/markets';
+import type { Market } from '@/lib/types';
+import { formatUnits } from 'viem';
+import Link from 'next/link';
+import toast from 'react-hot-toast';
+import { TrendingUp, TrendingDown, Clock, Trophy, Coins, BarChart3, AlertCircle } from 'lucide-react';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface Position {
+  market: Market;
+  side: 0 | 1;           // 0 = FOLLOW, 1 = FADE
+  stakeRaw: bigint;       // raw USDC units (6 decimals)
+  stakeUsdc: number;      // human-readable
+  claimed: boolean;
+  // derived
+  isResolved: boolean;
+  outcome: number;        // 0=unresolved, 1=follow wins, 2=fade wins
+  userWon: boolean | null;
+  payout: number;         // what they get back if they won (stake + profit)
+  netPnl: number;         // +profit or -stake
+}
+
+type Tab = 'open' | 'resolved' | 'all';
+
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function PortfolioClient() {
   const { address } = useAccount();
-  const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
-  
-  const [stakes, setStakes] = useState<any[]>([]);
+  const { data: walletClient } = useWalletClient();
+
+  const [positions, setPositions] = useState<Position[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<Tab>('open');
   const [claiming, setClaiming] = useState<Record<string, boolean>>({});
 
+  // ─── Fetch all positions via multicall ──────────────────────────────────────
   const fetchPortfolio = async () => {
     if (!address || !publicClient) {
       setLoading(false);
       return;
     }
-    
     setLoading(true);
-    
     try {
-      const currentBlock = await publicClient.getBlockNumber();
-      const DEPLOYMENT_BLOCK = 50012000n;
-      
-      let fromBlock = DEPLOYMENT_BLOCK;
-      let allLogs: any[] = [];
-
-      while (fromBlock <= currentBlock) {
-        let toBlock = fromBlock + 9999n;
-        if (toBlock > currentBlock) {
-          toBlock = currentBlock;
-        }
-        const logs = await publicClient.getLogs({
-          address: ARCSIGNAL_ADDRESS,
-          event: parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)'),
-          fromBlock,
-          toBlock
-        });
-        allLogs.push(...logs);
-        fromBlock = toBlock + 1n;
+      const markets = await getMarketsFromChain();
+      if (markets.length === 0) {
+        setPositions([]);
+        setLoading(false);
+        return;
       }
 
-      const userStakes = allLogs
-        .filter((log: any) => log.args.user?.toLowerCase() === address.toLowerCase())
-        .map((log: any) => ({
-          id: log.transactionHash + '-' + log.logIndex,
-          marketId: log.args.marketId,
-          side: log.args.side,
-          amountUsdc: log.args.amount || 0n,
-          markets: {
-            title: 'Loading...',
-            category: 'crypto'
-          },
-          createdAt: new Date().toISOString()
-        }));
-
-      // Group by marketId and side
-      const grouped: Record<string, any> = {};
-      for (const s of userStakes) {
-        const key = s.marketId + '-' + s.side;
-        if (!grouped[key]) {
-          grouped[key] = { ...s };
-        } else {
-          grouped[key].amountUsdc = grouped[key].amountUsdc + s.amountUsdc;
-        }
-      }
-      
-      const finalStakes = Object.values(grouped).map(s => ({
-        ...s,
-        amountUsdc: formatUnits(s.amountUsdc, 6)
+      // Batch all reads: followStakes, fadeStakes, claimed — per market
+      const followCalls = markets.map(m => ({
+        address: ARCSIGNAL_ADDRESS,
+        abi: ARCSIGNAL_ABI,
+        functionName: 'followStakes',
+        args: [m.marketId, address],
       }));
-      
-      finalStakes.reverse();
-      setStakes(finalStakes);
+      const fadeCalls = markets.map(m => ({
+        address: ARCSIGNAL_ADDRESS,
+        abi: ARCSIGNAL_ABI,
+        functionName: 'fadeStakes',
+        args: [m.marketId, address],
+      }));
+      const claimedCalls = markets.map(m => ({
+        address: ARCSIGNAL_ADDRESS,
+        abi: ARCSIGNAL_ABI,
+        functionName: 'claimed',
+        args: [m.marketId, address],
+      }));
+
+      const [followRes, fadeRes, claimedRes] = await Promise.all([
+        publicClient.multicall({ contracts: followCalls as any }),
+        publicClient.multicall({ contracts: fadeCalls as any }),
+        publicClient.multicall({ contracts: claimedCalls as any }),
+      ]);
+
+      const newPositions: Position[] = [];
+
+      markets.forEach((market, i) => {
+        const followRaw = followRes[i]?.status === 'success' ? (followRes[i].result as bigint) : 0n;
+        const fadeRaw   = fadeRes[i]?.status === 'success'   ? (fadeRes[i].result   as bigint) : 0n;
+        const isClaimed = claimedRes[i]?.status === 'success' ? (claimedRes[i].result as boolean) : false;
+
+        const addPosition = (side: 0 | 1, stakeRaw: bigint) => {
+          const stakeUsdc = Number(formatUnits(stakeRaw, 6));
+          const isResolved = market.resolved;
+          // Contract: outcome 1 = follow wins, 2 = fade wins
+          const outcome = isResolved
+            ? (market.outcome === 'FOLLOW' ? 1 : market.outcome === 'FADE' ? 2 : 0)
+            : 0;
+
+          let userWon: boolean | null = null;
+          let payout = 0;
+          let netPnl = 0;
+
+          if (isResolved && outcome > 0) {
+            const winningSide = outcome === 1 ? 0 : 1;
+            userWon = side === winningSide;
+
+            const followPoolUsdc = Number(formatUnits(market.followPool as bigint, 6));
+            const fadePoolUsdc   = Number(formatUnits(market.fadePool   as bigint, 6));
+            const winPool  = winningSide === 0 ? followPoolUsdc : fadePoolUsdc;
+            const losePool = winningSide === 0 ? fadePoolUsdc   : followPoolUsdc;
+
+            if (userWon && winPool > 0) {
+              // Matches contract: payout = userStake + (userStake * losePool) / winPool
+              payout  = stakeUsdc + (stakeUsdc * losePool) / winPool;
+              netPnl  = payout - stakeUsdc;
+            } else if (!userWon) {
+              netPnl = -stakeUsdc;
+            }
+          }
+
+          newPositions.push({ market, side, stakeRaw, stakeUsdc, claimed: isClaimed, isResolved, outcome, userWon, payout, netPnl });
+        };
+
+        if (followRaw > 0n) addPosition(0, followRaw);
+        if (fadeRaw   > 0n) addPosition(1, fadeRaw);
+      });
+
+      setPositions(newPositions);
     } catch (err) {
-      console.error("Failed to fetch stakes:", err);
+      console.error('Portfolio fetch failed:', err);
+      toast.error('Failed to load portfolio');
     } finally {
       setLoading(false);
     }
@@ -89,213 +137,317 @@ export default function PortfolioClient() {
     fetchPortfolio();
   }, [address, publicClient]);
 
-  const contractsToRead = stakes.flatMap(stake => [
-    {
-      address: ARCSIGNAL_ADDRESS,
-      abi: ARCSIGNAL_ABI,
-      functionName: 'getMarket',
-      args: [stake.marketId],
-    },
-    {
-      address: ARCSIGNAL_ADDRESS,
-      abi: ARCSIGNAL_ABI,
-      functionName: 'claimed',
-      args: [stake.marketId, address as `0x${string}`],
-    }
-  ]);
-
-  const { data: chainData, refetch: refetchChainData } = useReadContracts({
-    contracts: contractsToRead as any,
-    query: {
-      enabled: stakes.length > 0 && !!address,
-    }
-  });
-
+  // ─── Claim Handler ──────────────────────────────────────────────────────────
   const handleClaim = async (marketId: string) => {
-    if (!walletClient || !publicClient) return;
+    if (!walletClient || !publicClient || !address) return;
+    const toastId = toast.loading('Waiting for wallet confirmation…');
     try {
-      setClaiming(prev => ({ ...prev, [marketId]: true }));
+      setClaiming(p => ({ ...p, [marketId]: true }));
       const { request } = await publicClient.simulateContract({
-        account: address as `0x${string}`,
+        account: address,
         address: ARCSIGNAL_ADDRESS,
         abi: ARCSIGNAL_ABI,
         functionName: 'claimWinnings',
         args: [marketId],
       });
       const hash = await walletClient.writeContract(request);
+      toast.loading('Transaction submitted, confirming…', { id: toastId });
       await publicClient.waitForTransactionReceipt({ hash });
-      await refetchChainData();
+      toast.success('Winnings claimed!', { id: toastId });
+      await fetchPortfolio();
     } catch (err: any) {
       console.error('Claim failed:', err);
-      alert('Claim failed: ' + (err.shortMessage || err.message));
+      toast.error('Claim failed: ' + (err?.shortMessage || err?.message || 'Unknown error'), { id: toastId });
     } finally {
-      setClaiming(prev => ({ ...prev, [marketId]: false }));
+      setClaiming(p => ({ ...p, [marketId]: false }));
     }
   };
 
+  // ─── Stats ──────────────────────────────────────────────────────────────────
+  const stats = useMemo(() => {
+    let totalStaked = 0;
+    let totalPnl = 0;
+    let wins = 0;
+    let resolved = 0;
+    let unclaimed = 0;
+
+    positions.forEach(p => {
+      totalStaked += p.stakeUsdc;
+      if (p.isResolved && p.userWon !== null) {
+        resolved++;
+        totalPnl += p.netPnl;
+        if (p.userWon) {
+          wins++;
+          if (!p.claimed) unclaimed += p.payout;
+        }
+      }
+    });
+
+    const winRate = resolved > 0 ? (wins / resolved) * 100 : 0;
+    return { totalStaked, totalPnl, winRate, unclaimed, wins, resolved, openCount: positions.filter(p => !p.isResolved).length };
+  }, [positions]);
+
+  // ─── Filtered Positions ─────────────────────────────────────────────────────
+  const displayed = useMemo(() => {
+    if (activeTab === 'open')     return positions.filter(p => !p.isResolved);
+    if (activeTab === 'resolved') return positions.filter(p => p.isResolved);
+    return positions;
+  }, [positions, activeTab]);
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-screen bg-[#131313] text-[#e5e2e1]">
+    <div className="flex min-h-screen bg-[#0d0d0d] text-[#e5e2e1]">
       <Sidebar />
-      <main className="lg:ml-[264px] pt-24 px-6 md:px-8 pb-16 flex-1 min-w-0">
+      <main className="lg:ml-[264px] pt-24 px-4 md:px-8 pb-20 flex-1 min-w-0">
+
         {/* Header */}
-        <div className="mb-10">
-          <h1 className="font-[family-name:var(--font-hanken)] text-3xl font-bold text-white mb-2">Portfolio</h1>
-          <p className="font-[family-name:var(--font-jetbrains-mono)] text-sm text-[#94a3b8] tracking-widest uppercase">On-Chain Positions</p>
+        <div className="mb-8">
+          <h1 className="font-[family-name:var(--font-hanken)] text-3xl font-bold text-white mb-1">Portfolio</h1>
+          <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#8e8e8e] tracking-widest uppercase">
+            On-Chain Positions · {address ? `${address.slice(0,6)}…${address.slice(-4)}` : 'Not connected'}
+          </p>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center p-16">
-            <div className="flex flex-col items-center gap-4">
-              <span className="w-8 h-8 rounded-full border-2 border-[#ddb7ff] border-t-transparent animate-spin"></span>
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#94a3b8] uppercase tracking-widest">Fetching positions...</span>
+        {!address ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-[#1c1b1b] border border-[#3a3939] flex items-center justify-center">
+              <AlertCircle size={28} className="text-[#8e8e8e]" />
             </div>
+            <p className="font-[family-name:var(--font-hanken)] text-lg text-white">Connect your wallet</p>
+            <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#8e8e8e]">to view your positions</p>
           </div>
-        ) : !address ? (
-          <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-12 text-center">
-            <p className="font-[family-name:var(--font-jetbrains-mono)] text-sm text-[#94a3b8] tracking-widest">Please connect wallet to view portfolio</p>
-          </div>
-        ) : stakes.length === 0 ? (
-          <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-12 text-center">
-            <p className="font-[family-name:var(--font-hanken)] text-lg text-[#94a3b8] mb-2">No open positions</p>
-            <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#94a3b8]/60">Stake on a market to get started</p>
+        ) : loading ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-4">
+            <span className="w-10 h-10 rounded-full border-2 border-[#a855f7] border-t-transparent animate-spin" />
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#8e8e8e] uppercase tracking-widest">
+              Loading positions…
+            </span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {stakes.map((stake, i) => {
-              const marketObj = chainData?.[i * 2]?.result as any;
-              const isClaimed = chainData?.[i * 2 + 1]?.result as boolean;
-              
-              const isResolved = marketObj ? marketObj.resolved : false;
-              // Contract: outcome 0 = FOLLOW wins, outcome 1 = FADE wins
-              const outcome = marketObj ? marketObj.outcome : -1;
-              const sideText = stake.side === 0 ? 'FOLLOW' : 'FADE';
-              const isFollow = stake.side === 0;
-              
-              // Win: user's side (0=FOLLOW, 1=FADE) matches outcome (0=FOLLOW wins, 1=FADE wins)
-              const userWon = isResolved && outcome === stake.side;
-              const userLost = isResolved && outcome !== stake.side;
+          <>
+            {/* ── Stats Bar ─────────────────────────────────────────────────── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+              <StatCard icon={<Coins size={18} />} label="Total Staked" value={`${stats.totalStaked.toFixed(2)} USDC`} />
+              <StatCard
+                icon={stats.totalPnl >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                label="Net P&L"
+                value={`${stats.totalPnl >= 0 ? '+' : ''}${stats.totalPnl.toFixed(2)} USDC`}
+                positive={stats.totalPnl >= 0}
+                negative={stats.totalPnl < 0}
+              />
+              <StatCard icon={<Trophy size={18} />} label="Win Rate" value={`${stats.winRate.toFixed(1)}%`} />
+              <StatCard
+                icon={<BarChart3 size={18} />}
+                label="Unclaimed"
+                value={`${stats.unclaimed.toFixed(2)} USDC`}
+                highlight={stats.unclaimed > 0}
+              />
+            </div>
 
-              // AI always picks FOLLOW (side 0), so AI is correct when outcome is 0
-              const aiCorrect = isResolved && outcome === 0;
-
-              let payoutAmount = 0;
-              if (userWon && marketObj) {
-                const followPool = parseFloat(formatUnits(marketObj.followPool, 6));
-                const fadePool = parseFloat(formatUnits(marketObj.fadePool, 6));
-                const winningPool = stake.side === 0 ? followPool : fadePool;
-                const totalPool = followPool + fadePool;
-                payoutAmount = winningPool > 0 ? (Number(stake.amountUsdc) / winningPool) * totalPool : 0;
-              }
-
-              return (
-                <div
-                  key={stake.id}
-                  className={`bg-[#0f172a] border rounded-xl p-5 flex flex-col gap-4 transition-all ${
-                    userWon && !isClaimed
-                      ? 'border-[#4fdbc8]/40 shadow-[0_0_20px_rgba(79,219,200,0.05)]'
-                      : userLost
-                      ? 'border-[#1e293b]'
-                      : 'border-[#1e293b]'
+            {/* ── Tabs ──────────────────────────────────────────────────────── */}
+            <div className="flex items-center gap-0 border border-[#3a3939] rounded-lg overflow-hidden mb-6 w-fit">
+              {(['open', 'resolved', 'all'] as Tab[]).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-5 py-2.5 font-[family-name:var(--font-jetbrains-mono)] text-xs uppercase tracking-widest transition-colors ${
+                    activeTab === tab
+                      ? 'bg-[#a855f7] text-white'
+                      : 'bg-transparent text-[#8e8e8e] hover:text-white hover:bg-white/5'
                   }`}
                 >
-                  {/* Top: Market info */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
-                        <Badge variant={marketObj?.category?.toLowerCase() || 'crypto'} label={marketObj?.category || 'MARKET'} />
-                        {isResolved ? (
-                          <Badge variant="resolved" label="RESOLVED" />
-                        ) : (
-                          <span className="bg-[#4fdbc8]/10 text-[#4fdbc8] px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] rounded tracking-widest border border-[#4fdbc8]/20 animate-pulse">LIVE</span>
-                        )}
-                        {isResolved && (
-                          <span className={`px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] rounded border tracking-widest ${
-                            aiCorrect
-                              ? 'bg-[#ddb7ff]/10 text-[#ddb7ff] border-[#ddb7ff]/20'
-                              : 'bg-[#ffb4ab]/10 text-[#ffb4ab] border-[#ffb4ab]/20'
-                          }`}>
-                            AI {aiCorrect ? '✓ CORRECT' : '✗ WRONG'}
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="font-[family-name:var(--font-hanken)] font-bold text-white text-base leading-snug mb-1">
-                        {marketObj?.question || stake.marketId}
-                      </h3>
-                    </div>
-                  </div>
+                  {tab === 'open' ? `Open (${stats.openCount})` : tab === 'resolved' ? `Resolved (${stats.resolved})` : `All (${positions.length})`}
+                </button>
+              ))}
+            </div>
 
-                  {/* Stats row */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <div className="bg-[#131313] border border-[#1e293b] rounded-lg p-3">
-                      <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#94a3b8] uppercase tracking-widest mb-1">Position</p>
-                      <p className={`font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm ${isFollow ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'}`}>
-                        {sideText}
-                      </p>
-                    </div>
-                    <div className="bg-[#131313] border border-[#1e293b] rounded-lg p-3">
-                      <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#94a3b8] uppercase tracking-widest mb-1">Staked</p>
-                      <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm text-white">
-                        {Number(stake.amountUsdc).toFixed(2)} <span className="text-[#94a3b8] text-xs">USDC</span>
-                      </p>
-                    </div>
-                    <div className="bg-[#131313] border border-[#1e293b] rounded-lg p-3">
-                      <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#94a3b8] uppercase tracking-widest mb-1">Outcome</p>
-                      {!isResolved ? (
-                        <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm text-[#94a3b8]">PENDING</p>
-                      ) : userWon ? (
-                        <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm text-[#4fdbc8]">WON</p>
-                      ) : (
-                        <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm text-[#ffb4ab]">LOST</p>
-                      )}
-                    </div>
-                    <div className="bg-[#131313] border border-[#1e293b] rounded-lg p-3">
-                      <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#94a3b8] uppercase tracking-widest mb-1">
-                        {userWon ? 'Payout' : 'P&L'}
-                      </p>
-                      {!isResolved ? (
-                        <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm text-[#94a3b8]">—</p>
-                      ) : userWon ? (
-                        <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm text-[#4fdbc8]">
-                          +{payoutAmount.toFixed(2)} <span className="text-xs">USDC</span>
-                        </p>
-                      ) : (
-                        <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm text-[#ffb4ab]">
-                          -{Number(stake.amountUsdc).toFixed(2)} <span className="text-xs">USDC</span>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Claim / Claimed */}
-                  {userWon && !isClaimed && (
-                    <button
-                      onClick={() => handleClaim(stake.marketId)}
-                      disabled={claiming[stake.marketId]}
-                      className="w-full md:w-auto self-end px-6 py-3 bg-[#4fdbc8]/15 hover:bg-[#4fdbc8]/25 text-[#4fdbc8] font-[family-name:var(--font-jetbrains-mono)] text-sm font-bold tracking-widest rounded-lg border border-[#4fdbc8]/40 transition-all flex items-center justify-center gap-2"
-                    >
-                      {claiming[stake.marketId] ? (
-                        <>
-                          <span className="w-4 h-4 rounded-full border-2 border-[#4fdbc8] border-t-transparent animate-spin"></span>
-                          CLAIMING...
-                        </>
-                      ) : (
-                        <>
-                          ↑ CLAIM {payoutAmount.toFixed(2)} USDC
-                        </>
-                      )}
-                    </button>
-                  )}
-                  {userWon && isClaimed && (
-                    <div className="w-full md:w-auto self-end px-6 py-3 bg-transparent text-[#94a3b8] font-[family-name:var(--font-jetbrains-mono)] text-sm font-bold tracking-widest rounded-lg border border-[#1e293b] flex items-center justify-center gap-2">
-                      ✓ CLAIMED
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+            {/* ── Positions List ────────────────────────────────────────────── */}
+            {displayed.length === 0 ? (
+              <EmptyState tab={activeTab} />
+            ) : (
+              <div className="flex flex-col gap-3">
+                {displayed.map(pos => (
+                  <PositionCard
+                    key={`${pos.market.marketId}-${pos.side}`}
+                    pos={pos}
+                    onClaim={handleClaim}
+                    claiming={!!claiming[pos.market.marketId]}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
+    </div>
+  );
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function StatCard({ icon, label, value, positive, negative, highlight }: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  positive?: boolean;
+  negative?: boolean;
+  highlight?: boolean;
+}) {
+  return (
+    <div className={`rounded-xl border p-4 ${
+      highlight ? 'border-[#a855f7]/50 bg-[#a855f7]/5 shadow-[0_0_20px_rgba(168,85,247,0.1)]' : 'border-[#3a3939] bg-[#131313]'
+    }`}>
+      <div className={`flex items-center gap-2 mb-2 text-xs font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest ${
+        highlight ? 'text-[#a855f7]' : 'text-[#8e8e8e]'
+      }`}>
+        {icon}
+        {label}
+      </div>
+      <p className={`font-[family-name:var(--font-jetbrains-mono)] font-bold text-lg ${
+        positive ? 'text-[#34d399]' : negative ? 'text-[#f87171]' : highlight ? 'text-[#a855f7]' : 'text-white'
+      }`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function PositionCard({ pos, onClaim, claiming }: { pos: Position; onClaim: (id: string) => void; claiming: boolean }) {
+  const isFollow = pos.side === 0;
+  const marketTitle = pos.market.question || pos.market.marketId;
+  const shortTitle = marketTitle.length > 70 ? marketTitle.slice(0, 70) + '…' : marketTitle;
+
+  const followPoolUsdc = Number(formatUnits(pos.market.followPool as bigint, 6));
+  const fadePoolUsdc   = Number(formatUnits(pos.market.fadePool   as bigint, 6));
+  const totalPool = followPoolUsdc + fadePoolUsdc;
+  const sidePool  = isFollow ? followPoolUsdc : fadePoolUsdc;
+  const odds      = sidePool > 0 && totalPool > 0 ? (totalPool / sidePool).toFixed(2) : '—';
+
+  const canClaim = pos.isResolved && pos.userWon === true && !pos.claimed;
+  const alreadyClaimed = pos.isResolved && pos.userWon === true && pos.claimed;
+
+  return (
+    <div className={`rounded-xl border p-5 transition-all ${
+      canClaim
+        ? 'border-[#34d399]/40 bg-[#34d399]/5 shadow-[0_0_24px_rgba(52,211,153,0.08)]'
+        : pos.isResolved && pos.userWon === false
+        ? 'border-[#3a3939] bg-[#131313] opacity-75'
+        : 'border-[#3a3939] bg-[#131313]'
+    }`}>
+      <div className="flex flex-col gap-4">
+
+        {/* Top row: badges + title */}
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Category */}
+            <span className={`px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border ${
+              pos.market.category === 'FOOTBALL'
+                ? 'bg-[#38bdf8]/10 text-[#38bdf8] border-[#38bdf8]/20'
+                : 'bg-[#818cf8]/10 text-[#818cf8] border-[#818cf8]/20'
+            }`}>{pos.market.category}</span>
+
+            {/* Status */}
+            {!pos.isResolved && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#34d399]/30 text-[#34d399] bg-[#34d399]/10 animate-pulse">
+                LIVE
+              </span>
+            )}
+            {canClaim && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#a855f7]/50 text-[#a855f7] bg-[#a855f7]/10">
+                UNCLAIMED
+              </span>
+            )}
+            {alreadyClaimed && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#8e8e8e]/30 text-[#8e8e8e]">
+                ✓ CLAIMED
+              </span>
+            )}
+            {pos.isResolved && pos.userWon === true && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#34d399]/30 text-[#34d399]">
+                WON
+              </span>
+            )}
+            {pos.isResolved && pos.userWon === false && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#f87171]/30 text-[#f87171]">
+                LOST
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-start justify-between gap-4">
+            <Link href={`/market/${pos.market.marketId}`} className="hover:text-[#a855f7] transition-colors flex-1">
+              <p className="font-[family-name:var(--font-hanken)] font-semibold text-white text-sm leading-snug">{shortTitle}</p>
+            </Link>
+          </div>
+        </div>
+
+        {/* Stats grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <MiniStat label="Position" value={isFollow ? 'FOLLOW AI' : 'FADE AI'} color={isFollow ? '#34d399' : '#f87171'} />
+          <MiniStat label="Staked" value={`${pos.stakeUsdc.toFixed(2)} USDC`} />
+          <MiniStat label="Pool Odds" value={`${odds}×`} />
+          {pos.isResolved ? (
+            pos.userWon === true ? (
+              <MiniStat label="Payout" value={`+${pos.payout.toFixed(2)} USDC`} color="#34d399" />
+            ) : (
+              <MiniStat label="P&L" value={`-${pos.stakeUsdc.toFixed(2)} USDC`} color="#f87171" />
+            )
+          ) : (
+            <MiniStat label="Est. Payout" value={sidePool > 0 ? `${(pos.stakeUsdc * (totalPool / sidePool)).toFixed(2)} USDC` : '—'} color="#8e8e8e" />
+          )}
+        </div>
+
+        {/* Claim button */}
+        {canClaim && (
+          <button
+            onClick={() => onClaim(pos.market.marketId)}
+            disabled={claiming}
+            className="w-full py-3 rounded-lg font-[family-name:var(--font-jetbrains-mono)] text-sm font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            style={{
+              background: claiming ? '#1c1b1b' : 'linear-gradient(135deg, #a855f7, #34d399)',
+              color: 'white',
+              boxShadow: claiming ? 'none' : '0 0 20px rgba(168,85,247,0.3)',
+            }}
+          >
+            {claiming ? (
+              <>
+                <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                Claiming…
+              </>
+            ) : (
+              `↑ Claim ${pos.payout.toFixed(2)} USDC`
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div className="bg-[#0d0d0d] border border-[#3a3939] rounded-lg p-3">
+      <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#8e8e8e] uppercase tracking-widest mb-1">{label}</p>
+      <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm" style={{ color: color || '#e5e2e1' }}>{value}</p>
+    </div>
+  );
+}
+
+function EmptyState({ tab }: { tab: Tab }) {
+  const msgs: Record<Tab, { title: string; sub: string }> = {
+    open:     { title: 'No open positions', sub: 'Browse live markets and stake on an AI prediction to get started.' },
+    resolved: { title: 'No resolved positions', sub: 'Your past positions will appear here once markets close.' },
+    all:      { title: 'No positions yet', sub: 'You have not staked on any markets with this wallet.' },
+  };
+  const { title, sub } = msgs[tab];
+  return (
+    <div className="flex flex-col items-center justify-center py-20 gap-4 text-center border border-[#3a3939] rounded-xl bg-[#131313]">
+      <Clock size={36} className="text-[#3a3939]" />
+      <p className="font-[family-name:var(--font-hanken)] text-lg text-white">{title}</p>
+      <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#8e8e8e] max-w-xs">{sub}</p>
+      <Link href="/markets" className="mt-2 px-5 py-2.5 rounded-lg bg-[#a855f7] text-white font-[family-name:var(--font-jetbrains-mono)] text-xs font-bold tracking-widest uppercase hover:opacity-90 transition-opacity">
+        Browse Markets
+      </Link>
     </div>
   );
 }
