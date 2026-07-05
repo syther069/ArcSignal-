@@ -27,6 +27,7 @@ import {
 import ConnectWalletButton from '@/components/wallet/ConnectWalletButton';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { Stake } from '@/types';
+import toast from 'react-hot-toast';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -80,9 +81,11 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
     query: { enabled: !!targetAddress },
   });
 
-  const username = profileData?.username || '';
-  const bio = profileData?.bio || '';
-  const avatarUrl = profileData?.avatarUrl || '';
+  const [localProfile, setLocalProfile] = useState<{username: string, bio: string, avatarUrl: string} | null>(null);
+
+  const username = localProfile?.username ?? (profileData?.username || '');
+  const bio = localProfile?.bio ?? (profileData?.bio || '');
+  const avatarUrl = localProfile?.avatarUrl ?? (profileData?.avatarUrl || '');
 
   // ─── Position Data from Contract ────────────────────────────────────────────
   const [stakes, setStakes] = useState<Stake[]>([]);
@@ -253,12 +256,44 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
 
   const handleSave = async () => {
     if (!targetAddress) return;
+
+    const newUsername = editForm.username.trim();
+    if (newUsername.length > 0) {
+      if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
+        toast.error('Username can only contain letters, numbers, and underscores');
+        return;
+      }
+      if (newUsername.length < 3 || newUsername.length > 20) {
+        toast.error('Username must be between 3 and 20 characters');
+        return;
+      }
+
+      // Pre-flight check if username is taken
+      try {
+        if (publicClient && newUsername !== username) {
+          const owner = await publicClient.readContract({
+            address: ARCSIGNAL_ADDRESS,
+            abi: ARCSIGNAL_ABI,
+            functionName: 'getAddressByUsername',
+            args: [newUsername]
+          }) as string;
+          
+          if (owner && owner !== '0x0000000000000000000000000000000000000000' && owner.toLowerCase() !== targetAddress.toLowerCase()) {
+            toast.error('Username is already taken by another operator');
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Pre-flight check failed', err);
+      }
+    }
+
     try {
       const hash = await writeContractAsync({
         address: ARCSIGNAL_ADDRESS,
         abi: ARCSIGNAL_ABI,
         functionName: 'setProfile',
-        args: [editForm.username, editForm.bio, editForm.avatarUrl],
+        args: [newUsername, editForm.bio, editForm.avatarUrl],
       });
       
       setIsConfirming(true);
@@ -269,11 +304,13 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
         }
       }
       
+      toast.success('Profile updated successfully!');
       setIsEditing(false);
+      setLocalProfile({ username: newUsername, bio: editForm.bio, avatarUrl: editForm.avatarUrl });
       refetchProfile();
     } catch (e: any) {
       console.error('Failed to save profile', e);
-      alert('Profile update failed: ' + (e?.shortMessage || e?.message || 'Unknown error'));
+      toast.error('Update failed: ' + (e?.shortMessage || e?.message || 'Unknown error'));
     } finally {
       setIsConfirming(false);
     }

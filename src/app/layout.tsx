@@ -34,6 +34,8 @@ export const metadata: Metadata = {
   description: 'AI-powered prediction markets on ARC Network',
 };
 
+import { Toaster } from 'react-hot-toast';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -52,6 +54,7 @@ export default function RootLayout({
           {children}
           <MobileBottomNav />
         </Web3Provider>
+        <Toaster position="bottom-right" toastOptions={{ style: { background: '#1c1b1b', color: '#fff', border: '1px solid #3a3939' } }} />
       </body>
     </html>
   );
