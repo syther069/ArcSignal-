@@ -36,11 +36,16 @@ export default async function LeaderboardPage() {
       const entry = addressMap.get(user)!;
       entry.totalStaked += amount;
       
-      const market = markets.find(m => m.marketId === marketId);
-      if (market && market.outcome !== 'PENDING') {
-        entry.total += 1;
-        const userSide = side === 0 ? 'FOLLOW' : 'FADE';
-        if (market.outcome === userSide) entry.correct += 1;
+      const market = markets.find((m: any) => m.marketId === marketId);
+      // outcome: 0 = unresolved, 1 = follow wins, 2 = fade wins
+      // side:    0 = follow,     1 = fade
+      if (market && market.resolved) {
+        const rawOutcome = Number(market.outcome === 'FOLLOW' ? 1 : market.outcome === 'FADE' ? 2 : 0);
+        if (rawOutcome !== 0) {
+          entry.total += 1;
+          const winningSide = rawOutcome === 1 ? 0 : 1; // outcome 1 → follow(0) wins, outcome 2 → fade(1) wins
+          if (side === winningSide) entry.correct += 1;
+        }
       }
     }
 
@@ -52,7 +57,13 @@ export default async function LeaderboardPage() {
         totalPredictions: data.total,
         winRate: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
       }))
-      .sort((a, b) => (b.totalStaked > a.totalStaked ? 1 : -1))
+      // Sort: first by win rate desc (only for those who have resolved predictions), then by totalStaked desc
+      .sort((a, b) => {
+        if (a.totalPredictions > 0 && b.totalPredictions > 0) {
+          if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+        }
+        return b.totalStaked > a.totalStaked ? 1 : -1;
+      })
       .slice(0, 20);
   } catch (error) {
     console.error('Failed to fetch leaderboard:', error);

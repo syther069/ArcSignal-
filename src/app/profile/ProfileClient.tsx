@@ -121,26 +121,26 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
 
         // Reconstruct Stake objects
         const resolvedStakes = logs.map((log: any) => {
-          const m = marketMap.get(log.args.marketId!);
+          const m = marketMap.get(log.args.marketId!) as any;
           let pnl: number | undefined = undefined;
           
-          if (m && m[7]) { // resolved
-            const outcome = m[8]; // 1 = follow wins, 2 = fade wins
-            const userSide = log.args.side; // 0 = follow, 1 = fade
-            
-            // Map outcome back to userSide equivalent (outcome 1 => side 0, outcome 2 => side 1)
-            const winningSide = outcome === 1 ? 0 : 1;
+          // getMarket returns a named struct: { marketId, category, question, analysisJson,
+          //   resolutionTime, followPool, fadePool, resolved, outcome }
+          if (m && m.resolved) {
+            // outcome uint8: 1 = follow wins, 2 = fade wins
+            const outcome = Number(m.outcome);
+            const userSide = Number(log.args.side); // 0 = follow, 1 = fade
+            const winningSide = outcome === 1 ? 0 : 1; // 1→follow(0), 2→fade(1)
             const isWin = userSide === winningSide;
             
-            const amt = Number(log.args.amount) / 1e18; // assuming USDC 18 dec for arc testnet
+            // USDC uses 6 decimals
+            const amt = Number(log.args.amount) / 1e6;
             if (isWin) {
-              const winPool = winningSide === 0 ? m[5] : m[6];
-              const losePool = winningSide === 0 ? m[6] : m[5];
-              const wp = Number(winPool) / 1e18;
-              const lp = Number(losePool) / 1e18;
-              pnl = amt + (amt * lp / wp) - amt; // net profit
+              const winPool  = Number(winningSide === 0 ? m.followPool : m.fadePool) / 1e6;
+              const losePool = Number(winningSide === 0 ? m.fadePool  : m.followPool) / 1e6;
+              pnl = winPool > 0 ? (amt * losePool) / winPool : 0; // net profit
             } else {
-              pnl = -amt;
+              pnl = -(Number(log.args.amount) / 1e6);
             }
           }
 
@@ -150,9 +150,9 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
             txHash: log.transactionHash,
             createdAt: new Date().toISOString(),
             marketId: log.args.marketId!,
-            side: log.args.side!,
-            amountUsdc: Number(log.args.amount) / 1e18,
-            timestamp: new Date().toISOString(), // we don't have block timestamp easily here without extra calls
+            side: Number(log.args.side),
+            amountUsdc: Number(log.args.amount) / 1e6, // USDC = 6 decimals
+            timestamp: new Date().toISOString(),
             pnl,
           } as unknown as Stake;
         });
