@@ -87,23 +87,11 @@ export default function Navbar() {
         {/* Right: Icons, Wallet */}
         <div className="hidden lg:flex items-center gap-6">
 
-          <div className="flex items-center gap-4 text-[#94a3b8]">
-            <Link href="/portfolio" className="relative hover:text-[#e5e2e1] transition-colors">
-              <Bell className="w-5 h-5" />
-              {unclaimedCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ffb4ab] opacity-60"></span>
-                  <span className="relative flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#ffb4ab] text-[#131313] font-bold" style={{ fontSize: '8px' }}>
-                    {unclaimedCount > 9 ? '9+' : unclaimedCount}
-                  </span>
-                </span>
-              )}
-            </Link>
-          </div>
+
 
           <div className="flex items-center gap-4">
             {isConnected && (
-              <div className="hidden xl:flex items-center gap-2 bg-[#1c1b1b] px-3 py-1.5 rounded-lg border border-[#3a3939]">
+              <div className="flex items-center gap-2 bg-[#1c1b1b] px-3 py-1.5 rounded-lg border border-[#3a3939]">
                 <span className="text-sm font-[family-name:var(--font-jetbrains-mono)] text-[#e5e2e1]">
                   {usdcBalance} USDC
                 </span>
