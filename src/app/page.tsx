@@ -46,11 +46,12 @@ export default function LandingPage() {
         >
           Launch App
         </Link>
-        <button 
+        <Link 
+          href="/whitepaper"
           className="bg-surface-container-highest text-on-surface font-bold text-sm uppercase tracking-widest px-8 py-3 rounded border border-white/5 hover:bg-surface-bright transition-colors"
         >
           Read Whitepaper
-        </button>
+        </Link>
       </div>
 
       {/* Hero Graphic / Dashboard Preview Placeholder */}
@@ -210,7 +211,7 @@ export default function LandingPage() {
         <div className="flex gap-8 text-sm text-on-surface-variant">
           <Link href="#" className="hover:text-on-surface transition-colors">Terms of Service</Link>
           <Link href="#" className="hover:text-on-surface transition-colors">Privacy Policy</Link>
-          <Link href="#" className="hover:text-on-surface transition-colors">Technical Whitepaper</Link>
+          <Link href="/whitepaper" className="hover:text-on-surface transition-colors">Technical Whitepaper</Link>
           <Link href="#" className="hover:text-on-surface transition-colors">API Docs</Link>
           <Link href="#" className="hover:text-on-surface transition-colors">Status</Link>
         </div>
