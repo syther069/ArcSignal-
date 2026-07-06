@@ -418,7 +418,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
               <div className="flex flex-col items-center justify-center py-20 gap-4 text-center border border-border-subtle rounded-xl bg-surface-charcoal">
                 <Clock size={36} className="text-text-muted opacity-50" />
                 <p className="font-headline-lg text-lg text-primary">No positions found</p>
-                <p className="font-code-sm text-xs text-text-muted max-w-xs">This operator hasn't staked on any markets yet.</p>
+                <p className="font-code-sm text-xs text-text-muted max-w-xs">This operator hasn&apos;t staked on any markets yet.</p>
                 <Link href="/markets" className="mt-2 px-5 py-2.5 rounded-lg bg-tertiary text-background font-label-caps text-xs font-bold tracking-widest uppercase hover:opacity-90 transition-opacity">
                   Browse Markets
                 </Link>
