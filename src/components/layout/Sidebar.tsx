@@ -28,7 +28,7 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="fixed left-0 top-16 h-[calc(100vh-64px)] w-[264px] bg-[#0f172a] border-r border-[#1e293b] hidden lg:flex flex-col justify-between py-6 z-40">
+    <aside className="fixed left-0 top-16 h-[calc(100vh-64px)] w-[264px] bg-[#0f172a] hidden lg:flex flex-col justify-between py-6 z-40 shadow-[4px_0_24px_rgba(0,0,0,0.2)]">
       {/* Logo area */}
       <div>
         <div className="px-6 mb-7 flex items-center gap-3">
@@ -47,8 +47,8 @@ export default function Sidebar() {
 
         {/* Nav label */}
         <div className="px-6 mb-3">
-          <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-semibold text-[#94a3b8]/60 uppercase tracking-widest">
-            Navigation
+          <p className="text-xs font-[family-name:var(--font-inter)] font-semibold text-[#94a3b8]/60 uppercase tracking-wider">
+            Overview
           </p>
         </div>
 
@@ -64,12 +64,12 @@ export default function Sidebar() {
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${
                   isActive
-                    ? 'bg-[#1c1b1b] text-[#ddb7ff] border border-[#ddb7ff]/20'
-                    : 'text-[#94a3b8] hover:bg-[#1c1b1b] hover:text-[#e5e2e1] border border-transparent'
+                    ? 'bg-[#ddb7ff]/10 text-[#ddb7ff]'
+                    : 'text-[#94a3b8] hover:bg-[#1c1b1b]/50 hover:text-[#e5e2e1]'
                 }`}
               >
-                <item.icon className="w-4 h-4 shrink-0" />
-                <span className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-semibold uppercase tracking-wider">
+                <item.icon className="w-[18px] h-[18px] shrink-0" />
+                <span className="font-[family-name:var(--font-inter)] text-sm font-medium">
                   {item.name}
                 </span>
               </Link>
@@ -80,18 +80,18 @@ export default function Sidebar() {
 
       {/* Bottom section */}
       <div className="px-4">
-        <button className="w-full flex items-center justify-center gap-2 bg-[#ddb7ff]/10 hover:bg-[#ddb7ff]/20 text-[#ddb7ff] py-2.5 px-4 rounded-lg text-xs font-[family-name:var(--font-jetbrains-mono)] font-semibold uppercase tracking-wider transition-colors border border-[#ddb7ff]/25 mb-5">
-          <Plus className="w-3.5 h-3.5" />
+        <button className="w-full flex items-center justify-center gap-2 bg-[#ddb7ff] hover:bg-[#ddb7ff]/90 text-[#0f172a] py-3 px-4 rounded-lg text-sm font-[family-name:var(--font-inter)] font-semibold transition-colors mb-5 shadow-lg shadow-[#ddb7ff]/10">
+          <Plus className="w-4 h-4" />
           Create Market
         </button>
 
         <div className="flex flex-col gap-3">
           <Link
             href="/support"
-            className="flex items-center gap-2.5 text-[#94a3b8] hover:text-[#e5e2e1] transition-colors text-xs"
+            className="flex items-center gap-2.5 text-[#94a3b8] hover:text-[#e5e2e1] transition-colors text-sm"
           >
             <HelpCircle className="w-4 h-4" />
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] uppercase tracking-wider">
+            <span className="font-[family-name:var(--font-inter)] font-medium">
               Support
             </span>
           </Link>

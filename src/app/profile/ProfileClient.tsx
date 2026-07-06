@@ -357,7 +357,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
             )}
           </div>
           
-          <h1 className="text-2xl font-headline-lg text-primary mb-1">
+          <h1 className="text-3xl font-[family-name:var(--font-hanken)] font-bold text-white tracking-tight mb-2">
             {username || 'Anonymous User'}
           </h1>
           
@@ -374,15 +374,15 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
           {!isPublic && (
             <button
               onClick={handleEditClick}
-              className="w-full py-2.5 rounded-lg border border-border-subtle hover:bg-white/5 transition-colors text-sm font-label-caps"
+              className="w-full py-3 rounded-lg border border-border-subtle hover:bg-white/5 transition-colors text-sm font-[family-name:var(--font-inter)] font-semibold"
             >
-              EDIT PROFILE
+              Edit Profile
             </button>
           )}
 
           {isPublic && (
-            <button className="w-full py-2.5 rounded-lg bg-primary text-black font-label-caps hover:opacity-90 transition-opacity">
-              FOLLOW OPERATOR
+            <button className="w-full py-3 rounded-lg bg-[#ddb7ff] text-[#0f172a] font-[family-name:var(--font-inter)] font-semibold hover:opacity-90 transition-opacity">
+              Follow Operator
             </button>
           )}
 
@@ -411,11 +411,11 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              className={`text-sm font-label-caps tracking-wider transition-colors pb-4 -mb-[17px] ${
-                activeTab === tab ? 'text-primary border-b-2 border-primary' : 'text-text-muted hover:text-white'
+              className={`text-sm font-[family-name:var(--font-inter)] font-medium tracking-wide transition-colors pb-4 -mb-[17px] capitalize ${
+                activeTab === tab ? 'text-[#ddb7ff] border-b-2 border-[#ddb7ff]' : 'text-text-muted hover:text-white'
               }`}
             >
-              {tab.toUpperCase()}
+              {tab}
             </button>
           ))}
         </div>
@@ -455,19 +455,19 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
               <table className="w-full text-left">
                 <thead className="bg-surface-base border-b border-border-subtle">
                   <tr>
-                    <th className="px-6 py-4 text-xs font-label-caps text-text-muted">Market</th>
-                    <th className="px-6 py-4 text-xs font-label-caps text-text-muted">Side</th>
-                    <th className="px-6 py-4 text-xs font-label-caps text-text-muted">Size</th>
-                    <th className="px-6 py-4 text-xs font-label-caps text-text-muted">P&L</th>
+                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-text-muted">Market</th>
+                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-text-muted">Side</th>
+                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-text-muted">Size</th>
+                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-text-muted">P&L</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-subtle">
                   {stakes.map(stake => (
                     <tr key={stake.id} className="hover:bg-white/[0.02]">
-                      <td className="px-6 py-4 font-semibold text-sm">Market #{stake.marketId.slice(0, 8)}...</td>
+                      <td className="px-6 py-4 font-[family-name:var(--font-inter)] font-semibold text-sm">Market #{stake.marketId.slice(0, 8)}...</td>
                       <td className="px-6 py-4">
-                        <span className={`text-xs font-label-caps ${stake.side === 0 ? 'text-tertiary' : 'text-error'}`}>
-                           {stake.side === 0 ? 'FOLLOW' : 'FADE'}
+                        <span className={`text-xs font-[family-name:var(--font-inter)] font-bold uppercase tracking-wider ${stake.side === 0 ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'}`}>
+                           {stake.side === 0 ? 'Follow' : 'Fade'}
                         </span>
                       </td>
                       <td className="px-6 py-4 font-code-sm text-sm">{stake.amountUsdc} USDC</td>
@@ -571,17 +571,17 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploading}
-                      className="w-full px-4 py-2.5 text-sm font-bold uppercase tracking-wider rounded transition-all"
+                      className="w-full px-4 py-2.5 text-sm font-semibold rounded-lg transition-all"
                       style={{
                         background: '#1c1b1b',
                         border: '1px solid #3a3939',
                         color: isUploading ? '#8e8e8e' : 'white',
-                        fontFamily: 'JetBrains Mono, monospace',
+                        fontFamily: 'Inter, sans-serif',
                       }}
                     >
                       {isUploading ? 'Uploading…' : 'Upload Photo'}
                     </button>
-                    <p className="text-[10px] uppercase tracking-wider" style={{ color: '#8e8e8e', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <p className="text-[10px] text-center" style={{ color: '#8e8e8e', fontFamily: 'Inter, sans-serif' }}>
                       Supports .jpg, .png and .gif
                     </p>
                   </div>
@@ -597,7 +597,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
 
               {/* Username */}
               <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: '#8e8e8e', fontFamily: 'JetBrains Mono, monospace' }}>
+                <label className="block text-xs font-semibold text-[#8e8e8e]" style={{ fontFamily: 'Inter, sans-serif' }}>
                   Username
                 </label>
                 <input
@@ -618,7 +618,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
 
               {/* Bio */}
               <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: '#8e8e8e', fontFamily: 'JetBrains Mono, monospace' }}>
+                <label className="block text-xs font-semibold text-[#8e8e8e]" style={{ fontFamily: 'Inter, sans-serif' }}>
                   Bio
                 </label>
                 <textarea
@@ -647,11 +647,11 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
-                className="px-6 py-2.5 text-sm font-bold uppercase tracking-wider rounded transition-all"
+                className="px-6 py-2.5 text-sm font-semibold rounded-lg transition-all"
                 style={{
                   border: '1px solid #3a3939',
                   color: 'white',
-                  fontFamily: 'JetBrains Mono, monospace',
+                  fontFamily: 'Inter, sans-serif',
                 }}
                 onMouseEnter={e => ((e.target as HTMLElement).style.background = 'rgba(255,255,255,0.05)')}
                 onMouseLeave={e => ((e.target as HTMLElement).style.background = 'transparent')}
@@ -662,11 +662,11 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
                 type="button"
                 onClick={handleSave}
                 disabled={isUploading || isSaving}
-                className="px-8 py-2.5 text-white text-sm font-bold uppercase tracking-wider rounded transition-all active:scale-[0.98] disabled:opacity-50"
+                className="px-8 py-2.5 text-[#0f172a] text-sm font-semibold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50"
                 style={{
-                  background: '#a855f7',
-                  boxShadow: '0 0 15px rgba(168,85,247,0.3)',
-                  fontFamily: 'JetBrains Mono, monospace',
+                  background: '#ddb7ff',
+                  boxShadow: '0 4px 15px rgba(221,183,255,0.2)',
+                  fontFamily: 'Inter, sans-serif',
                 }}
               >
                 {isUploading ? 'Uploading...' : isSaving ? 'Sign in Wallet...' : 'Save Profile'}
