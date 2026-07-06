@@ -53,7 +53,7 @@ export default function ConnectWalletButton() {
     return (
       <button 
         disabled
-        className="flex items-center gap-2 h-[38px] px-[16px] rounded-lg bg-transparent border border-[#06b6d4] text-[#06b6d4] text-[13px] uppercase tracking-wider font-bold opacity-70 cursor-not-allowed"
+        className="flex items-center gap-2 h-[38px] px-[16px] rounded-lg bg-transparent border border-[#ddb7ff] text-[#ddb7ff] text-[13px] uppercase tracking-wider font-bold opacity-70 cursor-not-allowed"
       >
         <Loader2 size={16} className="animate-spin" />
         Connecting...
@@ -80,46 +80,49 @@ export default function ConnectWalletButton() {
       <div className="relative" ref={dropdownRef}>
         <button 
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="flex items-center gap-2 h-[38px] px-[16px] rounded-lg bg-[#141414] border border-[#1f1f1f] hover:border-zinc-700 transition-colors"
+          className="flex items-center gap-2 h-[38px] px-[16px] rounded-lg bg-[#1c1b1b] border border-[#3a3939] hover:border-[#ddb7ff]/50 transition-colors"
         >
-          <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-          <span className="text-zinc-300 text-[13px] font-medium font-mono">
+          <div className="w-2 h-2 rounded-full bg-[#4fdbc8] shrink-0" />
+          <span className="text-[#e5e2e1] text-[13px] font-medium font-mono">
             {shortAddress}
           </span>
-          <ChevronDown size={14} className="text-zinc-500" />
+          <ChevronDown size={14} className="text-[#94a3b8]" />
         </button>
 
         {isDropdownOpen && (
-          <div className="absolute right-0 top-[46px] w-[260px] bg-[#141414] border border-[#1f1f1f] rounded-lg shadow-xl overflow-hidden z-50 flex flex-col">
+          <div className="absolute right-0 top-[46px] w-[260px] bg-[#1c1b1b] border border-[#3a3939] rounded-lg shadow-xl overflow-hidden z-50 flex flex-col">
             {/* Full address (copyable) */}
             <button
               onClick={handleCopyAddress}
-              className="flex items-center justify-between p-3 border-b border-[#1f1f1f] hover:bg-white/5 transition-colors group w-full text-left"
+              className="flex items-center justify-between p-3 border-b border-[#3a3939] hover:bg-white/5 transition-colors group w-full text-left"
             >
-              <span className="text-zinc-400 text-xs font-mono truncate flex-1 mr-2">
+              <span className="text-[#94a3b8] text-xs font-mono truncate flex-1 mr-2">
                 {address}
               </span>
               {showCopied
-                ? <Check size={14} className="text-green-500 shrink-0" />
-                : <Copy size={14} className="text-zinc-600 group-hover:text-zinc-300 shrink-0 transition-colors" />
+                ? <Check size={14} className="text-[#4fdbc8] shrink-0" />
+                : <Copy size={14} className="text-[#94a3b8] group-hover:text-[#e5e2e1] shrink-0 transition-colors" />
               }
             </button>
 
             {/* Network */}
-            <div className="p-3 border-b border-[#1f1f1f]">
-              <span className="text-zinc-500 text-[10px] uppercase tracking-wider block mb-1">Network</span>
+            <div className="p-3 border-b border-[#3a3939]">
+              <span className="text-[#94a3b8] text-[10px] uppercase tracking-wider block mb-1">Network</span>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-                <span className="text-white text-sm font-medium">Arc Testnet</span>
+                <div className="w-2 h-2 rounded-full bg-[#4fdbc8] shrink-0" />
+                <span className="text-[#e5e2e1] text-sm font-medium">Arc Testnet</span>
               </div>
             </div>
 
             {/* Balance */}
             {balance && (
-              <div className="p-3 border-b border-[#1f1f1f]">
-                <span className="text-zinc-500 text-[10px] uppercase tracking-wider block mb-1">Balance</span>
-                <div className="text-white text-sm font-medium">
-                  {Number(balance.formatted).toFixed(4)} {balance.symbol}
+              <div className="p-3 border-b border-[#3a3939]">
+                <span className="text-[#94a3b8] text-[10px] uppercase tracking-wider block mb-1">Balance</span>
+                <div className="text-[#e5e2e1] text-sm font-medium flex items-center justify-between">
+                  <span>{Number(balance.formatted).toFixed(4)} {balance.symbol}</span>
+                  <a href="https://faucet.circle.com/" target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[10px] text-[#ddb7ff] bg-[#ddb7ff]/10 hover:bg-[#ddb7ff]/20 px-2 py-1 rounded transition-colors uppercase font-bold tracking-wider">
+                    Get USDC
+                  </a>
                 </div>
               </div>
             )}
@@ -130,7 +133,7 @@ export default function ConnectWalletButton() {
                 disconnect();
                 setIsDropdownOpen(false);
               }}
-              className="flex items-center gap-2 p-3 w-full text-left text-red-500 hover:bg-red-500/10 transition-colors"
+              className="flex items-center gap-2 p-3 w-full text-left text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition-colors"
             >
               <LogOut size={16} />
               <span className="text-sm font-medium">Disconnect</span>
@@ -146,9 +149,9 @@ export default function ConnectWalletButton() {
     <>
       <button 
         onClick={() => setIsModalOpen(true)}
-        className="flex items-center gap-2 h-[38px] px-[16px] rounded-lg bg-transparent border border-[#06b6d4] text-[#06b6d4] text-[13px] uppercase tracking-wider font-bold hover:bg-[#06b6d4] hover:text-white transition-colors group"
+        className="flex items-center gap-2 h-[38px] px-[16px] rounded-lg bg-[#ddb7ff] text-[#0f172a] text-[13px] font-semibold hover:bg-[#ddb7ff]/90 transition-colors shadow-lg shadow-[#ddb7ff]/10"
       >
-        <Wallet size={16} className="group-hover:text-white transition-colors" />
+        <Wallet size={16} className="text-[#0f172a]" />
         Connect Wallet
       </button>
 

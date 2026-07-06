@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAccount, useReadContract } from 'wagmi';
@@ -9,9 +9,10 @@ import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import { formatUnits } from 'viem';
 import ConnectWalletButton from '../wallet/ConnectWalletButton';
 import Logo from '../ui/Logo';
-import { Search, Layout, Bell, Settings, Menu, X } from 'lucide-react';
+import { Search, Bell, Menu, X, Plus } from 'lucide-react';
 import { useUnclaimedWinnings } from '@/hooks/useUnclaimedWinnings';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import toast from 'react-hot-toast';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -29,6 +30,18 @@ export default function Navbar() {
     usdcRaw != null
       ? Number(formatUnits(usdcRaw as bigint, 6)).toFixed(2)
       : '0.00';
+
+  const prevBalanceRef = useRef<number | null>(null);
+  useEffect(() => {
+    const currentBal = parseFloat(usdcBalance);
+    if (prevBalanceRef.current !== null && currentBal > prevBalanceRef.current) {
+      const diff = currentBal - prevBalanceRef.current;
+      if (diff > 0.01) {
+        toast.success(`Received ${diff.toFixed(2)} USDC!`);
+      }
+    }
+    prevBalanceRef.current = currentBal;
+  }, [usdcBalance]);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -129,9 +142,6 @@ export default function Navbar() {
           </div>
 
           <div className="flex items-center gap-4 text-[#94a3b8]">
-            <button className="hover:text-[#e5e2e1] transition-colors">
-              <Layout className="w-5 h-5" />
-            </button>
             <Link href="/portfolio" className="relative hover:text-[#e5e2e1] transition-colors">
               <Bell className="w-5 h-5" />
               {unclaimedCount > 0 && (
@@ -143,15 +153,23 @@ export default function Navbar() {
                 </span>
               )}
             </Link>
-            <button className="hover:text-[#e5e2e1] transition-colors">
-              <Settings className="w-5 h-5" />
-            </button>
           </div>
 
           <div className="flex items-center gap-4">
             {isConnected && (
-              <div className="hidden xl:block bg-[#0f172a] px-3 py-1.5 rounded-lg border border-[#1e293b] text-sm font-[family-name:var(--font-jetbrains-mono)] text-[#e5e2e1]">
-                {usdcBalance} USDC
+              <div className="hidden xl:flex items-center gap-2 bg-[#1c1b1b] px-3 py-1.5 rounded-lg border border-[#3a3939]">
+                <span className="text-sm font-[family-name:var(--font-jetbrains-mono)] text-[#e5e2e1]">
+                  {usdcBalance} USDC
+                </span>
+                <a 
+                  href="https://faucet.circle.com/" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="w-5 h-5 rounded-md bg-[#ddb7ff]/10 hover:bg-[#ddb7ff]/20 text-[#ddb7ff] flex items-center justify-center transition-colors border border-[#ddb7ff]/20"
+                  title="Get Testnet USDC"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </a>
               </div>
             )}
             <div className="opacity-90 hover:opacity-100 transition-opacity">

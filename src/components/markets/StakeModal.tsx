@@ -6,6 +6,7 @@ import { parseUnits, formatUnits } from 'viem';
 import { Market, StakeSide } from '@/types';
 import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import toast from 'react-hot-toast';
 
 export interface StakeModalProps {
   market: Market;
@@ -74,9 +75,11 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         throw new Error('USDC approval transaction failed on-chain.');
       }
       await refetchAllowance();
+      toast.success('USDC approved successfully!');
       setStep('idle');
     } catch (err: any) {
       const message = err instanceof Error ? err.message : 'Approval failed. Please try again.';
+      toast.error(message);
       setError(message);
       setStep('idle');
     }
@@ -127,9 +130,11 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
       });
 
       setTxHash(stakeHash);
+      toast.success(`Successfully placed ${side === 0 ? 'FOLLOW' : 'FADE'} position for ${amountStr} USDC!`);
       setStep('success');
     } catch (err: any) {
       const message = err instanceof Error ? err.message : 'Transaction failed. Please try again.';
+      toast.error(message);
       setError(message);
       setStep('idle');
     }
