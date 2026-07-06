@@ -9,10 +9,12 @@ import {
   BarChart2,
   Trophy,
   FileText,
-  Plus,
+  BookOpen,
   HelpCircle,
   Zap,
   User,
+  Github,
+  Twitter,
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -80,10 +82,10 @@ export default function Sidebar() {
 
       {/* Bottom section */}
       <div className="px-4">
-        <button className="w-full flex items-center justify-center gap-2 bg-[#ddb7ff] hover:bg-[#ddb7ff]/90 text-[#0f172a] py-3 px-4 rounded-lg text-sm font-[family-name:var(--font-inter)] font-semibold transition-colors mb-5 shadow-lg shadow-[#ddb7ff]/10">
-          <Plus className="w-4 h-4" />
-          Create Market
-        </button>
+        <Link href="/guide" className="w-full flex items-center justify-center gap-2 bg-[#ddb7ff] hover:bg-[#ddb7ff]/90 text-[#0f172a] py-3 px-4 rounded-lg text-sm font-[family-name:var(--font-inter)] font-semibold transition-colors mb-5 shadow-lg shadow-[#ddb7ff]/10">
+          <BookOpen className="w-4 h-4" />
+          ArcSignal Guide
+        </Link>
 
         <div className="flex flex-col gap-3">
           <Link
@@ -95,11 +97,19 @@ export default function Sidebar() {
               Support
             </span>
           </Link>
-          <div className="flex items-center justify-between text-[#94a3b8]/60">
+          <div className="flex items-center justify-between text-[#94a3b8]/60 pt-2 border-t border-[#1e293b]">
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px]">
               v.4.2.1-stable
             </span>
-            <div className="w-2 h-2 rounded-full bg-[#4fdbc8] animate-pulse-dot" />
+            <div className="flex items-center gap-3">
+              <a href="https://twitter.com" target="_blank" rel="noreferrer" className="hover:text-[#ddb7ff] transition-colors">
+                <Twitter className="w-3.5 h-3.5" />
+              </a>
+              <a href="https://github.com" target="_blank" rel="noreferrer" className="hover:text-[#ddb7ff] transition-colors">
+                <Github className="w-3.5 h-3.5" />
+              </a>
+              <div className="w-2 h-2 rounded-full bg-[#4fdbc8] animate-pulse-dot ml-1" />
+            </div>
           </div>
         </div>
       </div>

@@ -84,10 +84,6 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                 Stake your conviction, earn from accuracy.
               </p>
             </div>
-            <button className="flex items-center gap-2 bg-[#ddb7ff] hover:bg-[#ddb7ff]/90 text-[#0f172a] py-2.5 px-5 rounded-full font-[family-name:var(--font-inter)] text-sm font-semibold transition-colors shrink-0 shadow-lg shadow-[#ddb7ff]/10">
-              <Plus className="w-4 h-4" />
-              Create Market
-            </button>
           </header>
 
           {/* Filters + Sort */}
