@@ -27,7 +27,7 @@ const footerLinks = [
       { label: 'Discord', href: '#' },
       { label: 'Twitter / X', href: '#' },
       { label: 'Telegram', href: '#' },
-      { label: 'GitHub', href: '#' },
+      { label: 'GitHub', href: 'https://github.com/syther069/ArcSignal-' },
     ],
   },
 ];
