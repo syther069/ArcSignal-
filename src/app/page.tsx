@@ -64,7 +64,7 @@ export default function LandingPage() {
             </div>
             <h3 className="text-xl font-bold text-on-surface mb-3">1. AI Baseline Analysis</h3>
             <p className="text-on-surface-variant leading-relaxed">
-              ArcSignal's decentralized AI clusters ingest real-time market data, sentiment, and historical trends to formulate high-conviction predictions across crypto and sports markets, publishing them directly on-chain as a baseline thesis.
+              ArcSignal&apos;s decentralized AI clusters ingest real-time market data, sentiment, and historical trends to formulate high-conviction predictions across crypto and sports markets, publishing them directly on-chain as a baseline thesis.
             </p>
           </div>
           
@@ -74,7 +74,7 @@ export default function LandingPage() {
             </div>
             <h3 className="text-xl font-bold text-on-surface mb-3">2. Follow or Fade</h3>
             <p className="text-on-surface-variant leading-relaxed">
-              Participants interact with a streamlined pari-mutuel smart contract by staking USDC. Choose to <strong>Follow</strong> the AI's prediction if you agree, or <strong>Fade</strong> it if you have contrarian alpha. Winning pools split the total staked capital proportionally.
+              Participants interact with a streamlined pari-mutuel smart contract by staking USDC. Choose to <strong>Follow</strong> the AI&apos;s prediction if you agree, or <strong>Fade</strong> it if you have contrarian alpha. Winning pools split the total staked capital proportionally.
             </p>
           </div>
         </div>
