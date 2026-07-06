@@ -1,6 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useWatchContractEvent } from 'wagmi';
+import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import Sidebar from '@/components/layout/Sidebar';
 import { Trophy } from 'lucide-react';
 
@@ -18,6 +21,24 @@ interface LeaderboardClientProps {
 }
 
 export default function LeaderboardClient({ leaderboard, markets }: LeaderboardClientProps) {
+  const router = useRouter();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      router.refresh();
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [router]);
+
+  useWatchContractEvent({
+    address: ARCSIGNAL_ADDRESS,
+    abi: ARCSIGNAL_ABI,
+    eventName: 'Staked',
+    onLogs() {
+      router.refresh();
+    },
+  });
+
   // Stat Card 1: Network Volume
   const totalVolume = markets.reduce((acc, m) => acc + (Number(m.followPool) + Number(m.fadePool)) / 1e6, 0);
   

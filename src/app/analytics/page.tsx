@@ -18,8 +18,7 @@ export default async function AnalyticsPage() {
   // ─── Fetch Recent Staked events for the chart ──────────────────────────────
   let stakedLogs: any[] = [];
   try {
-    const currentBlock = await publicClient.getBlockNumber();
-    const fromBlock = currentBlock > 10000n ? currentBlock - 10000n : 0n;
+    const fromBlock = 0n; // Fetch all historical stakes
     stakedLogs = await publicClient.getLogs({
       address: ARCSIGNAL_ADDRESS,
       event: ARCSIGNAL_ABI.find((x: any) => x.type === 'event' && x.name === 'Staked') as any,

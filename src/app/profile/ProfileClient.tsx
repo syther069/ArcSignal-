@@ -9,6 +9,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
   usePublicClient,
+  useWatchContractEvent,
 } from 'wagmi';
 import { type Address } from 'viem';
 import {
@@ -29,8 +30,12 @@ import Sidebar from '@/components/layout/Sidebar';
 import ConnectWalletButton from '@/components/wallet/ConnectWalletButton';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { getMarketsFromChain } from '@/lib/markets';
-import { Stake } from '@/types';
+import { Stake as BaseStake } from '@/types';
 import toast from 'react-hot-toast';
+
+interface Stake extends BaseStake {
+  isWin?: boolean;
+}
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -86,16 +91,16 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
 
   const [localProfile, setLocalProfile] = useState<{username: string, bio: string, avatarUrl: string} | null>(null);
 
-  const username = localProfile?.username ?? (profileData?.username || '');
-  const bio = localProfile?.bio ?? (profileData?.bio || '');
-  const avatarUrl = localProfile?.avatarUrl ?? (profileData?.avatarUrl || '');
+  const profileDataArray = Array.isArray(profileData) ? profileData : [];
+  const username = localProfile?.username ?? (profileDataArray[0] || '');
+  const bio = localProfile?.bio ?? (profileDataArray[1] || '');
+  const avatarUrl = localProfile?.avatarUrl ?? (profileDataArray[2] || '');
 
   // ─── Position Data from Contract ────────────────────────────────────────────
   const [stakes, setStakes] = useState<Stake[]>([]);
   const [loadingPositions, setLoadingPositions] = useState(true);
 
-  useEffect(() => {
-    async function loadPositions() {
+  const loadPositions = React.useCallback(async () => {
       if (!targetAddress || !publicClient) return;
       setLoadingPositions(true);
       try {
@@ -149,6 +154,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
               amountUsdc: amt,
               timestamp: new Date().toISOString(),
               pnl,
+              isWin: m.resolved ? (side === (Number(m.outcome) === 1 ? 0 : 1)) : undefined,
             } as unknown as Stake);
           };
 
@@ -161,9 +167,31 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
         console.error(err);
       }
       setLoadingPositions(false);
-    }
-    loadPositions();
   }, [targetAddress, publicClient]);
+
+  useEffect(() => {
+    loadPositions();
+    const interval = setInterval(() => loadPositions(), 60000);
+    return () => clearInterval(interval);
+  }, [loadPositions]);
+
+  useWatchContractEvent({
+    address: ARCSIGNAL_ADDRESS,
+    abi: ARCSIGNAL_ABI,
+    eventName: 'Staked',
+    onLogs() {
+      loadPositions();
+    },
+  });
+
+  useWatchContractEvent({
+    address: ARCSIGNAL_ADDRESS,
+    abi: ARCSIGNAL_ABI,
+    eventName: 'MarketResolved',
+    onLogs() {
+      loadPositions();
+    },
+  });
 
   // ─── Stats Derivation ───────────────────────────────────────────────────────
   const stats = useMemo(() => {
@@ -177,7 +205,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
       if (s.pnl !== undefined) {
         resolvedCount++;
         netProfit += s.pnl;
-        if (s.pnl > 0) wins++;
+        if (s.isWin) wins++;
       }
     });
 

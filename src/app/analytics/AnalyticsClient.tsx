@@ -1,6 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useWatchContractEvent } from 'wagmi';
+import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import Sidebar from '@/components/layout/Sidebar';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -56,6 +59,23 @@ export default function AnalyticsClient({
   resolvedMarkets,
   markets
 }: AnalyticsClientProps) {
+  const router = useRouter();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      router.refresh();
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [router]);
+
+  useWatchContractEvent({
+    address: ARCSIGNAL_ADDRESS,
+    abi: ARCSIGNAL_ABI,
+    eventName: 'Staked',
+    onLogs() {
+      router.refresh();
+    },
+  });
 
   const totalStakedUsdc = stats.totalStakedUsdc ?? stats.totalVolume ?? 0;
   const pendingCount = stats.pendingCount ?? stats.activeMarkets ?? 0;
