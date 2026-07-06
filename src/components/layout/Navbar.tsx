@@ -51,9 +51,6 @@ export default function Navbar() {
     { name: 'Profile',   href: '/profile' },
     { name: 'Docs',      href: '/docs' },
   ];
-
-  ];
-
   return (
     <header className="fixed top-0 w-full z-50 bg-[#131313] border-b border-[#1e293b] shadow-2xl shadow-black/40">
       <div className="flex justify-between items-center h-16 px-6 lg:px-8 w-full">
