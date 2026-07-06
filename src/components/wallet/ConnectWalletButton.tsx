@@ -53,9 +53,9 @@ export default function ConnectWalletButton() {
     return (
       <button 
         disabled
-        className="flex items-center gap-2 h-[38px] px-[16px] rounded-lg bg-transparent border border-[#ddb7ff] text-[#ddb7ff] text-[13px] uppercase tracking-wider font-bold opacity-70 cursor-not-allowed"
+        className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-[#ddb7ff] text-[#0f172a] text-sm font-[family-name:var(--font-inter)] font-semibold opacity-50 pointer-events-none transition-all duration-200 shadow-lg shadow-[#ddb7ff]/10"
       >
-        <Loader2 size={16} className="animate-spin" />
+        <Loader2 size={16} className="animate-spin text-[#0f172a]" />
         Connecting...
       </button>
     );
@@ -66,7 +66,7 @@ export default function ConnectWalletButton() {
     return (
       <button 
         onClick={() => switchChain({ chainId: 5042002 })}
-        className="flex items-center gap-2 h-[38px] px-[16px] rounded-lg bg-transparent border border-amber-500 text-amber-500 text-[13px] uppercase tracking-wider font-bold hover:bg-amber-500/10 transition-colors"
+        className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-transparent border border-amber-500 text-amber-500 text-sm font-[family-name:var(--font-inter)] font-semibold hover:bg-amber-500/10 transition-all duration-200"
       >
         <AlertTriangle size={16} />
         Wrong Network
@@ -80,13 +80,13 @@ export default function ConnectWalletButton() {
       <div className="relative" ref={dropdownRef}>
         <button 
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="flex items-center gap-2 h-[38px] px-[16px] rounded-lg bg-[#1c1b1b] border border-[#3a3939] hover:border-[#ddb7ff]/50 transition-colors"
+          className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-[#1c1b1b] border border-[#3a3939] hover:border-[#ddb7ff]/50 transition-all duration-200 shadow-lg shadow-black/20 focus:outline-none focus:ring-2 focus:ring-[#ddb7ff]/50 focus:ring-offset-2 focus:ring-offset-[#131313]"
         >
           <div className="w-2 h-2 rounded-full bg-[#4fdbc8] shrink-0" />
-          <span className="text-[#e5e2e1] text-[13px] font-medium font-mono">
+          <span className="text-[#e5e2e1] text-sm font-[family-name:var(--font-inter)] font-semibold">
             {shortAddress}
           </span>
-          <ChevronDown size={14} className="text-[#94a3b8]" />
+          <ChevronDown size={16} className="text-[#94a3b8]" />
         </button>
 
         {isDropdownOpen && (
@@ -149,7 +149,7 @@ export default function ConnectWalletButton() {
     <>
       <button 
         onClick={() => setIsModalOpen(true)}
-        className="flex items-center gap-2 h-[38px] px-[16px] rounded-lg bg-[#ddb7ff] text-[#0f172a] text-[13px] font-semibold hover:bg-[#ddb7ff]/90 transition-colors shadow-lg shadow-[#ddb7ff]/10"
+        className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-[#ddb7ff] text-[#0f172a] text-sm font-[family-name:var(--font-inter)] font-semibold transition-all duration-200 shadow-lg shadow-[#ddb7ff]/10 hover:brightness-105 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#ddb7ff]/20 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#ddb7ff]/50 focus:ring-offset-2 focus:ring-offset-[#131313] disabled:opacity-50 disabled:pointer-events-none"
       >
         <Wallet size={16} className="text-[#0f172a]" />
         Connect Wallet
