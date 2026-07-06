@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
-import Footer from '@/components/layout/Footer';
+
 import { MarketCard } from '@/components/markets/MarketCard';
 import { StakeModal } from '@/components/markets/StakeModal';
 import { Market, StakeSide } from '@/types';
@@ -256,7 +256,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
           )}
 
           <div className="mt-16">
-            <Footer />
+
           </div>
         </div>
       </main>
