@@ -28,11 +28,9 @@ export default function WhitepaperPage() {
         </div>
         
         <div className="flex gap-8 text-sm text-on-surface-variant">
-          <Link href="#" className="hover:text-on-surface transition-colors">Terms of Service</Link>
-          <Link href="#" className="hover:text-on-surface transition-colors">Privacy Policy</Link>
+          <Link href="/terms" className="hover:text-on-surface transition-colors">Terms of Service</Link>
+          <Link href="/privacy" className="hover:text-on-surface transition-colors">Privacy Policy</Link>
           <Link href="/whitepaper" className="hover:text-on-surface transition-colors">Technical Whitepaper</Link>
-          <Link href="#" className="hover:text-on-surface transition-colors">API Docs</Link>
-          <Link href="#" className="hover:text-on-surface transition-colors">Status</Link>
         </div>
 
         <div className="text-xs text-on-surface-variant flex flex-col items-end">

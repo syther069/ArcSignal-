@@ -4,8 +4,8 @@ import path from 'path';
 import Markdown from 'react-markdown';
 import Link from 'next/link';
 
-export default function DocsPage() {
-  const filePath = path.join(process.cwd(), 'DOCS.md');
+export default function TermsPage() {
+  const filePath = path.join(process.cwd(), 'TERMS.md');
   const fileContent = fs.readFileSync(filePath, 'utf8');
 
   return (
