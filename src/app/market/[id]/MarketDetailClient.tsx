@@ -48,6 +48,7 @@ interface MarketDetailClientProps {
 }
 
 export default function MarketDetailClient({ market }: MarketDetailClientProps) {
+  const [stakeModalSide, setStakeModalSide] = useState<StakeSide | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
