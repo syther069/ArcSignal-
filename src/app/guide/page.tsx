@@ -62,7 +62,7 @@ export default function GuidePage() {
                   <div className="bg-[#131313] border border-[#3a3939] rounded-lg p-4 mb-4">
                     <p className="text-sm text-[#e5e2e1] mb-2 font-bold">Understanding Market Cards</p>
                     <p className="text-xs text-[#94a3b8]">
-                      Each card displays a specific prediction (e.g., "Will BTC cross $100k?"). You will see the total volume staked, the current liquidity pools for both sides, and the deadline for the outcome to be resolved.
+                      Each card displays a specific prediction (e.g., &quot;Will BTC cross $100k?&quot;). You will see the total volume staked, the current liquidity pools for both sides, and the deadline for the outcome to be resolved.
                     </p>
                   </div>
                 </div>
@@ -80,20 +80,20 @@ export default function GuidePage() {
                     3. Place Your Position
                   </h2>
                   <p className="text-[#94a3b8] text-sm leading-relaxed mb-4">
-                    Once you find a market you want to trade on, you must decide whether to align with the AI's prediction or bet against it.
+                    Once you find a market you want to trade on, you must decide whether to align with the AI&apos;s prediction or bet against it.
                   </p>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                     <div className="bg-[#131313] border border-[#4fdbc8]/20 rounded-lg p-4">
                       <div className="text-[#4fdbc8] font-bold text-sm mb-1 uppercase tracking-wider font-[family-name:var(--font-jetbrains-mono)]">Follow AI</div>
                       <p className="text-xs text-[#94a3b8]">
-                        Stake your USDC believing the AI's prediction is correct. If the event resolves in favor of the prediction, you win a share of the Fade pool.
+                        Stake your USDC believing the AI&apos;s prediction is correct. If the event resolves in favor of the prediction, you win a share of the Fade pool.
                       </p>
                     </div>
                     <div className="bg-[#131313] border border-[#ffb4ab]/20 rounded-lg p-4">
                       <div className="text-[#ffb4ab] font-bold text-sm mb-1 uppercase tracking-wider font-[family-name:var(--font-jetbrains-mono)]">Fade AI</div>
                       <p className="text-xs text-[#94a3b8]">
-                        Stake your USDC believing the AI's prediction is wrong. If the event resolves opposite to the prediction, you win a share of the Follow pool.
+                        Stake your USDC believing the AI&apos;s prediction is wrong. If the event resolves opposite to the prediction, you win a share of the Follow pool.
                       </p>
                     </div>
                   </div>
