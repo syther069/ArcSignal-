@@ -208,12 +208,28 @@ export default function PortfolioClient() {
             <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#8e8e8e]">to view your positions</p>
           </div>
         ) : loading ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4">
-            <span className="w-10 h-10 rounded-full border-2 border-[#a855f7] border-t-transparent animate-spin" />
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#8e8e8e] uppercase tracking-widest">
-              Loading positions…
-            </span>
-          </div>
+          <>
+            {/* ── Stats Bar Skeleton ─────────────────────────────────────────────────── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+               {Array.from({length: 4}).map((_, i) => (
+                 <div key={i} className="rounded-xl border border-[#3a3939] bg-[#1c1b1b] p-4 h-[84px] animate-pulse" />
+               ))}
+            </div>
+
+            {/* ── Tabs Skeleton ──────────────────────────────────────────────────────── */}
+            <div className="flex items-center border border-[#3a3939] rounded-lg overflow-hidden mb-6 w-fit animate-pulse bg-[#1c1b1b]">
+               <div className="w-24 h-9 border-r border-[#3a3939]" />
+               <div className="w-32 h-9 border-r border-[#3a3939]" />
+               <div className="w-20 h-9" />
+            </div>
+
+            {/* ── Positions List Skeleton ────────────────────────────────────────────── */}
+            <div className="flex flex-col gap-3">
+               {Array.from({length: 3}).map((_, i) => (
+                 <div key={i} className="rounded-xl border border-[#3a3939] bg-[#1c1b1b] p-5 h-[146px] animate-pulse" />
+               ))}
+            </div>
+          </>
         ) : (
           <>
             {/* ── Stats Bar ─────────────────────────────────────────────────── */}

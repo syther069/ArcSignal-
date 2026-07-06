@@ -40,23 +40,43 @@ export async function getMarketsFromChain(): Promise<Market[]> {
 
   if (!count || count === 0n) return [];
 
+  const countNum = Number(count);
+  const CHUNK_SIZE = 20;
+
+  // 1. Fetch all market IDs in chunks
+  const marketIds: string[] = [];
+  for (let i = 0; i < countNum; i += CHUNK_SIZE) {
+    const chunkPromises = [];
+    for (let j = i; j < i + CHUNK_SIZE && j < countNum; j++) {
+      chunkPromises.push(
+        publicClient.readContract({
+          address: ARCSIGNAL_ADDRESS as Address,
+          abi: ARCSIGNAL_ABI,
+          functionName: 'getMarketIdByIndex',
+          args: [BigInt(j)],
+        }) as Promise<string>
+      );
+    }
+    const chunkResults = await Promise.allSettled(chunkPromises);
+    for (const res of chunkResults) {
+      if (res.status === 'fulfilled' && res.value) {
+        marketIds.push(res.value);
+      }
+    }
+  }
+
   const markets: Market[] = [];
 
-  for (let i = 0; i < Number(count); i++) {
-    try {
-      const marketId = await publicClient.readContract({
-        address: ARCSIGNAL_ADDRESS as Address,
-        abi: ARCSIGNAL_ABI,
-        functionName: 'getMarketIdByIndex',
-        args: [BigInt(i)],
-      }) as string;
-
-      const data = await publicClient.readContract({
+  // 2. Fetch all market data in chunks
+  for (let i = 0; i < marketIds.length; i += CHUNK_SIZE) {
+    const chunkIds = marketIds.slice(i, i + CHUNK_SIZE);
+    const chunkPromises = chunkIds.map(marketId =>
+      publicClient.readContract({
         address: ARCSIGNAL_ADDRESS as Address,
         abi: ARCSIGNAL_ABI,
         functionName: 'getMarket',
         args: [marketId],
-      }) as {
+      }) as Promise<{
         marketId: string;
         category: string;
         question: string;
@@ -66,21 +86,25 @@ export async function getMarketsFromChain(): Promise<Market[]> {
         fadePool: bigint;
         resolved: boolean;
         outcome: number;
-      };
+      }>
+    );
 
-      markets.push({
-        marketId: data.marketId,
-        category: mapCategory(data.category),
-        question: data.question,
-        resolutionTime: Number(data.resolutionTime),
-        followPool: data.followPool,
-        fadePool: data.fadePool,
-        resolved: data.resolved,
-        outcome: mapOutcome(data.resolved, data.outcome),
-        analysis: safeParseAnalysis(data.analysisJson),
-      });
-    } catch {
-      // skip markets that fail to load
+    const chunkResults = await Promise.allSettled(chunkPromises);
+    for (const res of chunkResults) {
+      if (res.status === 'fulfilled' && res.value) {
+        const data = res.value;
+        markets.push({
+          marketId: data.marketId,
+          category: mapCategory(data.category),
+          question: data.question,
+          resolutionTime: Number(data.resolutionTime),
+          followPool: data.followPool,
+          fadePool: data.fadePool,
+          resolved: data.resolved,
+          outcome: mapOutcome(data.resolved, data.outcome),
+          analysis: safeParseAnalysis(data.analysisJson),
+        });
+      }
     }
   }
 

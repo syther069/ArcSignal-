@@ -423,26 +423,46 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
         {/* Tab Content */}
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-             <div className="bg-surface-charcoal border border-border-subtle rounded-xl p-6">
-                <p className="text-text-muted text-xs font-label-caps mb-2">Total Staked</p>
-                <p className="text-2xl font-code-sm">{stats.totalStaked.toLocaleString(undefined, {maximumFractionDigits:2})} USDC</p>
-             </div>
-             <div className="bg-surface-charcoal border border-border-subtle rounded-xl p-6 border-t-2 border-t-tertiary">
-                <p className="text-text-muted text-xs font-label-caps mb-2">Total P&L</p>
-                <p className={`text-2xl font-code-sm ${stats.netProfit >= 0 ? 'text-tertiary' : 'text-error'}`}>
-                  {stats.netProfit >= 0 ? '+' : ''}{stats.netProfit.toLocaleString(undefined, {maximumFractionDigits:2})} USDC
-                </p>
-             </div>
-             <div className="bg-surface-charcoal border border-border-subtle rounded-xl p-6">
-                <p className="text-text-muted text-xs font-label-caps mb-2">Markets Entered</p>
-                <p className="text-2xl font-code-sm text-primary">{stats.marketsEntered}</p>
-             </div>
+            {loadingPositions ? (
+              <>
+                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl h-28 animate-pulse"></div>
+                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl h-28 animate-pulse"></div>
+                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl h-28 animate-pulse"></div>
+              </>
+            ) : (
+              <>
+                 <div className="bg-surface-charcoal border border-border-subtle rounded-xl p-6">
+                    <p className="text-text-muted text-xs font-label-caps mb-2">Total Staked</p>
+                    <p className="text-2xl font-code-sm">{stats.totalStaked.toLocaleString(undefined, {maximumFractionDigits:2})} USDC</p>
+                 </div>
+                 <div className="bg-surface-charcoal border border-border-subtle rounded-xl p-6 border-t-2 border-t-tertiary">
+                    <p className="text-text-muted text-xs font-label-caps mb-2">Total P&L</p>
+                    <p className={`text-2xl font-code-sm ${stats.netProfit >= 0 ? 'text-tertiary' : 'text-error'}`}>
+                      {stats.netProfit >= 0 ? '+' : ''}{stats.netProfit.toLocaleString(undefined, {maximumFractionDigits:2})} USDC
+                    </p>
+                 </div>
+                 <div className="bg-surface-charcoal border border-border-subtle rounded-xl p-6">
+                    <p className="text-text-muted text-xs font-label-caps mb-2">Markets Entered</p>
+                    <p className="text-2xl font-code-sm text-primary">{stats.marketsEntered}</p>
+                 </div>
+              </>
+            )}
           </div>
         )}
 
         {activeTab === 'positions' && (
           <div className="bg-surface-charcoal border border-border-subtle rounded-xl overflow-hidden">
-            {stakes.length === 0 ? (
+            {loadingPositions ? (
+              <div className="p-6 space-y-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-center justify-between p-4 bg-[#1c1b1b] rounded-lg animate-pulse border border-[#3a3939]">
+                    <div className="h-4 w-48 bg-[#2a2929] rounded"></div>
+                    <div className="h-4 w-16 bg-[#2a2929] rounded"></div>
+                    <div className="h-4 w-24 bg-[#2a2929] rounded"></div>
+                  </div>
+                ))}
+              </div>
+            ) : stakes.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 gap-4 text-center border border-border-subtle rounded-xl bg-surface-charcoal">
                 <Clock size={36} className="text-text-muted opacity-50" />
                 <p className="font-headline-lg text-lg text-primary">No positions found</p>
