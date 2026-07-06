@@ -91,10 +91,26 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
 
   const [localProfile, setLocalProfile] = useState<{username: string, bio: string, avatarUrl: string} | null>(null);
 
-  const profileDataArray = Array.isArray(profileData) ? profileData : [];
-  const username = localProfile?.username ?? (profileDataArray[0] || '');
-  const bio = localProfile?.bio ?? (profileDataArray[1] || '');
-  const avatarUrl = localProfile?.avatarUrl ?? (profileDataArray[2] || '');
+  let chainUsername = '';
+  let chainBio = '';
+  let chainAvatarUrl = '';
+
+  if (profileData) {
+    if (Array.isArray(profileData)) {
+      chainUsername = profileData[0] || '';
+      chainBio = profileData[1] || '';
+      chainAvatarUrl = profileData[2] || '';
+    } else if (typeof profileData === 'object') {
+      const p = profileData as { username?: string; bio?: string; avatarUrl?: string };
+      chainUsername = p.username || '';
+      chainBio = p.bio || '';
+      chainAvatarUrl = p.avatarUrl || '';
+    }
+  }
+
+  const username = localProfile?.username ?? chainUsername;
+  const bio = localProfile?.bio ?? chainBio;
+  const avatarUrl = localProfile?.avatarUrl ?? chainAvatarUrl;
 
   // ─── Position Data from Contract ────────────────────────────────────────────
   const [stakes, setStakes] = useState<Stake[]>([]);
