@@ -10,7 +10,6 @@ import ConnectWalletButton from '../wallet/ConnectWalletButton';
 import Logo from '../ui/Logo';
 import { Bell, Menu, X, Plus } from 'lucide-react';
 import { useUnclaimedWinnings } from '@/hooks/useUnclaimedWinnings';
-import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import toast from 'react-hot-toast';
 
 export default function Navbar() {
