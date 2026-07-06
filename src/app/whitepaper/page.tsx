@@ -36,11 +36,10 @@ export default function WhitepaperPage() {
         </div>
 
         <div className="text-xs text-on-surface-variant flex flex-col items-end">
-          <div className="flex gap-4 mb-2">
+          <div className="flex gap-4">
             <svg className="w-4 h-4 hover:text-on-surface cursor-pointer" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 5.523 4.477 10 10 10s10-4.477 10-10c0-5.523-4.477-10-10-10zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"/><path d="M12 4.168A7.834 7.834 0 0 0 4.168 12 7.834 7.834 0 0 0 12 19.832 7.834 7.834 0 0 0 19.832 12 7.834 7.834 0 0 0 12 4.168zm0 14c-3.4 0-6.168-2.768-6.168-6.168S8.6 5.832 12 5.832s6.168 2.768 6.168 6.168S15.4 18.168 12 18.168z"/></svg>
             <svg className="w-4 h-4 hover:text-on-surface cursor-pointer" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4.236l-8 4.882-8-4.882V6l8 4.882L20 6v2.236z"/></svg>
           </div>
-          <p>© 2024 ArcSignal Protocol. All rights reserved.</p>
         </div>
       </footer>
     </main>

@@ -41,10 +41,10 @@ export default function LandingPage() {
       {/* CTA Buttons */}
       <div className="flex items-center gap-4 mb-24">
         <Link 
-          href="/dashboard" 
+          href="/markets" 
           className="bg-primary text-background font-bold text-sm uppercase tracking-widest px-8 py-3 rounded hover:bg-primary-fixed transition-colors"
         >
-          Launch App
+          Explore Markets
         </Link>
         <Link 
           href="/whitepaper"
@@ -54,26 +54,29 @@ export default function LandingPage() {
         </Link>
       </div>
 
-      {/* Hero Graphic / Dashboard Preview Placeholder */}
-      <div className="w-full max-w-5xl h-[400px] glass-card rounded-xl mb-32 relative overflow-hidden flex items-center justify-center top-lit-border">
-        {/* Decorative Wave/Mesh */}
-        <div className="absolute inset-0 mesh-gradient opacity-50"></div>
-        <div className="absolute inset-0 network-mesh opacity-20"></div>
-        
-        {/* Placeholder Sine Wave Graphic */}
-        <svg className="absolute w-full h-full opacity-30" viewBox="0 0 1000 400" preserveAspectRatio="none">
-          <path d="M0,200 C200,300 300,50 500,200 C700,350 800,100 1000,200 L1000,400 L0,400 Z" fill="rgba(225, 224, 255, 0.05)" />
-          <path d="M0,200 C200,300 300,50 500,200 C700,350 800,100 1000,200" fill="none" stroke="#e1e0ff" strokeWidth="2" />
-          <path d="M0,220 C150,350 350,20 500,220 C650,400 850,50 1000,220" fill="none" stroke="#4edea3" strokeWidth="1" strokeOpacity="0.5" />
-        </svg>
-
-        {/* Mock UI Elements */}
-        <div className="absolute right-8 top-8 bottom-8 w-64 bg-surface-container/50 border border-white/5 rounded backdrop-blur-md hidden md:flex flex-col gap-4 p-4">
-          <div className="h-2 w-1/3 bg-on-surface-variant/30 rounded"></div>
-          <div className="h-16 w-full bg-surface-container-highest/50 rounded"></div>
-          <div className="h-16 w-full bg-surface-container-highest/50 rounded"></div>
-          <div className="h-2 w-1/4 bg-on-surface-variant/30 rounded mt-4"></div>
-          <div className="h-16 w-full bg-surface-container-highest/50 rounded"></div>
+      {/* How it works Guide */}
+      <div className="w-full max-w-5xl mb-32">
+        <h2 className="text-3xl font-bold text-center text-on-surface mb-10">How ArcSignal Works</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="bg-surface-container/50 border border-white/5 rounded-xl p-8 backdrop-blur-sm hover:border-primary/30 transition-colors">
+            <div className="w-12 h-12 bg-primary/20 text-primary rounded-lg flex items-center justify-center mb-6">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+            </div>
+            <h3 className="text-xl font-bold text-on-surface mb-3">1. AI Baseline Analysis</h3>
+            <p className="text-on-surface-variant leading-relaxed">
+              ArcSignal's decentralized AI clusters ingest real-time market data, sentiment, and historical trends to formulate high-conviction predictions across crypto and sports markets, publishing them directly on-chain as a baseline thesis.
+            </p>
+          </div>
+          
+          <div className="bg-surface-container/50 border border-white/5 rounded-xl p-8 backdrop-blur-sm hover:border-tertiary/30 transition-colors">
+            <div className="w-12 h-12 bg-tertiary/20 text-tertiary rounded-lg flex items-center justify-center mb-6">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            </div>
+            <h3 className="text-xl font-bold text-on-surface mb-3">2. Follow or Fade</h3>
+            <p className="text-on-surface-variant leading-relaxed">
+              Participants interact with a streamlined pari-mutuel smart contract by staking USDC. Choose to <strong>Follow</strong> the AI's prediction if you agree, or <strong>Fade</strong> it if you have contrarian alpha. Winning pools split the total staked capital proportionally.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -191,10 +194,10 @@ export default function LandingPage() {
       <div className="w-full max-w-5xl bg-gradient-to-b from-surface-container to-background border border-white/5 rounded-2xl p-16 text-center shadow-2xl top-lit-border mb-16">
         <h2 className="text-4xl font-bold text-on-surface mb-6">Ready to command the future?</h2>
         <p className="text-on-surface-variant max-w-lg mx-auto mb-10">
-          Join 25,000+ analysts and engineers utilizing ArcSignal for institutional-grade prediction markets.
+          Join the decentralized network of analysts and AI agents forecasting the future on the ARC Testnet.
         </p>
         <Link 
-          href="/dashboard"
+          href="/markets"
           className="inline-block bg-primary text-background font-bold text-sm uppercase tracking-widest px-10 py-4 rounded hover:bg-primary-fixed transition-colors shadow-[0_0_20px_rgba(192,193,255,0.3)]"
         >
           Enter the Ecosystem
@@ -217,11 +220,10 @@ export default function LandingPage() {
         </div>
 
         <div className="text-xs text-on-surface-variant flex flex-col items-end">
-          <div className="flex gap-4 mb-2">
+          <div className="flex gap-4">
             <svg className="w-4 h-4 hover:text-on-surface cursor-pointer" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 5.523 4.477 10 10 10s10-4.477 10-10c0-5.523-4.477-10-10-10zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8z"/><path d="M12 4.168A7.834 7.834 0 0 0 4.168 12 7.834 7.834 0 0 0 12 19.832 7.834 7.834 0 0 0 19.832 12 7.834 7.834 0 0 0 12 4.168zm0 14c-3.4 0-6.168-2.768-6.168-6.168S8.6 5.832 12 5.832s6.168 2.768 6.168 6.168S15.4 18.168 12 18.168z"/></svg>
             <svg className="w-4 h-4 hover:text-on-surface cursor-pointer" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4.236l-8 4.882-8-4.882V6l8 4.882L20 6v2.236z"/></svg>
           </div>
-          <p>© 2024 ArcSignal Protocol. All rights reserved.</p>
         </div>
       </footer>
     </main>

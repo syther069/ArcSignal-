@@ -8,7 +8,6 @@ const footerLinks = [
     title: 'PROTOCOL',
     links: [
       { label: 'Markets', href: '/markets' },
-      { label: 'Dashboard', href: '/dashboard' },
       { label: 'Leaderboard', href: '/leaderboard' },
       { label: 'Analytics', href: '/analytics' },
     ],
@@ -95,7 +94,6 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="mt-12 pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
           <span className="text-[10px] text-slate-600 font-mono" suppressHydrationWarning>
-            © {currentYear ?? ''} ArcSignal Protocol. All rights reserved.
           </span>
           <div className="flex items-center gap-6">
             <span className="text-[10px] text-slate-600 font-mono">
