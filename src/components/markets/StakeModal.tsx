@@ -34,6 +34,15 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const usdcBalanceBigInt = (usdcRaw as bigint | undefined) ?? 0n;
   const usdcBalanceFormatted = formatUnits(usdcBalanceBigInt, 6);
 
+  const { data: usdcAllowanceRaw, refetch: refetchAllowance } = useReadContract({
+    address: USDC_ADDRESS,
+    abi: USDC_ABI,
+    functionName: 'allowance',
+    args: address ? [address, ARCSIGNAL_ADDRESS] : undefined,
+    query: { enabled: !!address },
+  });
+  const currentAllowance = (usdcAllowanceRaw as bigint | undefined) ?? 0n;
+
   const parsedAmount = parseFloat(amount) || 0;
   const amountStr = isNaN(parsedAmount) ? '0' : parsedAmount.toString();
   const amountBigInt = parseUnits(amountStr, 6);
@@ -49,6 +58,30 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const poolShare     = winningPool > 0 ? (parsedAmount / winningPool) * 100 : 0;
   const payout        = winningPool > 0 ? (parsedAmount / winningPool) * totalPool : 0;
 
+  const handleApprove = async () => {
+    if (!walletClient || !address || !publicClient) return;
+    try {
+      setError(null);
+      setStep('approving');
+      const approveHash = await walletClient.writeContract({
+        address: USDC_ADDRESS,
+        abi: USDC_ABI,
+        functionName: 'approve',
+        args: [ARCSIGNAL_ADDRESS, amountBigInt],
+      });
+      const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      if (approveReceipt.status === 'reverted') {
+        throw new Error('USDC approval transaction failed on-chain.');
+      }
+      await refetchAllowance();
+      setStep('idle');
+    } catch (err: any) {
+      const message = err instanceof Error ? err.message : 'Approval failed. Please try again.';
+      setError(message);
+      setStep('idle');
+    }
+  };
+
   const handleStake = async () => {
     if (!walletClient || !address || !publicClient) return;
     try {
@@ -61,42 +94,12 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         throw new Error('ArcSignal contract address is not configured.');
       }
 
-      const balance = await publicClient.readContract({
-        address: USDC_ADDRESS,
-        abi: USDC_ABI,
-        functionName: 'balanceOf',
-        args: [address],
-      }) as bigint;
-
-      if (balance < amountBigInt) {
-        throw new Error(`Insufficient USDC balance. You have ${formatUnits(balance, 6)} USDC but need ${amount} USDC.`);
-      }
-
-      let currentAllowance = 0n;
-      try {
-        const allowance = await publicClient.readContract({
-          address: USDC_ADDRESS,
-          abi: USDC_ABI,
-          functionName: 'allowance',
-          args: [address, ARCSIGNAL_ADDRESS],
-        });
-        currentAllowance = allowance as bigint;
-      } catch {
-        currentAllowance = 0n;
+      if (usdcBalanceBigInt < amountBigInt) {
+        throw new Error(`Insufficient USDC balance. You have ${formatUnits(usdcBalanceBigInt, 6)} USDC but need ${amount} USDC.`);
       }
 
       if (currentAllowance < amountBigInt) {
-        setStep('approving');
-        const approveHash = await walletClient.writeContract({
-          address: USDC_ADDRESS,
-          abi: USDC_ABI,
-          functionName: 'approve',
-          args: [ARCSIGNAL_ADDRESS, amountBigInt],
-        });
-        const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
-        if (approveReceipt.status === 'reverted') {
-          throw new Error('USDC approval transaction failed on-chain. Make sure you have sufficient USDC balance.');
-        }
+        throw new Error('Insufficient USDC allowance. Please approve first.');
       }
 
       setStep('staking');
@@ -305,25 +308,37 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
 
             {/* Action */}
             <div className="p-6 pt-0">
-              <button
-                onClick={handleStake}
-                disabled={step !== 'idle' || parsedAmount <= 0}
-                className="w-full bg-[#ddb7ff] text-[#0f172a] font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold py-4 tracking-widest hover:brightness-110 rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase"
-              >
-                {step === 'approving' && (
-                  <>
-                    <span className="animate-spin text-lg leading-none">↻</span>
-                    Approving USDC spend...
-                  </>
-                )}
-                {step === 'staking' && (
-                  <>
-                    <span className="animate-spin text-lg leading-none">↻</span>
-                    Placing your position...
-                  </>
-                )}
-                {step === 'idle' && 'Confirm Stake'}
-              </button>
+              {currentAllowance < amountBigInt ? (
+                <button
+                  onClick={handleApprove}
+                  disabled={step !== 'idle' || parsedAmount <= 0}
+                  className="w-full bg-[#34d399] text-[#0f172a] font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold py-4 tracking-widest hover:brightness-110 rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase"
+                >
+                  {step === 'approving' ? (
+                    <>
+                      <span className="animate-spin text-lg leading-none">↻</span>
+                      Approving USDC...
+                    </>
+                  ) : (
+                    '1. Approve USDC'
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={handleStake}
+                  disabled={step !== 'idle' || parsedAmount <= 0}
+                  className="w-full bg-[#ddb7ff] text-[#0f172a] font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold py-4 tracking-widest hover:brightness-110 rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase"
+                >
+                  {step === 'staking' ? (
+                    <>
+                      <span className="animate-spin text-lg leading-none">↻</span>
+                      Placing your position...
+                    </>
+                  ) : (
+                    'Create position'
+                  )}
+                </button>
+              )}
             </div>
           </>
         )}

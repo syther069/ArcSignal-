@@ -1,9 +1,27 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 export default function LandingPage() {
+  const [stats, setStats] = useState({
+    accuracy: 94.2,
+    totalVolume: 0,
+    activeMarkets: 0,
+    totalMarkets: 0,
+  });
+
+  useEffect(() => {
+    fetch('/api/stats')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.error) {
+           setStats(data);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
   return (
     <main className="min-h-screen bg-background pt-32 pb-16 px-6 lg:px-12 flex flex-col items-center">
       {/* Network Status Badge */}
@@ -118,25 +136,27 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 gap-y-10">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Platform Accuracy</p>
-              <p className="text-4xl font-mono text-tertiary font-bold mb-2">94.2%</p>
+              <p className="text-4xl font-mono text-tertiary font-bold mb-2">{stats.accuracy.toFixed(1)}%</p>
               <div className="h-1 bg-tertiary/20 w-3/4 rounded overflow-hidden">
-                <div className="h-full bg-tertiary w-[94.2%]"></div>
+                <div className="h-full bg-tertiary transition-all duration-1000" style={{ width: `${stats.accuracy}%` }}></div>
               </div>
             </div>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Total Volume</p>
-              <p className="text-4xl font-mono text-primary font-bold mb-2">$1.82B</p>
+              <p className="text-4xl font-mono text-primary font-bold mb-2">
+                {stats.totalVolume > 0 ? `${stats.totalVolume.toLocaleString(undefined, {maximumFractionDigits: 0})} USDC` : '0 USDC'}
+              </p>
               <div className="h-1 bg-primary/20 w-3/4 rounded overflow-hidden">
                 <div className="h-full bg-primary w-full"></div>
               </div>
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Active Nodes</p>
-              <p className="text-4xl font-mono text-on-surface font-bold">12,401</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Total Markets</p>
+              <p className="text-4xl font-mono text-on-surface font-bold">{stats.totalMarkets}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Settlement Time</p>
-              <p className="text-4xl font-mono text-on-surface font-bold">1.2s</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Active Markets</p>
+              <p className="text-4xl font-mono text-on-surface font-bold">{stats.activeMarkets}</p>
             </div>
           </div>
         </div>

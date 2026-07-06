@@ -48,15 +48,41 @@ interface MarketDetailClientProps {
 }
 
 export default function MarketDetailClient({ market }: MarketDetailClientProps) {
-  const [stakeModalSide, setStakeModalSide] = useState<StakeSide | null>(null);
+  const [isClaiming, setIsClaiming] = useState(false);
   const { address } = useAccount();
+  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
 
   // Read live on-chain pool data
   const { data: chainMarket } = useReadContract({
-    address: ArcSignal_ADDRESS,
+    address: ARCSIGNAL_ADDRESS,
     abi: ArcSignal_ABI,
     functionName: 'markets',
     args: [market.marketId],
+  });
+
+  const { data: followRaw } = useReadContract({
+    address: ARCSIGNAL_ADDRESS,
+    abi: ARCSIGNAL_ABI,
+    functionName: 'followStakes',
+    args: address ? [market.marketId, address] : undefined,
+    query: { enabled: !!address },
+  });
+  
+  const { data: fadeRaw } = useReadContract({
+    address: ARCSIGNAL_ADDRESS,
+    abi: ARCSIGNAL_ABI,
+    functionName: 'fadeStakes',
+    args: address ? [market.marketId, address] : undefined,
+    query: { enabled: !!address },
+  });
+  
+  const { data: claimedRaw } = useReadContract({
+    address: ARCSIGNAL_ADDRESS,
+    abi: ARCSIGNAL_ABI,
+    functionName: 'claimed',
+    args: address ? [market.marketId, address] : undefined,
+    query: { enabled: !!address },
   });
 
   const followPool = chainMarket ? parseFloat(formatUnits(chainMarket[3] as bigint, 6)) : market.followPool;
@@ -70,6 +96,49 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
   const categoryLabels: string[] = market.category === 'football'
     ? ['TACTICAL ANALYSIS', 'FORM & FITNESS', 'HISTORICAL DATA', 'ODDS MOVEMENT']
     : ['ON-CHAIN METRICS', 'ORDER BOOK FLOW', 'SENTIMENT ANALYSIS', 'MACRO FACTORS'];
+
+  const followStakeRaw = (followRaw as bigint) || 0n;
+  const fadeStakeRaw = (fadeRaw as bigint) || 0n;
+  const isClaimed = (claimedRaw as boolean) || false;
+  const resolved = chainMarket ? chainMarket[5] : market.resolved;
+  const outcome = chainMarket ? chainMarket[6] : (market.outcome === 'FOLLOW' ? 1 : market.outcome === 'FADE' ? 2 : 0);
+  
+  let userWon = false;
+  let payout = 0;
+  if (resolved) {
+    if (outcome === 1 && followStakeRaw > 0n) {
+      userWon = true;
+      payout = Number(formatUnits(followStakeRaw, 6)) + (Number(formatUnits(followStakeRaw, 6)) * fadePool) / followPool;
+    } else if (outcome === 2 && fadeStakeRaw > 0n) {
+      userWon = true;
+      payout = Number(formatUnits(fadeStakeRaw, 6)) + (Number(formatUnits(fadeStakeRaw, 6)) * followPool) / fadePool;
+    }
+  }
+
+  const handleClaim = async () => {
+    if (!walletClient || !publicClient || !address) return;
+    const toastId = toast.loading('Waiting for wallet confirmation…');
+    try {
+      setIsClaiming(true);
+      const { request } = await publicClient.simulateContract({
+        account: address,
+        address: ARCSIGNAL_ADDRESS,
+        abi: ARCSIGNAL_ABI,
+        functionName: 'claimWinnings',
+        args: [market.marketId],
+      });
+      const hash = await walletClient.writeContract(request);
+      toast.loading('Transaction submitted, confirming…', { id: toastId });
+      await publicClient.waitForTransactionReceipt({ hash });
+      toast.success('Winnings claimed!', { id: toastId });
+      window.location.reload();
+    } catch (err: any) {
+      console.error('Claim failed:', err);
+      toast.error('Claim failed: ' + (err?.shortMessage || err?.message || 'Unknown error'), { id: toastId });
+    } finally {
+      setIsClaiming(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-background text-on-background font-body-md selection:bg-primary selection:text-on-primary">
@@ -269,31 +338,77 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
               </div>
             </div>
 
-            {/* Execute Trade */}
+            {/* Execute Trade / Claim */}
             <div className="bg-surface-charcoal border border-border-subtle p-6 rounded-lg space-y-6">
-              <h3 className="font-label-caps text-text-muted">EXECUTE TRADE</h3>
-              <p className="text-xs text-text-muted">
-                AI predicts <span className="text-tertiary font-bold">{market.agentPick.toUpperCase()}</span>. Agree? FOLLOW. Disagree? FADE.
-              </p>
+              <h3 className="font-label-caps text-text-muted">{resolved ? 'MARKET RESOLVED' : 'EXECUTE TRADE'}</h3>
               
-              <div className="space-y-3">
-                <button
-                  onClick={() => setStakeModalSide(0)}
-                  className="w-full group relative flex items-center justify-center gap-3 py-4 bg-transparent border-2 border-tertiary text-tertiary font-bold font-label-caps rounded-lg overflow-hidden transition-all hover:bg-tertiary hover:text-background active:scale-[0.98]"
-                >
-                  <CheckCircle2 size={20} className="group-hover:scale-110 transition-transform" />
-                  FOLLOW AI
-                  <div className="absolute inset-0 bg-tertiary opacity-0 group-hover:opacity-10 pointer-events-none"></div>
-                </button>
-                <button
-                  onClick={() => setStakeModalSide(1)}
-                  className="w-full group relative flex items-center justify-center gap-3 py-4 bg-transparent border-2 border-error text-error font-bold font-label-caps rounded-lg overflow-hidden transition-all hover:bg-error hover:text-background active:scale-[0.98]"
-                >
-                  <XCircle size={20} className="group-hover:scale-110 transition-transform" />
-                  FADE AI
-                  <div className="absolute inset-0 bg-error opacity-0 group-hover:opacity-10 pointer-events-none"></div>
-                </button>
-              </div>
+              {!resolved ? (
+                <>
+                  <p className="text-xs text-text-muted">
+                    AI predicts <span className="text-tertiary font-bold">{market.agentPick.toUpperCase()}</span>. Agree? FOLLOW. Disagree? FADE.
+                  </p>
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => setStakeModalSide(0)}
+                      className="w-full group relative flex items-center justify-center gap-3 py-4 bg-transparent border-2 border-tertiary text-tertiary font-bold font-label-caps rounded-lg overflow-hidden transition-all hover:bg-tertiary hover:text-background active:scale-[0.98]"
+                    >
+                      <CheckCircle2 size={20} className="group-hover:scale-110 transition-transform" />
+                      FOLLOW AI
+                      <div className="absolute inset-0 bg-tertiary opacity-0 group-hover:opacity-10 pointer-events-none"></div>
+                    </button>
+                    <button
+                      onClick={() => setStakeModalSide(1)}
+                      className="w-full group relative flex items-center justify-center gap-3 py-4 bg-transparent border-2 border-error text-error font-bold font-label-caps rounded-lg overflow-hidden transition-all hover:bg-error hover:text-background active:scale-[0.98]"
+                    >
+                      <XCircle size={20} className="group-hover:scale-110 transition-transform" />
+                      FADE AI
+                      <div className="absolute inset-0 bg-error opacity-0 group-hover:opacity-10 pointer-events-none"></div>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 bg-background-deep p-4 rounded border border-border-subtle">
+                     <Gavel size={20} className="text-secondary" />
+                     <div>
+                       <p className="text-xs text-text-muted font-label-caps">Outcome</p>
+                       <p className={`font-bold ${outcome === 1 ? 'text-tertiary' : outcome === 2 ? 'text-error' : 'text-on-surface'}`}>
+                         {outcome === 1 ? 'FOLLOW WON' : outcome === 2 ? 'FADE WON' : 'CANCELLED/DRAW'}
+                       </p>
+                     </div>
+                  </div>
+                  
+                  {userWon && !isClaimed && (
+                    <button
+                      onClick={handleClaim}
+                      disabled={isClaiming}
+                      className="w-full py-4 rounded-lg font-bold font-label-caps tracking-widest transition-all disabled:opacity-50"
+                      style={{
+                        background: isClaiming ? '#1c1b1b' : 'linear-gradient(135deg, #a855f7, #34d399)',
+                        color: 'white',
+                        boxShadow: isClaiming ? 'none' : '0 0 20px rgba(168,85,247,0.3)',
+                      }}
+                    >
+                      {isClaiming ? 'Claiming...' : `Claim Winnings (${payout.toFixed(2)} USDC)`}
+                    </button>
+                  )}
+                  {userWon && isClaimed && (
+                    <div className="w-full py-4 rounded-lg bg-tertiary/10 border border-tertiary/30 text-tertiary text-center font-bold font-label-caps">
+                      Winnings Claimed
+                    </div>
+                  )}
+                  {!userWon && (followStakeRaw > 0n || fadeStakeRaw > 0n) && (
+                    <div className="w-full py-4 rounded-lg bg-error/10 border border-error/30 text-error text-center font-bold font-label-caps">
+                      Position Lost
+                    </div>
+                  )}
+                  {followStakeRaw === 0n && fadeStakeRaw === 0n && (
+                    <div className="w-full py-4 rounded-lg bg-background border border-border-subtle text-text-muted text-center font-bold font-label-caps text-xs">
+                      No Position
+                    </div>
+                  )}
+                </div>
+              )}
               
               <div className="pt-4 border-t border-border-subtle">
                 <div className="flex justify-between font-label-caps text-[10px] text-text-muted">
