@@ -212,7 +212,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
           )}
 
           {/* ── FOOTBALL SECTION ── */}
-          {showFootball && footballMarkets.length > 0 && (
+          {showFootball && (
             <section className="mb-12">
               <div className="flex items-center gap-3 mb-6">
                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#4ade80]/10">
@@ -227,16 +227,31 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                   </span>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {footballMarkets.map((market) => (
-                  <MarketCard
-                    key={market.marketId}
-                    market={market}
-                    onFollow={() => setStakeModal({ market: toUiMarket(market), side: 0 })}
-                    onFade={() => setStakeModal({ market: toUiMarket(market), side: 1 })}
-                  />
-                ))}
-              </div>
+              
+              {footballMarkets.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {footballMarkets.map((market) => (
+                    <MarketCard
+                      key={market.marketId}
+                      market={market}
+                      onFollow={() => setStakeModal({ market: toUiMarket(market), side: 0 })}
+                      onFade={() => setStakeModal({ market: toUiMarket(market), side: 1 })}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl bg-[#1e293b]/10 border border-[#1e293b]/50">
+                  <div className="w-12 h-12 rounded-xl bg-[#0f172a] border border-[#1e293b] flex items-center justify-center mb-4">
+                    <span className="text-xl">⚽</span>
+                  </div>
+                  <p className="font-[family-name:var(--font-hanken)] text-lg font-semibold text-[#94a3b8]">
+                    The football markets are currently building
+                  </p>
+                  <p className="text-sm text-[#94a3b8]/60 mt-2 max-w-sm">
+                    Our AI agents are analyzing upcoming fixtures and generating new prediction markets. Check back shortly.
+                  </p>
+                </div>
+              )}
             </section>
           )}
 
