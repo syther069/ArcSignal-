@@ -12,7 +12,7 @@ export const arcTestnet = {
     public: { http: [process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network'] },
   },
   blockExplorers: {
-    default: { name: 'ARC Explorer', url: 'https://explorer.testnet.arc.network' },
+    default: { name: 'ARC Explorer', url: 'https://testnet.arcscan.app' },
   },
   testnet: true,
 } as const;

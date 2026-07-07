@@ -203,7 +203,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                 TX Hash
               </span>
               <a
-                href={`https://explorer.testnet.arc.network/tx/${txHash}`}
+                href={`https://testnet.arcscan.app/tx/${txHash}`}
                 target="_blank"
                 rel="noreferrer"
                 className="text-[#ddb7ff] font-[family-name:var(--font-jetbrains-mono)] text-xs break-all hover:underline"
