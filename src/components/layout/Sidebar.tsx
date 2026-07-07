@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   LineChart,
@@ -32,8 +33,8 @@ export default function Sidebar() {
       {/* Logo area */}
       <div>
         <div className="px-6 mb-7 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#ddb7ff]/15 border border-[#ddb7ff]/30 flex items-center justify-center shrink-0">
-            <Zap className="w-4 h-4 text-[#ddb7ff]" />
+          <div className="w-10 h-10 flex items-center justify-center shrink-0 overflow-hidden rounded-lg">
+            <Image src="/logo.png" alt="ArcSignal Logo" width={40} height={40} className="w-full h-full object-cover" />
           </div>
           <div>
             <p className="font-[family-name:var(--font-hanken)] text-sm font-bold text-[#e5e2e1] leading-none">
