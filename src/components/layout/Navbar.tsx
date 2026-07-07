@@ -7,7 +7,7 @@ import { useAccount, useReadContract } from 'wagmi';
 import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import { formatUnits } from 'viem';
 import ConnectWalletButton from '../wallet/ConnectWalletButton';
-import Logo from '../ui/Logo';
+import Image from 'next/image';
 import { Bell, Menu, X, Plus } from 'lucide-react';
 import { useUnclaimedWinnings } from '@/hooks/useUnclaimedWinnings';
 import toast from 'react-hot-toast';
@@ -56,7 +56,7 @@ export default function Navbar() {
         {/* Left: Logo + Nav */}
         <div className="flex items-center gap-10">
           <Link href="/" className="flex items-center gap-2">
-            <Logo className="w-8 h-8 text-[#ddb7ff]" />
+            <Image src="/logo.png" alt="ArcSignal Logo" width={32} height={32} className="w-8 h-8 object-contain" />
             <span className="font-[family-name:var(--font-hanken)] text-xl font-bold tracking-tight text-[#e5e2e1]">
               ArcSignal
             </span>
