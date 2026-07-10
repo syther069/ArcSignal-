@@ -33,22 +33,22 @@ export default async function AnalyticsPage() {
   // ─── Volume Over Time (last 7 days from block timestamps) ─────────────────
   const volumeByDayMap: Record<string, number> = {};
 
-  // Fetch block timestamps for each log in parallel (batched to avoid rate limits)
-  const blockTimestamps: Record<string, number> = {};
-  const uniqueBlocks = Array.from(new Set(stakedLogs.map((l: any) => l.blockNumber)));
-  await Promise.all(
-    uniqueBlocks.map(async (bn) => {
-      try {
-        const block = await publicClient.getBlock({ blockNumber: bn as bigint });
-        blockTimestamps[bn!.toString()] = Number(block.timestamp);
-      } catch {
-        blockTimestamps[bn!.toString()] = Date.now() / 1000;
-      }
-    })
-  );
+  // Fetch ONLY the latest block to calculate approximate timestamps
+  let currentBlockTimestamp = Date.now() / 1000;
+  let currentBlockNumber = 0n;
+  try {
+    const latest = await publicClient.getBlock({ blockTag: 'latest' });
+    currentBlockTimestamp = Number(latest.timestamp);
+    currentBlockNumber = latest.number || 0n;
+  } catch (err) {
+    console.error('Failed to fetch latest block:', err);
+  }
 
   stakedLogs.forEach((log: any) => {
-    const ts = blockTimestamps[log.blockNumber!.toString()] ?? Date.now() / 1000;
+    // Arc Testnet block time is ~2 seconds.
+    const blocksAgo = Number(currentBlockNumber) - Number(log.blockNumber || currentBlockNumber);
+    const ts = currentBlockTimestamp - (blocksAgo * 2);
+    
     const date = new Date(ts * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const amountUsdc = Number(log.args.amount) / 1e6;
     volumeByDayMap[date] = (volumeByDayMap[date] || 0) + amountUsdc;
@@ -86,9 +86,9 @@ export default async function AnalyticsPage() {
 
   // ─── Aggregate Stats ───────────────────────────────────────────────────────
   const totalVolume = totalFollow + totalFade;
-  const totalStakedUsdc = stakedLogs.length > 0 
-    ? stakedLogs.reduce((acc: number, l: any) => acc + Number(l.args.amount) / 1e6, 0)
-    : totalVolume;
+  // totalStakedUsdc from logs can be missing pruned data, use totalVolume as ground truth for accurate stats
+  const totalStakedUsdc = totalVolume > 0 ? totalVolume : 
+    (stakedLogs.length > 0 ? stakedLogs.reduce((acc: number, l: any) => acc + Number(l.args.amount) / 1e6, 0) : 0);
   
   const avgConfidence = markets.length > 0
     ? Math.round(markets.reduce((acc: number, m: any) => acc + (m.confidence || 0), 0) / markets.length)

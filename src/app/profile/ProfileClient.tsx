@@ -405,13 +405,21 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
           <div className="mt-6 flex flex-col gap-2 border-t border-border-subtle pt-6 text-left">
             <div className="flex justify-between items-center text-sm">
               <span className="text-text-muted">Win Rate</span>
-              <span className="font-code-sm text-tertiary">{stats.winRate.toFixed(1)}%</span>
+              {loadingPositions ? (
+                <div className="h-4 w-12 bg-[#1c1b1b] rounded animate-pulse"></div>
+              ) : (
+                <span className="font-code-sm text-tertiary">{stats.winRate.toFixed(1)}%</span>
+              )}
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-text-muted">Net P&L</span>
-              <span className={`font-code-sm ${stats.netProfit >= 0 ? 'text-tertiary' : 'text-error'}`}>
-                {stats.netProfit >= 0 ? '+' : ''}{stats.netProfit.toFixed(2)} USDC
-              </span>
+              {loadingPositions ? (
+                <div className="h-4 w-16 bg-[#1c1b1b] rounded animate-pulse"></div>
+              ) : (
+                <span className={`font-code-sm ${stats.netProfit >= 0 ? 'text-tertiary' : 'text-error'}`}>
+                  {stats.netProfit >= 0 ? '+' : ''}{stats.netProfit.toFixed(2)} USDC
+                </span>
+              )}
             </div>
           </div>
 
