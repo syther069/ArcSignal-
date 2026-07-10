@@ -30,7 +30,8 @@ export default function WorldCupClient({ upcomingFixtures, liveMatches, football
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="lg:ml-[264px] pt-24 pb-16 flex-1 min-w-0">\n        <div className="max-w-[1440px] mx-auto w-full px-6 md:px-8">
+      <main className="lg:ml-[264px] pt-24 pb-16 flex-1 min-w-0">
+        <div className="max-w-[1440px] mx-auto w-full px-6 md:px-8">
 
         {/* Hero */}
         <div className="mb-10">
