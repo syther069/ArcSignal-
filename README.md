@@ -6,7 +6,8 @@ ArcSignal is the AI-Driven Decentralized Prediction Market built on the ARC Netw
 ## Screenshots
 
 ### Homepage
-![Homepage](./public/screenshots/homepage.png)
+![Homepage](.<img width="1877" height="800" alt="image" src="https://github.com/user-attachments/assets/09a200e5-00a5-4975-b5ff-04bcb8f0ed47" />
+)
 
 ### Dashboard
 ![Dashboard](./public/screenshots/dashboard.png)
