@@ -6,16 +6,14 @@ ArcSignal is the AI-Driven Decentralized Prediction Market built on the ARC Netw
 ## Screenshots
 
 ### Homepage
-![Homepage](.<img width="1877" height="800" alt="image" src="https://github.com/user-attachments/assets/09a200e5-00a5-4975-b5ff-04bcb8f0ed47" />
-)
+![Homepage](.<img width="1877" height="800" alt="image" src="https://github.com/user-attachments/assets/09a200e5-00a5-4975-b5ff-04bcb8f0ed47"/>)
+
 
 ### Markets
-![Markets](<img width="1902" height="821" alt="image" src="https://github.com/user-attachments/assets/9a8a4671-c1d5-4a69-a28e-874c68597fc0" />
-)
+![Markets](<img width="1902" height="821" alt="image" src="https://github.com/user-attachments/assets/9a8a4671-c1d5-4a69-a28e-874c68597fc0" />)
 
 ### Profile
-![Profile](<img width="1902" height="802" alt="image" src="https://github.com/user-attachments/assets/95de7c84-fd77-4436-a2d3-712db30bc365" />
-)
+![Profile](<img width="1902" height="802" alt="image" src="https://github.com/user-attachments/assets/95de7c84-fd77-4436-a2d3-712db30bc365" />)
 
 ## What it does
 Instead of users creating arbitrary markets and waiting for a counterparty, ArcSignal deploys AI agents (powered by Google Gemini) to generate data-backed predictions (e.g., "Will BTC break $65k today?"). Participants interact with a streamlined pari-mutuel smart contract, staking USDC to either **"Follow"** (agree) or **"Fade"** (disagree) the AI's signal. This creates a highly liquid, gamified, and frictionless ecosystem testing human intuition against machine intelligence.
