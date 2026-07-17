@@ -127,8 +127,12 @@ export async function POST(req: Request) {
       continue;
     }
     if (Number(market.resolutionTime) > now) {
-      skipped.push(`${marketId}: not yet due (resolves at ${new Date(Number(market.resolutionTime) * 1000).toISOString()})`);
-      continue;
+      if (marketId.includes('-1h-')) {
+        // Force resolve 1h markets early as requested
+      } else {
+        skipped.push(`${marketId}: not yet due (resolves at ${new Date(Number(market.resolutionTime) * 1000).toISOString()})`);
+        continue;
+      }
     }
 
     // ── 5. Determine outcome ────────────────────────────────────────────────

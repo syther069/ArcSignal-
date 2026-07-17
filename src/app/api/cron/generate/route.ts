@@ -42,7 +42,9 @@ export async function POST(req: Request) {
   });
 
   const created: string[] = [];
+  const skipped: string[] = [];
   const errors: string[] = [];
+  let totalCombinations = 0;
   const now = Math.floor(Date.now() / 1000);
 
   // Fetch full market data for accurate deduplication based on expiration
@@ -67,92 +69,58 @@ export async function POST(req: Request) {
       { label: '4h',  minutes: 240 },
       { label: '24h', minutes: 1440 },
     ];
+    
+    totalCombinations = selected.length * timeframes.length;
 
     function getPriceTarget(current: number, timeframe: string): number {
-      // Multipliers represent realistic price movement expectations per window
       const multipliers: Record<string, number> = {
-        '5m':  1.000,  // current price — did it hold?
-        '15m': 1.003,  // +0.3% — small tick up
-        '1h':  1.010,  // +1.0% — moderate hourly move
-        '4h':  1.020,  // +2.0% — meaningful session move
-        '24h': 1.035,  // +3.5% — full daily candle move
+        '5m':  1.000,
+        '15m': 1.003,
+        '1h':  1.010,
+        '4h':  1.020,
+        '24h': 1.035,
       };
       const mult = multipliers[timeframe] ?? 1.015;
       const raw = current * mult;
-      // Round to 2 significant figures for clean price levels
       const magnitude = Math.pow(10, Math.floor(Math.log10(raw)) - 1);
       return Math.round(raw / magnitude) * magnitude;
     }
 
-    // Returns a support level slightly below current price (for 5m "hold above" questions)
     function getSupportLevel(current: number): number {
-      const raw = current * 0.997; // 0.3% below current
+      const raw = current * 0.997;
       const magnitude = Math.pow(10, Math.floor(Math.log10(raw)) - 1);
       return Math.round(raw / magnitude) * magnitude;
     }
 
     function getQuestion(symbol: string, current: number, target: number, timeframe: string): string {
       const fmt = (n: number) => n.toLocaleString('en-US');
-
-      if (timeframe === '5m') {
-        // 5m: Will price hold above current support? (very short, momentum question)
-        const support = getSupportLevel(current);
-        return `Will ${symbol} hold above $${fmt(support)} over the next 5 minutes?`;
-      }
-
-      if (timeframe === '15m') {
-        // 15m: Small gain question
-        return `Will ${symbol} reach $${fmt(target)} or higher within the next 15 minutes?`;
-      }
-
-      if (timeframe === '1h') {
-        // 1h: Moderate move — will it break and close above target
-        return `Will ${symbol} break above $${fmt(target)} and close there within the next hour?`;
-      }
-
-      if (timeframe === '4h') {
-        // 4h: Session-level move
-        return `Will ${symbol} trade above $${fmt(target)} by the end of the next 4-hour candle?`;
-      }
-
-      // 24h: Daily candle close prediction
+      if (timeframe === '5m') return `Will ${symbol} hold above $${fmt(getSupportLevel(current))} over the next 5 minutes?`;
+      if (timeframe === '15m') return `Will ${symbol} reach $${fmt(target)} or higher within the next 15 minutes?`;
+      if (timeframe === '1h') return `Will ${symbol} break above $${fmt(target)} and close there within the next hour?`;
+      if (timeframe === '4h') return `Will ${symbol} trade above $${fmt(target)} by the end of the next 4-hour candle?`;
       return `Will ${symbol} close above $${fmt(target)} on today\'s daily candle?`;
     }
 
     function getResolutionCriteria(symbol: string, current: number, target: number, timeframe: string, resolutionDate: string): string {
       const fmt = (n: number) => n.toLocaleString('en-US');
-
-      if (timeframe === '5m') {
-        const support = getSupportLevel(current);
-        return `Resolves YES if ${symbol}/USD price on CoinGecko is at or above $${fmt(support)} at resolution time (${resolutionDate}). Resolves NO if price drops below $${fmt(support)}.`;
-      }
-
-      if (timeframe === '15m') {
-        return `Resolves YES if ${symbol}/USD price on CoinGecko is at or above $${fmt(target)} at resolution time (${resolutionDate}). Current price at generation: $${fmt(current)}.`;
-      }
-
-      if (timeframe === '1h') {
-        return `Resolves YES if ${symbol}/USD price on CoinGecko is above $${fmt(target)} at resolution time (${resolutionDate}). This represents a ~1% gain from the current price of $${fmt(current)}.`;
-      }
-
-      if (timeframe === '4h') {
-        return `Resolves YES if ${symbol}/USD price on CoinGecko exceeds $${fmt(target)} at resolution time (${resolutionDate}). This represents approximately a 2% move from the current price of $${fmt(current)}.`;
-      }
-
+      if (timeframe === '5m') return `Resolves YES if ${symbol}/USD price on CoinGecko is at or above $${fmt(getSupportLevel(current))} at resolution time (${resolutionDate}). Resolves NO if price drops below $${fmt(getSupportLevel(current))}.`;
+      if (timeframe === '15m') return `Resolves YES if ${symbol}/USD price on CoinGecko is at or above $${fmt(target)} at resolution time (${resolutionDate}). Current price at generation: $${fmt(current)}.`;
+      if (timeframe === '1h') return `Resolves YES if ${symbol}/USD price on CoinGecko is above $${fmt(target)} at resolution time (${resolutionDate}). This represents a ~1% gain from the current price of $${fmt(current)}.`;
+      if (timeframe === '4h') return `Resolves YES if ${symbol}/USD price on CoinGecko exceeds $${fmt(target)} at resolution time (${resolutionDate}). This represents approximately a 2% move from the current price of $${fmt(current)}.`;
       return `Resolves YES if ${symbol}/USD daily close price on CoinGecko is above $${fmt(target)} at resolution time (${resolutionDate}). Current price: $${fmt(current)}. Target represents ~3.5% gain.`;
     }
 
-    for (const timeframe of timeframes) {
-      for (const coin of selected) {
+    for (const coin of selected) {
+      for (const timeframe of timeframes) {
         const symbolUpper = coin.symbol.toUpperCase();
 
-        // Skip if active non-expired non-resolved market exists for symbol+timeframe
         const alreadyExists = existingMarkets.some(m =>
-          m.marketId.startsWith(`${symbolUpper}-PRICE-${timeframe.label}-`) &&
-          (!m.resolved && m.resolutionTime > now)
+          m.marketId.includes(`${symbolUpper}-PRICE-${timeframe.label}-`) &&
+          m.resolutionTime > now &&
+          !m.resolved
         );
         if (alreadyExists) {
-          created.push(`[SKIP] ${symbolUpper} ${timeframe.label} already exists`);
+          skipped.push(`[SKIP] ${symbolUpper} ${timeframe.label} — active market exists`);
           continue;
         }
 
@@ -180,7 +148,6 @@ export async function POST(req: Request) {
             },
           });
 
-          // Store timeframe label in subType field
           const analysisWithSubType = { ...analysis, subType: timeframe.label };
 
           const hash = await walletClient.writeContract({
@@ -193,7 +160,7 @@ export async function POST(req: Request) {
           await publicClient.waitForTransactionReceipt({ hash });
           created.push(`[CRYPTO] ${question}`);
         } catch (err) {
-          errors.push(`[CRYPTO] ${coin.symbol} ${timeframe.label}: ${err instanceof Error ? err.message : String(err)}`);
+          errors.push(`[${symbolUpper}] ${timeframe.label}: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
     }
@@ -202,6 +169,7 @@ export async function POST(req: Request) {
   }
 
   // FOOTBALL MARKETS
+  /*
   try {
     const wcFixtures = await fetchUpcomingFixtures([1], 2026);
     const fixtures = wcFixtures.length >= 3 ? wcFixtures : await fetchUpcomingFixtures();
@@ -256,10 +224,13 @@ export async function POST(req: Request) {
   } catch (err) {
     errors.push(`[FOOTBALL] Fixtures fetch failed: ${err instanceof Error ? err.message : String(err)}`);
   }
+  */
 
   return NextResponse.json({
     created,
+    skipped,
     errors,
-    summary: `${created.length} markets created, ${errors.length} failed`,
+    summary: `${created.length} created, ${skipped.length} skipped, ${errors.length} failed`,
+    totalCombinations,
   });
 }
