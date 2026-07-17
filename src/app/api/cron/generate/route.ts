@@ -62,13 +62,20 @@ export async function POST(req: Request) {
       .map((symbol) => marketsBySymbol.get(symbol))
       .filter((coin): coin is NonNullable<typeof coin> => Boolean(coin));
 
-    const timeframes = [
+    const url = new URL(req.url);
+    const onlyTimeframe = url.searchParams.get('timeframe');
+
+    const allTimeframes = [
       { label: '5m',  minutes: 5 },
       { label: '15m', minutes: 15 },
       { label: '1h',  minutes: 60 },
       { label: '4h',  minutes: 240 },
       { label: '24h', minutes: 1440 },
     ];
+
+    const timeframes = onlyTimeframe
+      ? allTimeframes.filter(t => t.label === onlyTimeframe)
+      : [allTimeframes[0]];
     
     totalCombinations = selected.length * timeframes.length;
 
