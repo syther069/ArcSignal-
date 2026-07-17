@@ -117,6 +117,11 @@ export async function POST(req: Request) {
       return `Resolves YES if ${symbol}/USD daily close price on CoinGecko is above $${fmt(target)} at resolution time (${resolutionDate}). Current price: $${fmt(current)}. Target represents ~3.5% gain.`;
     }
 
+    let currentNonce = await publicClient.getTransactionCount({
+      address: account.address,
+      blockTag: 'pending',
+    });
+
     for (const coin of selected) {
       for (const timeframe of timeframes) {
         const symbolUpper = coin.symbol.toUpperCase();
@@ -158,14 +163,16 @@ export async function POST(req: Request) {
           const analysisWithSubType = { ...analysis, subType: timeframe.label };
 
           const hash = await walletClient.writeContract({
+            account,
+            chain: arcTestnet,
             address: CONTRACT_ADDRESS,
             abi: ARCSIGNAL_ABI,
             functionName: 'createMarket',
             args: [marketId, 'CRYPTO', question, JSON.stringify(analysisWithSubType), resolutionTime],
+            nonce: currentNonce++,
           });
 
-          await publicClient.waitForTransactionReceipt({ hash });
-          created.push(`[CRYPTO] ${question}`);
+          created.push(`[CRYPTO] ${question} (Tx: ${hash})`);
         } catch (err) {
           errors.push(`[${symbolUpper}] ${timeframe.label}: ${err instanceof Error ? err.message : String(err)}`);
         }
