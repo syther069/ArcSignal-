@@ -55,33 +55,20 @@ export async function getMarketsFromChain(): Promise<Market[]> {
     const generationTime = parseInt(timestampStr, 10);
 
     if (isNaN(generationTime) || generationTime === 0) return true;
-
-    let durationSeconds = 86400 * 3; // Default 3 days buffer
-    if (marketId.includes('-5m-')) durationSeconds = 300;
-    else if (marketId.includes('-15m-')) durationSeconds = 900;
-    else if (marketId.includes('-1h-')) durationSeconds = 3600;
-    else if (marketId.includes('-4h-')) durationSeconds = 14400;
-    else if (marketId.includes('-24h-')) durationSeconds = 86400;
-
-    // Keep markets that haven't expired, plus an extra 24 hours buffer since the UI shows recently resolved markets.
-    return (generationTime + durationSeconds + 86400) >= nowUnix;
+    return (generationTime + 86400) >= nowUnix;
   });
 
-  // Limit to at most the 100 most recent active IDs just in case
-  const targetIds = likelyActiveIds.slice(-100);
-
-  const CHUNK_SIZE = 5; // Smaller chunk size to strictly respect RPC rate limits
+  const targetIds = likelyActiveIds.slice(-20);
   const markets: Market[] = [];
 
-  for (let i = 0; i < targetIds.length; i += CHUNK_SIZE) {
-    const chunkIds = targetIds.slice(i, i + CHUNK_SIZE);
-    const chunkPromises = chunkIds.map(marketId =>
-      publicClient.readContract({
+  for (const marketId of targetIds) {
+    try {
+      const data = await publicClient.readContract({
         address: ARCSIGNAL_ADDRESS as Address,
         abi: ARCSIGNAL_ABI,
         functionName: 'getMarket',
         args: [marketId],
-      }) as Promise<{
+      }) as {
         marketId: string;
         category: string;
         question: string;
@@ -91,33 +78,26 @@ export async function getMarketsFromChain(): Promise<Market[]> {
         fadePool: bigint;
         resolved: boolean;
         outcome: number;
-      }>
-    );
+      };
 
-    const chunkResults = await Promise.allSettled(chunkPromises);
-    for (const res of chunkResults) {
-      if (res.status === 'fulfilled' && res.value) {
-        const data = res.value;
-        markets.push({
-          marketId: data.marketId,
-          category: mapCategory(data.category),
-          question: data.question,
-          resolutionTime: Number(data.resolutionTime),
-          followPool: data.followPool,
-          fadePool: data.fadePool,
-          resolved: data.resolved,
-          outcome: mapOutcome(data.resolved, data.outcome),
-          analysis: safeParseAnalysis(data.analysisJson),
-        });
-      }
-    }
-    // Small delay to prevent rate limit
-    if (i + CHUNK_SIZE < targetIds.length) {
-      await new Promise(r => setTimeout(r, 200));
+      markets.push({
+        marketId: data.marketId,
+        category: mapCategory(data.category),
+        question: data.question,
+        resolutionTime: Number(data.resolutionTime),
+        followPool: data.followPool,
+        fadePool: data.fadePool,
+        resolved: data.resolved,
+        outcome: mapOutcome(data.resolved, data.outcome),
+        analysis: safeParseAnalysis(data.analysisJson),
+      });
+    } catch {
+      // Ignore individual read errors
     }
   }
 
   return markets;
+
 }
 
 export function serializeMarket(market: Market): SerializableMarket {
