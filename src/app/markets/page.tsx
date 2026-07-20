@@ -11,8 +11,8 @@ export default async function MarketsPage() {
     
     // Filter to active markets only (not resolved, and resolution time is in the future or very recently passed)
     const activeMarkets = chainMarkets.filter(m => {
-      if (!m.resolved && m.resolutionTime <= now) return false; // Hide expired pending
-      if (m.resolved && m.resolutionTime < now - 86400) return false; // Hide old resolved
+      if (!m.resolved && m.resolutionTime < now - 86400) return false; // Hide pending older than 24h
+      if (m.resolved && m.resolutionTime < now - 86400) return false; // Hide resolved older than 24h
       return true;
     });
     markets = activeMarkets.map(serializeMarket);

@@ -73,9 +73,9 @@ export async function POST(req: Request) {
       { label: '24h', minutes: 1440 },
     ];
 
-    const timeframes = onlyTimeframe
+    const timeframes = (onlyTimeframe && onlyTimeframe !== 'all')
       ? allTimeframes.filter(t => t.label === onlyTimeframe)
-      : [allTimeframes[0]];
+      : allTimeframes;
     
     totalCombinations = selected.length * timeframes.length;
 
