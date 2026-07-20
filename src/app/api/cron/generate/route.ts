@@ -173,6 +173,8 @@ export async function POST(req: Request) {
           });
 
           created.push(`[CRYPTO] ${question} (Tx: ${hash})`);
+          // Pace transactions to prevent RPC 429 rate limits
+          await new Promise(r => setTimeout(r, 1200));
         } catch (err) {
           errors.push(`[${symbolUpper}] ${timeframe.label}: ${err instanceof Error ? err.message : String(err)}`);
         }
