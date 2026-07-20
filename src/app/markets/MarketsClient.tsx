@@ -4,11 +4,12 @@ import React, { useMemo, useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 
 import { MarketCard } from '@/components/markets/MarketCard';
+import { MarketCardSkeleton } from '@/components/markets/MarketCardSkeleton';
 import { StakeModal } from '@/components/markets/StakeModal';
 import { Market, StakeSide } from '@/types';
 import type { SerializableMarket } from '@/lib/markets';
 import { toUiMarket } from '@/lib/ui-market';
-import { Plus, Filter, Clock } from 'lucide-react';
+import { Plus, Filter, Clock, RotateCw, Search } from 'lucide-react';
 
 interface MarketsClientProps {
   markets: SerializableMarket[];
@@ -27,6 +28,8 @@ const TIMEFRAMES = ['5m', '15m', '1h', '4h', '24h'];
 export default function MarketsClient({ markets }: MarketsClientProps) {
   const [selectedCategory, setSelectedCategory] = useState('All Markets');
   const [selectedTimeframe, setSelectedTimeframe] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [stakeModal, setStakeModal] = useState<{
     market: Market;
     side: StakeSide;
@@ -34,14 +37,32 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
 
   const nowUnix = Math.floor(Date.now() / 1000);
 
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    window.location.reload();
+  };
+
+  const filteredMarkets = useMemo(() => {
+    if (!searchQuery.trim()) return markets;
+    const q = searchQuery.toLowerCase();
+    return markets.filter(
+      (m) =>
+        (m.question?.toLowerCase() || '').includes(q) ||
+        m.marketId.toLowerCase().includes(q) ||
+        m.category.toLowerCase().includes(q)
+    );
+
+  }, [markets, searchQuery]);
+
   const cryptoMarkets = useMemo(
-    () => markets.filter((m) => m.category === 'CRYPTO'),
-    [markets]
+    () => filteredMarkets.filter((m) => m.category === 'CRYPTO'),
+    [filteredMarkets]
   );
   const footballMarkets = useMemo(
-    () => markets.filter((m) => m.category === 'FOOTBALL'),
-    [markets]
+    () => filteredMarkets.filter((m) => m.category === 'FOOTBALL'),
+    [filteredMarkets]
   );
+
 
   // Group crypto markets by timeframe
   const marketsByTimeframe = useMemo(() => {
@@ -86,11 +107,11 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
             </div>
           </header>
 
-          {/* Filters + Sort */}
+          {/* Filters + Sort + Search */}
           <div className="flex flex-col mb-8 gap-4">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
               {/* Category tabs */}
-              <div className="inline-flex items-center gap-1 bg-[#1c1b1b] rounded-full p-1 border border-border-subtle/50">
+              <div className="inline-flex items-center gap-1 bg-[#1c1b1b] rounded-full p-1 border border-white/5 shrink-0">
                 {categories.map((cat) => (
                   <button
                     key={cat}
@@ -109,13 +130,32 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                 ))}
               </div>
 
-              {/* Timeframe selector + Filter button on the right */}
-              <div className="flex items-center gap-2.5 flex-wrap w-full md:w-auto md:ml-auto justify-end">
+              {/* Search + Timeframe selector + Refresh button */}
+              <div className="flex items-center gap-2.5 flex-wrap w-full lg:w-auto justify-between lg:justify-end">
+                {/* Search bar */}
+                <div className="relative flex-1 min-w-[180px] max-w-xs">
+                  <input
+                    type="text"
+                    placeholder="Search asset or question..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-[#1c1b1b] text-white text-xs px-4 py-2.5 rounded-full border border-white/5 focus:outline-none focus:border-[#ddb7ff]/50 transition-colors placeholder:text-[#94a3b8]/60 font-[family-name:var(--font-inter)]"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#94a3b8] hover:text-white"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
                 {showCrypto && (
-                  <div className="inline-flex items-center gap-1 bg-[#1c1b1b] rounded-full p-1 border border-border-subtle/50">
+                  <div className="inline-flex items-center gap-1 bg-[#1c1b1b] rounded-full p-1 border border-white/5">
                     <button
                       onClick={() => setSelectedTimeframe(null)}
-                      className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-[family-name:var(--font-inter)] font-medium transition-all ${
+                      className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-[family-name:var(--font-inter)] font-medium transition-all ${
                         selectedTimeframe === null
                           ? 'bg-[#353534] text-white shadow-sm'
                           : 'text-[#94a3b8] hover:text-white'
@@ -129,7 +169,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                         <button
                           key={tf}
                           onClick={() => setSelectedTimeframe(selectedTimeframe === tf ? null : tf)}
-                          className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-[family-name:var(--font-inter)] font-medium transition-all flex items-center gap-2 ${
+                          className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-[family-name:var(--font-inter)] font-medium transition-all flex items-center gap-1.5 ${
                             selectedTimeframe === tf
                               ? 'bg-[#353534] text-white shadow-sm'
                               : 'text-[#94a3b8] hover:text-white'
@@ -137,7 +177,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                         >
                           {tf}
                           {count > 0 && (
-                            <span className="bg-[#2a2a2a] text-[#94a3b8] text-[10px] px-1.5 py-0.5 rounded-full font-[family-name:var(--font-jetbrains-mono)]">
+                            <span className="bg-[#2a2a2a] text-[#4fdbc8] text-[9px] px-1.5 py-0.2 rounded-full font-[family-name:var(--font-jetbrains-mono)] font-bold">
                               {count}
                             </span>
                           )}
@@ -147,12 +187,18 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                   </div>
                 )}
 
-                <button className="bg-[#1c1b1b] p-3 rounded-full text-[#94a3b8] hover:text-white hover:bg-[#353534] transition-colors shrink-0 border border-border-subtle/50">
-                  <Filter className="w-4 h-4" />
+                <button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  title="Refresh markets data"
+                  className="bg-[#1c1b1b] p-2.5 rounded-full text-[#94a3b8] hover:text-white hover:bg-[#353534] transition-colors shrink-0 border border-white/5 flex items-center gap-2"
+                >
+                  <RotateCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#ddb7ff]' : ''}`} />
                 </button>
               </div>
             </div>
           </div>
+
 
           {/* ── CRYPTO SECTIONS (grouped by timeframe) ── */}
           {showCrypto && (

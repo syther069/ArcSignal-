@@ -227,8 +227,10 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
               <div className="flex items-center gap-3">
                 <div className="flex-1">
                   <div className="text-sm font-bold text-white mb-1 leading-tight font-[family-name:var(--font-hanken)]">
-                    {market.title}
+                    {(market as any).question || (market as any).title || 'Prediction Market'}
                   </div>
+
+
                   <div className="text-xs text-[#94a3b8]">
                     {market.category === 'football'
                       ? `${market.homeTeam} vs ${market.awayTeam}`

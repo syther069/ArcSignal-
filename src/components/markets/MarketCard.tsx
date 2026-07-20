@@ -120,7 +120,10 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
       enabled:
         /^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS) &&
         market.marketId.length > 0,
+      staleTime: 10_000,
+      refetchInterval: 15_000,
     },
+
   });
 
   const chainMarket = data as { followPool: bigint; fadePool: bigint } | undefined;
