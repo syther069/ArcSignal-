@@ -55,35 +55,36 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
   const publicClient = usePublicClient();
 
   // Read live on-chain pool data
-  const { data: chainMarket } = useReadContract({
+  const { data: chainMarket, refetch: refetchMarket } = useReadContract({
     address: ARCSIGNAL_ADDRESS,
     abi: ArcSignal_ABI,
     functionName: 'markets',
     args: [market.marketId],
+    query: { staleTime: 10_000, refetchInterval: 12_000 },
   });
 
-  const { data: followRaw } = useReadContract({
+  const { data: followRaw, refetch: refetchFollow } = useReadContract({
     address: ARCSIGNAL_ADDRESS,
     abi: ARCSIGNAL_ABI,
     functionName: 'followStakes',
     args: address ? [market.marketId, address] : undefined,
-    query: { enabled: !!address },
+    query: { enabled: !!address, staleTime: 10_000, refetchInterval: 12_000 },
   });
   
-  const { data: fadeRaw } = useReadContract({
+  const { data: fadeRaw, refetch: refetchFade } = useReadContract({
     address: ARCSIGNAL_ADDRESS,
     abi: ARCSIGNAL_ABI,
     functionName: 'fadeStakes',
     args: address ? [market.marketId, address] : undefined,
-    query: { enabled: !!address },
+    query: { enabled: !!address, staleTime: 10_000, refetchInterval: 12_000 },
   });
   
-  const { data: claimedRaw } = useReadContract({
+  const { data: claimedRaw, refetch: refetchClaimed } = useReadContract({
     address: ARCSIGNAL_ADDRESS,
     abi: ARCSIGNAL_ABI,
     functionName: 'claimed',
     args: address ? [market.marketId, address] : undefined,
-    query: { enabled: !!address },
+    query: { enabled: !!address, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
   const followPool = chainMarket ? parseFloat(formatUnits(chainMarket[3] as bigint, 6)) : market.followPool;
@@ -132,7 +133,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
       toast.loading('Transaction submitted, confirming…', { id: toastId });
       await publicClient.waitForTransactionReceipt({ hash });
       toast.success('Winnings claimed!', { id: toastId });
-      window.location.reload();
+      await Promise.all([refetchMarket(), refetchFollow(), refetchFade(), refetchClaimed()]);
     } catch (err: any) {
       console.error('Claim failed:', err);
       toast.error('Claim failed: ' + (err?.shortMessage || err?.message || 'Unknown error'), { id: toastId });

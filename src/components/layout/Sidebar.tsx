@@ -20,12 +20,12 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   const navItems = [
-    { name: 'Markets',     icon: LineChart,  href: '/markets' },
-    { name: 'Portfolio',   icon: Wallet,     href: '/portfolio' },
-    { name: 'Analytics',   icon: BarChart2,  href: '/analytics' },
-    { name: 'Leaderboard', icon: Trophy,     href: '/leaderboard' },
-    { name: 'Profile',     icon: User,       href: '/profile' },
-    { name: 'Docs',        icon: FileText,   href: '/docs' },
+    { name: 'Markets', icon: LineChart, href: '/markets' },
+    { name: 'Portfolio', icon: Wallet, href: '/portfolio' },
+    { name: 'Analytics', icon: BarChart2, href: '/analytics' },
+    { name: 'Leaderboard', icon: Trophy, href: '/leaderboard' },
+    { name: 'Profile', icon: User, href: '/profile' },
+    { name: 'Docs', icon: FileText, href: '/docs' },
   ];
 
   return (
@@ -63,11 +63,10 @@ export default function Sidebar() {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  isActive
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${isActive
                     ? 'bg-[#ddb7ff]/10 text-[#ddb7ff]'
                     : 'text-[#94a3b8] hover:bg-[#1c1b1b]/50 hover:text-[#e5e2e1]'
-                }`}
+                  }`}
               >
                 <item.icon className="w-[18px] h-[18px] shrink-0" />
                 <span className="font-[family-name:var(--font-inter)] text-sm font-medium">

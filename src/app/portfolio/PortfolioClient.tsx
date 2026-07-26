@@ -90,8 +90,12 @@ export default function PortfolioClient() {
                       (market.outcome === 'FADE' && userSide === 'FADE');
 
             if (userWon) {
-              const followPoolUsdc = Number(formatUnits(market.followPool as bigint, 6));
-              const fadePoolUsdc   = Number(formatUnits(market.fadePool   as bigint, 6));
+              const followPoolUsdc = typeof market.followPool === 'bigint' 
+                ? Number(formatUnits(market.followPool, 6)) 
+                : Number(market.followPool || 0);
+              const fadePoolUsdc = typeof market.fadePool === 'bigint' 
+                ? Number(formatUnits(market.fadePool, 6)) 
+                : Number(market.fadePool || 0);
               
               const winPool  = userSide === 'FOLLOW' ? followPoolUsdc : fadePoolUsdc;
               const losePool = userSide === 'FOLLOW' ? fadePoolUsdc   : followPoolUsdc;

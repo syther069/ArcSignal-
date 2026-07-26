@@ -367,6 +367,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
           
           <div className="w-32 h-32 mx-auto rounded-full mb-4 overflow-hidden bg-surface-base border border-border-subtle flex items-center justify-center relative group">
             {avatarUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
               <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
               <span className="text-4xl text-primary font-headline-xl">{targetAddress.slice(2, 4).toUpperCase()}</span>
@@ -602,6 +603,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
                     style={{ background: '#1c1b1b', border: '1px solid #3a3939' }}
                   >
                     {avatarPreview ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={avatarPreview} alt="Avatar preview" className="w-full h-full object-cover" />
                     ) : (
                       <svg fill="none" height="24" stroke="#8e8e8e" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" viewBox="0 0 24 24" width="24">

@@ -5,7 +5,7 @@ import React from 'react';
 export default function RightSidebar() {
   return (
     <aside className="fixed right-0 top-16 h-[calc(100vh-64px)] w-[320px] bg-background border-l border-white/10 hidden xl:flex flex-col py-6 px-6 z-40 overflow-y-auto">
-      
+
       {/* Market Pulse Section */}
       <div className="mb-10">
         <div className="flex justify-between items-center mb-6">
@@ -14,12 +14,12 @@ export default function RightSidebar() {
           </h3>
           <span className="text-[10px] text-tertiary font-bold tracking-widest uppercase">Live</span>
         </div>
-        
+
         {/* Simple CSS Bar Chart Placeholder */}
         <div className="h-32 flex items-end justify-between gap-1 mb-2">
           {[40, 60, 30, 80, 50, 45, 90, 70, 55].map((height, i) => (
-            <div 
-              key={i} 
+            <div
+              key={i}
               className={`w-full rounded-t-sm ${i === 3 || i === 6 ? 'bg-primary' : 'bg-surface-container-highest'}`}
               style={{ height: `${height}%` }}
             ></div>

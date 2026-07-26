@@ -68,11 +68,10 @@ export default function LiveActivityPanel() {
                     <span className="text-[11px] font-semibold text-slate-200 line-clamp-2">
                       {pos.market?.title || 'Unknown Market'}
                     </span>
-                    <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded font-mono shrink-0 ${
-                      isFollow
+                    <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded font-mono shrink-0 ${isFollow
                         ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'
                         : 'bg-rose-500/10 border border-rose-500/30 text-rose-400'
-                    }`}>
+                      }`}>
                       {isFollow ? 'FOLLOW' : 'FADE'}
                     </span>
                   </div>

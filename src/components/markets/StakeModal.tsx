@@ -30,7 +30,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
     abi: USDC_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    query: { enabled: !!address },
+    query: { enabled: !!address, staleTime: 10_000 },
   });
   const usdcBalanceBigInt = (usdcRaw as bigint | undefined) ?? 0n;
   const usdcBalanceFormatted = formatUnits(usdcBalanceBigInt, 6);
@@ -40,7 +40,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
     abi: USDC_ABI,
     functionName: 'allowance',
     args: address ? [address, ARCSIGNAL_ADDRESS] : undefined,
-    query: { enabled: !!address },
+    query: { enabled: !!address, staleTime: 10_000 },
   });
   const currentAllowance = (usdcAllowanceRaw as bigint | undefined) ?? 0n;
 

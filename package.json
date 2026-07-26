@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "trigger": "npx tsx scripts/trigger-markets.ts",
+    "generate": "npx tsx scripts/trigger-markets.ts"
   },
   "dependencies": {
     "@reown/appkit": "1.6.8",

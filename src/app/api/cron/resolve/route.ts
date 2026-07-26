@@ -41,24 +41,26 @@ export async function POST(req: Request) {
   const errors: string[] = [];
   const skipped: string[] = [];
 
-  // ── 1. Get total market count ──────────────────────────────────────────────
-  let count: bigint;
+  // ── 1. Fetch all market IDs ──────────────────────────────────────────────
+  let allIds: string[] = [];
   try {
-    count = await resolvePublicClient.readContract({
+    allIds = (await resolvePublicClient.readContract({
       address: CONTRACT_ADDRESS,
       abi: ARCSIGNAL_ABI,
-      functionName: 'getMarketCount',
-    }) as bigint;
+      functionName: 'getAllMarketIds',
+    })) as string[];
   } catch (err) {
     return NextResponse.json({
-      error: `Failed to read market count: ${err instanceof Error ? err.message : String(err)}`,
+      error: `Failed to read market IDs: ${err instanceof Error ? err.message : String(err)}`,
       contractUsed: CONTRACT_ADDRESS,
     }, { status: 500 });
   }
 
-  if (!count || count === 0n) {
+  if (!allIds || allIds.length === 0) {
     return NextResponse.json({ resolved: [], skipped: [], errors: [], message: 'No markets found', contractUsed: CONTRACT_ADDRESS });
   }
+
+  const targetIds = allIds.slice(-40);
 
   // ── 2. Pre-fetch live crypto prices once ─────────────────────────────────
   let coins: Awaited<ReturnType<typeof fetchCryptoMarkets>> = [];
@@ -78,20 +80,14 @@ export async function POST(req: Request) {
     errors.push(`Football fixtures fetch failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  // ── 4. Loop through every market ──────────────────────────────────────────
-  for (let i = 0; i < Number(count); i++) {
-    let marketId: string;
-    try {
-      marketId = await resolvePublicClient.readContract({
-        address: CONTRACT_ADDRESS,
-        abi: ARCSIGNAL_ABI,
-        functionName: 'getMarketIdByIndex',
-        args: [BigInt(i)],
-      }) as string;
-    } catch (err) {
-      errors.push(`Index ${i}: failed to read marketId — ${err instanceof Error ? err.message : String(err)}`);
-      continue;
-    }
+  // Fetch current pending nonce
+  let currentNonce = await resolvePublicClient.getTransactionCount({
+    address: account.address,
+    blockTag: 'pending',
+  });
+
+  // ── 4. Loop through recent target markets ──────────────────────────────────
+  for (const marketId of targetIds) {
 
     // Read the full market struct
     let market: {
@@ -187,23 +183,17 @@ export async function POST(req: Request) {
 
       // ── 6. Call resolveMarket on-chain ────────────────────────────────────
       const hash = await walletClient.writeContract({
+        account,
+        chain: arcTestnet,
         address: CONTRACT_ADDRESS,
         abi: ARCSIGNAL_ABI,
         functionName: 'resolveMarket',
         args: [marketId, outcome],
+        nonce: currentNonce++,
       });
 
-      // ── 7. Wait and verify the transaction succeeded ─────────────────────
-      const receipt = await resolvePublicClient.waitForTransactionReceipt({
-        hash,
-        timeout: 60_000,
-      });
-
-      if (receipt.status !== 'success') {
-        errors.push(`${marketId}: tx ${hash} was REVERTED (status=${receipt.status})`);
-      } else {
-        resolved.push(`${marketId}: outcome=${outcome} (${outcomeReason}) tx=${hash}`);
-      }
+      resolved.push(`${marketId}: outcome=${outcome} (${outcomeReason}) tx=${hash}`);
+      await new Promise(r => setTimeout(r, 1000));
 
     } catch (err) {
       errors.push(`${marketId}: ${err instanceof Error ? err.message : String(err)}`);
@@ -212,7 +202,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     contractUsed: CONTRACT_ADDRESS,
-    marketCount: Number(count),
+    marketCount: allIds.length,
     resolved,
     skipped,
     errors,

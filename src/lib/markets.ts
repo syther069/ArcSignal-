@@ -59,7 +59,7 @@ export async function getMarketsFromChain(forceRefresh = false): Promise<Market[
       return (generationTime + 86400) >= nowUnix;
     });
 
-    const targetIds = likelyActiveIds.slice(-20);
+    const targetIds = likelyActiveIds.slice(-60);
     const markets: Market[] = [];
 
     // Fetch in small parallel chunks with slight pacing

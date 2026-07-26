@@ -162,15 +162,34 @@ export async function POST(req: Request) {
 
           const analysisWithSubType = { ...analysis, subType: timeframe.label };
 
-          const hash = await walletClient.writeContract({
-            account,
-            chain: arcTestnet,
-            address: CONTRACT_ADDRESS,
-            abi: ARCSIGNAL_ABI,
-            functionName: 'createMarket',
-            args: [marketId, 'CRYPTO', question, JSON.stringify(analysisWithSubType), resolutionTime],
-            nonce: currentNonce++,
-          });
+          let hash = '';
+          for (let attempt = 1; attempt <= 4; attempt++) {
+            try {
+              hash = await walletClient.writeContract({
+                account,
+                chain: arcTestnet,
+                address: CONTRACT_ADDRESS,
+                abi: ARCSIGNAL_ABI,
+                functionName: 'createMarket',
+                args: [marketId, 'CRYPTO', question, JSON.stringify(analysisWithSubType), resolutionTime],
+                nonce: currentNonce++,
+              });
+              break;
+            } catch (err: any) {
+              const errMsg = err?.message || String(err);
+              if (attempt < 4 && (errMsg.includes('429') || errMsg.includes('limit') || errMsg.includes('nonce'))) {
+                await new Promise((r) => setTimeout(r, 2000));
+                try {
+                  currentNonce = await publicClient.getTransactionCount({
+                    address: account.address,
+                    blockTag: 'pending',
+                  });
+                } catch {}
+                continue;
+              }
+              throw err;
+            }
+          }
 
           created.push(`[CRYPTO] ${question} (Tx: ${hash})`);
           // Pace transactions to prevent RPC 429 rate limits

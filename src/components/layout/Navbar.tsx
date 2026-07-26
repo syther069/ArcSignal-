@@ -22,7 +22,7 @@ export default function Navbar() {
     abi: USDC_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    query: { enabled: !!address },
+    query: { enabled: !!address, staleTime: 10_000 },
   });
   const usdcBalance =
     usdcRaw != null
@@ -44,11 +44,11 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks = [
-    { name: 'Markets',   href: '/markets' },
+    { name: 'Markets', href: '/markets' },
     { name: 'Portfolio', href: '/portfolio' },
     { name: 'Analytics', href: '/analytics' },
-    { name: 'Profile',   href: '/profile' },
-    { name: 'Docs',      href: '/docs' },
+    { name: 'Profile', href: '/profile' },
+    { name: 'Docs', href: '/docs' },
   ];
   return (
     <header className="fixed top-0 w-full z-50 bg-[#131313] border-b border-[#1e293b] shadow-2xl shadow-black/40">
@@ -71,11 +71,10 @@ export default function Navbar() {
                 <Link
                   key={link.name}
                   href={link.href}
-                  className={`text-sm font-medium transition-colors py-5 border-b-2 ${
-                    isActive
+                  className={`text-sm font-medium transition-colors py-5 border-b-2 ${isActive
                       ? 'text-[#ddb7ff] border-[#ddb7ff]'
                       : 'text-[#94a3b8] hover:text-[#e5e2e1] border-transparent'
-                  }`}
+                    }`}
                 >
                   {link.name}
                 </Link>
@@ -95,9 +94,9 @@ export default function Navbar() {
                 <span className="text-sm font-[family-name:var(--font-jetbrains-mono)] text-[#e5e2e1]">
                   {usdcBalance} USDC
                 </span>
-                <a 
-                  href="https://faucet.circle.com/" 
-                  target="_blank" 
+                <a
+                  href="https://faucet.circle.com/"
+                  target="_blank"
                   rel="noreferrer"
                   className="w-5 h-5 rounded-md bg-[#ddb7ff]/10 hover:bg-[#ddb7ff]/20 text-[#ddb7ff] flex items-center justify-center transition-colors border border-[#ddb7ff]/20"
                   title="Get Testnet USDC"
@@ -130,12 +129,11 @@ export default function Navbar() {
                 key={link.name}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`p-3 rounded-lg text-sm font-medium font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider ${
-                  pathname === link.href ||
-                  (pathname.startsWith(link.href) && link.href !== '/')
+                className={`p-3 rounded-lg text-sm font-medium font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider ${pathname === link.href ||
+                    (pathname.startsWith(link.href) && link.href !== '/')
                     ? 'bg-[#ddb7ff]/10 text-[#ddb7ff]'
                     : 'text-[#94a3b8]'
-                }`}
+                  }`}
               >
                 {link.name}
               </Link>

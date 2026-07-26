@@ -68,8 +68,8 @@ function getResolutionExplanation(market: SerializableMarket): {
     const headline = followWon
       ? `✓ FOLLOW WON — AI prediction was correct`
       : fadeWon
-      ? `✓ FADE WON — AI prediction was incorrect`
-      : 'Market resolved';
+        ? `✓ FADE WON — AI prediction was incorrect`
+        : 'Market resolved';
 
     const detail = target
       ? followWon
@@ -86,8 +86,8 @@ function getResolutionExplanation(market: SerializableMarket): {
     const headline = followWon
       ? `✓ FOLLOW WON — Home team won`
       : fadeWon
-      ? `✓ FADE WON — Away team won or draw`
-      : 'Match resolved';
+        ? `✓ FADE WON — Away team won or draw`
+        : 'Match resolved';
 
     // Extract teams from question: "Will X beat Y on ..."
     const teamMatch = market.question?.match(/Will (.+?) beat (.+?) on/);
@@ -128,16 +128,16 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
 
   const chainMarket = data as { followPool: bigint; fadePool: bigint } | undefined;
   const liveFollowPool = chainMarket?.followPool ?? numberToUsdc(Number(market.followPool));
-  const liveFadePool   = chainMarket?.fadePool   ?? numberToUsdc(Number(market.fadePool));
-  const totalPool      = liveFollowPool + liveFadePool;
-  const followShare    = totalPool > 0n ? Number((liveFollowPool * 100n) / totalPool) : 0;
-  const fadeShare      = totalPool > 0n ? Number((liveFadePool * 100n) / totalPool) : 0;
+  const liveFadePool = chainMarket?.fadePool ?? numberToUsdc(Number(market.fadePool));
+  const totalPool = liveFollowPool + liveFadePool;
+  const followShare = totalPool > 0n ? Number((liveFollowPool * 100n) / totalPool) : 0;
+  const fadeShare = totalPool > 0n ? Number((liveFadePool * 100n) / totalPool) : 0;
 
   const probability = market.analysis?.probability ?? market.analysis?.confidence ?? 50;
-  const confidence  = market.analysis?.confidence ?? 50;
-  const isResolved  = market.resolved;
+  const confidence = market.analysis?.confidence ?? 50;
+  const isResolved = market.resolved;
   const hasAnalysis = !!market.analysis;
-  const timeframe   = getTimeframe(market.marketId);
+  const timeframe = getTimeframe(market.marketId);
 
   // AI summary snippet shown always (before betting)
   const summarySnippet = market.analysis?.summary
@@ -167,11 +167,10 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
             <div className="w-1.5 h-1.5 rounded-full bg-[#4fdbc8] animate-pulse-dot" />
           )}
         </div>
-        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wider border ${
-          isResolved
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wider border ${isResolved
             ? 'bg-[#94a3b8]/10 border-[#94a3b8]/20 text-[#94a3b8]'
             : 'bg-[#4fdbc8]/10 border-[#4fdbc8]/20 text-[#4fdbc8]'
-        }`}>
+          }`}>
           {isResolved ? 'RESOLVED' : 'LIVE'}
         </span>
       </div>
@@ -293,17 +292,15 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
         </div>
       ) : (
         /* ── FEATURE 1: Resolution Transparency Panel ── */
-        <div className={`rounded-lg border p-4 space-y-2.5 ${
-          market.outcome === 'FOLLOW'
+        <div className={`rounded-lg border p-4 space-y-2.5 ${market.outcome === 'FOLLOW'
             ? 'bg-[#4fdbc8]/5 border-[#4fdbc8]/25'
             : 'bg-[#ffb4ab]/5 border-[#ffb4ab]/25'
-        }`}>
+          }`}>
           {/* Shield + headline */}
           <div className="flex items-center gap-2">
             <ShieldCheck className={`w-4 h-4 shrink-0 ${market.outcome === 'FOLLOW' ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'}`} />
-            <p className={`text-[11px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wide ${
-              market.outcome === 'FOLLOW' ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'
-            }`}>
+            <p className={`text-[11px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wide ${market.outcome === 'FOLLOW' ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'
+              }`}>
               {resolution?.headline}
             </p>
           </div>
@@ -335,9 +332,8 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
 
       {/* ── EXPANDABLE: Full AI Analysis ── */}
       <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          expanded ? 'max-h-[9999px] opacity-100' : 'max-h-0 opacity-0'
-        }`}
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded ? 'max-h-[9999px] opacity-100' : 'max-h-0 opacity-0'
+          }`}
         aria-hidden={!expanded}
       >
         <div className="border-t border-[#1e293b] pt-5 space-y-5">
