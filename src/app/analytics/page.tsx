@@ -18,11 +18,11 @@ export default async function AnalyticsPage() {
   // ─── Fetch Recent Staked events for the chart ──────────────────────────────
   let stakedLogs: any[] = [];
   try {
-    const fromBlock = 0n; // Fetch all historical stakes
+    const DEPLOYMENT_BLOCK = 50012000n;
     stakedLogs = await publicClient.getLogs({
       address: ARCSIGNAL_ADDRESS,
       event: ARCSIGNAL_ABI.find((x: any) => x.type === 'event' && x.name === 'Staked') as any,
-      fromBlock,
+      fromBlock: DEPLOYMENT_BLOCK,
       toBlock: 'latest',
     }) as any[];
   } catch (err) {

@@ -55,18 +55,19 @@ export default function PortfolioClient() {
       }
 
       // ARC Testnet does not have Multicall3 deployed, so we use Promise.all
+      // Fire all read queries simultaneously in parallel for instant execution
       const fetchMarketData = async (m: any) => {
-        try {
-          const [followRaw, fadeRaw, isClaimed] = await Promise.all([
-            publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'followStakes', args: [m.marketId, address] }) as Promise<bigint>,
-            publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'fadeStakes', args: [m.marketId, address] }) as Promise<bigint>,
-            publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'claimed', args: [m.marketId, address] }) as Promise<boolean>,
-          ]);
-          return { followRaw, fadeRaw, isClaimed };
-        } catch (e) {
-          console.error('Failed to read position for market', m.marketId, e);
-          return { followRaw: 0n, fadeRaw: 0n, isClaimed: false };
-        }
+        const [followRes, fadeRes, claimedRes] = await Promise.allSettled([
+          publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'followStakes', args: [m.marketId, address] }),
+          publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'fadeStakes', args: [m.marketId, address] }),
+          publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'claimed', args: [m.marketId, address] }),
+        ]);
+
+        const followRaw = followRes.status === 'fulfilled' ? (followRes.value as bigint) : 0n;
+        const fadeRaw   = fadeRes.status   === 'fulfilled' ? (fadeRes.value   as bigint) : 0n;
+        const isClaimed = claimedRes.status === 'fulfilled' ? (claimedRes.value as boolean) : false;
+
+        return { followRaw, fadeRaw, isClaimed };
       };
 
       const results = await Promise.all(markets.map(fetchMarketData));

@@ -19,24 +19,26 @@ export default async function LeaderboardPage() {
     const chainMarkets = await getMarketsFromChain();
     markets = chainMarkets.map(serializeMarket);
 
-    const fromBlock = 0n; // Fetch all historical stakes
+    const DEPLOYMENT_BLOCK = 50012000n;
 
     const stakedLogs = await publicClient.getLogs({
       address: ARCSIGNAL_ADDRESS,
       event: parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)'),
-      fromBlock,
+      fromBlock: DEPLOYMENT_BLOCK,
       toBlock: 'latest',
     });
 
     const addressMap = new Map<string, { totalStaked: bigint; correct: number; total: number }>();
     
     for (const log of stakedLogs) {
-      const { user, amount, marketId, side } = log.args as { user: string; amount: bigint; marketId: string; side: number };
-      if (!addressMap.has(user)) {
-        addressMap.set(user, { totalStaked: 0n, correct: 0, total: 0 });
+      const { user, amount, marketId, side } = log.args as { user: string; amount: bigint; marketId: string; side: any };
+      if (!user) continue;
+      const userKey = user.toLowerCase();
+      if (!addressMap.has(userKey)) {
+        addressMap.set(userKey, { totalStaked: 0n, correct: 0, total: 0 });
       }
-      const entry = addressMap.get(user)!;
-      entry.totalStaked += amount;
+      const entry = addressMap.get(userKey)!;
+      entry.totalStaked += BigInt(amount || 0n);
       
       const market = markets.find((m: any) => m.marketId === marketId);
       // outcome: 0 = unresolved, 1 = follow wins, 2 = fade wins
@@ -46,7 +48,7 @@ export default async function LeaderboardPage() {
         if (rawOutcome !== 0) {
           entry.total += 1;
           const winningSide = rawOutcome === 1 ? 0 : 1; // outcome 1 → follow(0) wins, outcome 2 → fade(1) wins
-          if (side === winningSide) entry.correct += 1;
+          if (Number(side) === winningSide) entry.correct += 1;
         }
       }
     }

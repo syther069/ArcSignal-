@@ -49,21 +49,12 @@ export async function getMarketsFromChain(forceRefresh = false): Promise<Market[
 
     if (!allIds || allIds.length === 0) return [];
 
-    const nowUnix = Math.floor(Date.now() / 1000);
-    const likelyActiveIds = allIds.filter(marketId => {
-      const parts = marketId.split('-');
-      const timestampStr = parts[parts.length - 1];
-      const generationTime = parseInt(timestampStr, 10);
-
-      if (isNaN(generationTime) || generationTime === 0) return true;
-      return (generationTime + 86400) >= nowUnix;
-    });
-
-    const targetIds = likelyActiveIds.slice(-60);
+    // Include all recent and historical markets (up to 120 latest markets)
+    const targetIds = allIds.slice(-120);
     const markets: Market[] = [];
 
-    // Fetch in small parallel chunks with slight pacing
-    const CHUNK_SIZE = 5;
+    // Fetch in parallel chunks for fast execution
+    const CHUNK_SIZE = 20;
     for (let i = 0; i < targetIds.length; i += CHUNK_SIZE) {
       const chunkIds = targetIds.slice(i, i + CHUNK_SIZE);
       const chunkResults = await Promise.allSettled(
@@ -103,10 +94,6 @@ export async function getMarketsFromChain(forceRefresh = false): Promise<Market[
             analysis: safeParseAnalysis(data.analysisJson),
           });
         }
-      }
-
-      if (i + CHUNK_SIZE < targetIds.length) {
-        await new Promise(r => setTimeout(r, 200));
       }
     }
 
