@@ -33,22 +33,24 @@ interface AnalyticsClientProps {
   markets?: any[];
 }
 
-const StatCardCustom = React.memo(({ title, value, subtext, icon, emptyMsg }: any) => (
-  <div className="bg-surface-charcoal border border-border-subtle p-6 relative overflow-hidden flex flex-col h-full rounded">
-    <div className="absolute top-4 right-4 opacity-5 text-[64px] material-symbols-outlined pointer-events-none">
-      {icon}
-    </div>
-    <div className="text-text-muted font-headline-md mb-4">{title}</div>
-    {value === null || value === undefined || value === 0 || value === '0 USDC' ? (
-      <div className="text-text-muted font-code-sm mt-auto">{emptyMsg}</div>
-    ) : (
-      <div className="mt-auto">
-        <div className="text-primary font-code-sm text-3xl mb-1">{value}</div>
-        {subtext && <div className="text-text-muted font-label-caps">{subtext}</div>}
+const StatCardCustom = React.memo(function StatCardCustom({ title, value, subtext, icon, emptyMsg }: any) {
+  return (
+    <div className="bg-surface-charcoal border border-border-subtle p-6 relative overflow-hidden flex flex-col h-full rounded">
+      <div className="absolute top-4 right-4 opacity-5 text-[64px] material-symbols-outlined pointer-events-none">
+        {icon}
       </div>
-    )}
-  </div>
-));
+      <div className="text-text-muted font-headline-md mb-4">{title}</div>
+      {value === null || value === undefined || value === 0 || value === '0 USDC' ? (
+        <div className="text-text-muted font-code-sm mt-auto">{emptyMsg}</div>
+      ) : (
+        <div className="mt-auto">
+          <div className="text-primary font-code-sm text-3xl mb-1">{value}</div>
+          {subtext && <div className="text-text-muted font-label-caps">{subtext}</div>}
+        </div>
+      )}
+    </div>
+  );
+});
 
 export default function AnalyticsClient({
   agentWinRates,
