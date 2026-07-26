@@ -133,7 +133,7 @@ export default function PortfolioClient() {
   }, [fetchPortfolio]);
 
   // ─── Claim Handler ──────────────────────────────────────────────────────────
-  const handleClaim = async (marketId: string) => {
+  const handleClaim = useCallback(async (marketId: string) => {
     if (!walletClient || !publicClient || !address) return;
     const toastId = toast.loading('Waiting for wallet confirmation…');
     try {
@@ -156,7 +156,7 @@ export default function PortfolioClient() {
     } finally {
       setClaiming(p => ({ ...p, [marketId]: false }));
     }
-  };
+  }, [walletClient, publicClient, address, fetchPortfolio]);
 
   // ─── Stats ──────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
@@ -298,7 +298,7 @@ export default function PortfolioClient() {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StatCard({ icon, label, value, positive, negative, highlight }: {
+const StatCard = React.memo(function StatCard({ icon, label, value, positive, negative, highlight }: {
   icon: React.ReactNode;
   label: string;
   value: string;
@@ -323,9 +323,9 @@ function StatCard({ icon, label, value, positive, negative, highlight }: {
       </p>
     </div>
   );
-}
+});
 
-function PositionCard({ pos, onClaim, claiming }: { pos: Position; onClaim: (id: string) => void; claiming: boolean }) {
+const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }: { pos: Position; onClaim: (id: string) => void; claiming: boolean }) {
   const isFollow = pos.side === 0;
   const marketTitle = pos.market.question || pos.market.marketId;
   const shortTitle = marketTitle.length > 70 ? marketTitle.slice(0, 70) + '…' : marketTitle;
@@ -430,18 +430,18 @@ function PositionCard({ pos, onClaim, claiming }: { pos: Position; onClaim: (id:
       </div>
     </div>
   );
-}
+});
 
-function MiniStat({ label, value, color }: { label: string; value: string; color?: string }) {
+const MiniStat = React.memo(function MiniStat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div className="bg-[#0d0d0d] border border-[#3a3939] rounded-lg p-3">
       <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#8e8e8e] uppercase tracking-widest mb-1">{label}</p>
       <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm" style={{ color: color || '#e5e2e1' }}>{value}</p>
     </div>
   );
-}
+});
 
-function EmptyState({ tab }: { tab: Tab }) {
+const EmptyState = React.memo(function EmptyState({ tab }: { tab: Tab }) {
   const msgs: Record<Tab, { title: string; sub: string }> = {
     open:     { title: 'No open positions', sub: 'Browse live markets and stake on an AI prediction to get started.' },
     resolved: { title: 'No resolved positions', sub: 'Your past positions will appear here once markets close.' },
@@ -458,4 +458,4 @@ function EmptyState({ tab }: { tab: Tab }) {
       </Link>
     </div>
   );
-}
+});

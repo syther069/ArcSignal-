@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWatchContractEvent } from 'wagmi';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
@@ -33,7 +33,7 @@ interface AnalyticsClientProps {
   markets?: any[];
 }
 
-const StatCardCustom = ({ title, value, subtext, icon, emptyMsg }: any) => (
+const StatCardCustom = React.memo(({ title, value, subtext, icon, emptyMsg }: any) => (
   <div className="bg-surface-charcoal border border-border-subtle p-6 relative overflow-hidden flex flex-col h-full rounded">
     <div className="absolute top-4 right-4 opacity-5 text-[64px] material-symbols-outlined pointer-events-none">
       {icon}
@@ -48,7 +48,7 @@ const StatCardCustom = ({ title, value, subtext, icon, emptyMsg }: any) => (
       </div>
     )}
   </div>
-);
+));
 
 export default function AnalyticsClient({
   agentWinRates,
@@ -77,17 +77,42 @@ export default function AnalyticsClient({
     },
   });
 
-  const totalStakedUsdc = stats.totalStakedUsdc ?? stats.totalVolume ?? 0;
-  const pendingCount = stats.pendingCount ?? stats.activeMarkets ?? 0;
-  const totalMarkets = stats.totalMarkets ?? stats.activeMarkets ?? 0;
-  const aiAccuracy = stats.aiAccuracy ?? (agentWinRates.length > 0 ? agentWinRates[0].rate : null);
-  const resolvedCount = stats.resolvedCount ?? 0;
-  
-  const followVal = ratioData[0]?.value || 0;
-  const fadeVal = ratioData[1]?.value || 0;
-  const totalRatio = followVal + fadeVal;
-  const followPercent = stats.followPercent ?? (totalRatio > 0 ? Math.round((followVal / totalRatio) * 100) : 0);
-  const fadePercent = stats.fadePercent ?? (totalRatio > 0 ? Math.round((fadeVal / totalRatio) * 100) : 0);
+  const {
+    totalStakedUsdc,
+    pendingCount,
+    totalMarkets,
+    aiAccuracy,
+    resolvedCount,
+    followPercent,
+    fadePercent,
+  } = useMemo(() => {
+    const totalStakedUsdcVal = stats.totalStakedUsdc ?? stats.totalVolume ?? 0;
+    const pendingCountVal = stats.pendingCount ?? stats.activeMarkets ?? 0;
+    const totalMarketsVal = stats.totalMarkets ?? stats.activeMarkets ?? 0;
+    const aiAccuracyVal = stats.aiAccuracy ?? (agentWinRates.length > 0 ? agentWinRates[0].rate : null);
+    const resolvedCountVal = stats.resolvedCount ?? 0;
+    
+    const followVal = ratioData[0]?.value || 0;
+    const fadeVal = ratioData[1]?.value || 0;
+    const totalRatio = followVal + fadeVal;
+    const followPercentVal = stats.followPercent ?? (totalRatio > 0 ? Math.round((followVal / totalRatio) * 100) : 0);
+    const fadePercentVal = stats.fadePercent ?? (totalRatio > 0 ? Math.round((fadeVal / totalRatio) * 100) : 0);
+
+    return {
+      totalStakedUsdc: totalStakedUsdcVal,
+      pendingCount: pendingCountVal,
+      totalMarkets: totalMarketsVal,
+      aiAccuracy: aiAccuracyVal,
+      resolvedCount: resolvedCountVal,
+      followPercent: followPercentVal,
+      fadePercent: fadePercentVal,
+    };
+  }, [stats, agentWinRates, ratioData]);
+
+  const topMarketsByVolume = useMemo(() => {
+    if (!markets) return [];
+    return [...markets].sort((a, b) => (b.followPool + b.fadePool) - (a.followPool + a.fadePool));
+  }, [markets]);
 
   return (
     <div className="flex min-h-screen bg-[#131313]">
@@ -218,7 +243,7 @@ export default function AnalyticsClient({
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[...markets].sort((a,b)=>(b.followPool+b.fadePool)-(a.followPool+a.fadePool))} layout="vertical" margin={{ left: 0 }}>
+                  <BarChart data={topMarketsByVolume} layout="vertical" margin={{ left: 0 }}>
                     <XAxis type="number" hide />
                     <YAxis type="category" dataKey={(m) => m.title?.length > 40 ? m.title.substring(0, 40) + '...' : m.title} width={180} tick={{ fill: '#e5e2e1', fontSize: 11 }} />
                     <Tooltip contentStyle={{ backgroundColor: '#1c1b1b', borderColor: '#1e293b' }} formatter={(val) => `${val} USDC`} />

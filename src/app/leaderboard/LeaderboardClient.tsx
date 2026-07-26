@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWatchContractEvent } from 'wagmi';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
@@ -19,6 +19,8 @@ interface LeaderboardClientProps {
   leaderboard: LeaderboardEntry[];
   markets: any[];
 }
+
+const formatAddress = (addr: string) => `${addr.substring(0, 6)}...${addr.slice(-4)}`;
 
 export default function LeaderboardClient({ leaderboard, markets }: LeaderboardClientProps) {
   const router = useRouter();
@@ -39,20 +41,30 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
     },
   });
 
-  // Stat Card 1: Network Volume
-  const totalVolume = markets.reduce((acc, m) => acc + (Number(m.followPool) + Number(m.fadePool)) / 1e6, 0);
-  
-  // Stat Card 2: Active Traders
-  const activeTradersCount = leaderboard.length;
+  const {
+    totalVolume,
+    activeTradersCount,
+    topPerformer,
+    totalMarkets,
+    resolvedMarkets,
+    activeMarkets,
+  } = useMemo(() => {
+    const vol = markets.reduce((acc, m) => acc + (Number(m.followPool) + Number(m.fadePool)) / 1e6, 0);
+    const tradersCount = leaderboard.length;
+    const topPerf = leaderboard.length > 0 ? leaderboard[0] : null;
+    const totMarkets = markets.length;
+    const resMarkets = markets.filter(m => m.outcome !== 'PENDING').length;
+    const actMarkets = markets.filter(m => m.outcome === 'PENDING').length;
 
-  // Stat Card 3: Top Performer
-  const topPerformer = leaderboard.length > 0 ? leaderboard[0] : null;
-  const formatAddress = (addr: string) => `${addr.substring(0, 6)}...${addr.slice(-4)}`;
-
-  // Sidebar stats
-  const totalMarkets = markets.length;
-  const resolvedMarkets = markets.filter(m => m.outcome !== 'PENDING').length;
-  const activeMarkets = markets.filter(m => m.outcome === 'PENDING').length;
+    return {
+      totalVolume: vol,
+      activeTradersCount: tradersCount,
+      topPerformer: topPerf,
+      totalMarkets: totMarkets,
+      resolvedMarkets: resMarkets,
+      activeMarkets: actMarkets,
+    };
+  }, [leaderboard, markets]);
 
   return (
     <div className="flex min-h-screen bg-[#131313] text-[#e5e2e1]">
