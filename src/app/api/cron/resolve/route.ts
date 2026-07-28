@@ -14,10 +14,13 @@ const CONTRACT_ADDRESS = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as Address
 // Use env RPC or fallback
 const RPC_URL = process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network';
 
-// Build a fresh publicClient that definitely uses the correct address
 const resolvePublicClient = createPublicClient({
   chain: arcTestnet,
-  transport: http(RPC_URL),
+  transport: http(RPC_URL, {
+    fetchOptions: {
+      cache: 'no-store',
+    },
+  }),
 });
 
 export async function POST(req: Request) {

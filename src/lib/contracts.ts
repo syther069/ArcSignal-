@@ -19,7 +19,11 @@ export const arcTestnet = {
 
 export const publicClient = createPublicClient({
   chain: arcTestnet,
-  transport: http(process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network'),
+  transport: http(process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network', {
+    fetchOptions: {
+      cache: 'no-store',
+    },
+  }),
 });
 
 // Hardcoded to the currently deployed contract. The env var is kept as a named
