@@ -2,14 +2,25 @@
 
 import { useEffect, useState } from 'react';
 
-export function CountdownTimer({ resolutionTime }: { resolutionTime: number }) {
+export function CountdownTimer({
+  resolutionTime,
+  resolved = false,
+}: {
+  resolutionTime: number;
+  resolved?: boolean;
+}) {
   const [timeLeft, setTimeLeft] = useState<string | null>(null);
 
   useEffect(() => {
     function update() {
+      if (resolved) {
+        setTimeLeft('Resolved');
+        return;
+      }
+
       const diff = resolutionTime * 1000 - Date.now();
       if (diff <= 0) {
-        setTimeLeft('Resolving...');
+        setTimeLeft('Pending resolution');
         return;
       }
 
@@ -22,7 +33,7 @@ export function CountdownTimer({ resolutionTime }: { resolutionTime: number }) {
     update();
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
-  }, [resolutionTime]);
+  }, [resolutionTime, resolved]);
 
   if (timeLeft === null) return <span className="opacity-0" suppressHydrationWarning>--:--:--</span>;
   return <span suppressHydrationWarning>{timeLeft}</span>;

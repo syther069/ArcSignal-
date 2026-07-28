@@ -23,10 +23,12 @@ export interface Market {
   fadePool: number;
   resolutionTime: number;
   resolved: boolean;
+  status?: 'ACTIVE' | 'PENDING_RESOLUTION' | 'RESOLVED' | 'CANCELLED';
   outcome?: string;
   resolution_source?: string;
   resolution_price?: number;
   resolution_timestamp?: number;
+  resolution_reason?: string;
   league?: string;
   homeTeam?: string;
   awayTeam?: string;

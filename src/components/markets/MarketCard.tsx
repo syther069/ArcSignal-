@@ -136,6 +136,8 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
   const probability = market.analysis?.probability ?? market.analysis?.confidence ?? 50;
   const confidence = market.analysis?.confidence ?? 50;
   const isResolved = market.resolved;
+  const isPendingResolution = !market.resolved && market.resolutionTime <= Math.floor(Date.now() / 1000);
+  const isActive = !isResolved && !isPendingResolution;
   const hasAnalysis = !!market.analysis;
   const timeframe = getTimeframe(market.marketId);
 
@@ -163,7 +165,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
               {timeframe}
             </span>
           )}
-          {!isResolved && (
+          {isActive && (
             <div className="w-1.5 h-1.5 rounded-full bg-[#4fdbc8] animate-pulse-dot" />
           )}
         </div>
@@ -171,7 +173,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
             ? 'bg-[#94a3b8]/10 border-[#94a3b8]/20 text-[#94a3b8]'
             : 'bg-[#4fdbc8]/10 border-[#4fdbc8]/20 text-[#4fdbc8]'
           }`}>
-          {isResolved ? 'RESOLVED' : 'LIVE'}
+          {isResolved ? 'RESOLVED' : isPendingResolution ? 'PENDING' : 'LIVE'}
         </span>
       </div>
 
@@ -259,12 +261,12 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
 
       {/* Countdown */}
       <div className="flex items-center justify-between text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8]">
-        <CountdownTimer resolutionTime={market.resolutionTime} />
+        <CountdownTimer resolutionTime={market.resolutionTime} resolved={isResolved} />
         <span>Pool split: Follow {followShare}% / Fade {fadeShare}%</span>
       </div>
 
       {/* ── Follow / Fade buttons OR resolution panel ── */}
-      {!isResolved ? (
+      {isActive ? (
         <div className="space-y-3">
           <p className="text-[11px] text-[#94a3b8] text-center font-[family-name:var(--font-inter)]">
             AI predicts{' '}
@@ -290,7 +292,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
             </button>
           </div>
         </div>
-      ) : (
+      ) : isResolved ? (
         /* ── FEATURE 1: Resolution Transparency Panel ── */
         <div className={`rounded-lg border p-4 space-y-2.5 ${market.outcome === 'FOLLOW'
             ? 'bg-[#4fdbc8]/5 border-[#4fdbc8]/25'
@@ -327,6 +329,21 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
               Verify on CoinGecko
             </a>
           )}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-[#ddb7ff]/25 bg-[#ddb7ff]/5 p-4 space-y-2.5">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 shrink-0 text-[#ddb7ff]" />
+            <p className="text-[11px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wide text-[#ddb7ff]">
+              Pending Resolution
+            </p>
+          </div>
+          <p className="text-[11px] text-[#94a3b8] leading-relaxed font-[family-name:var(--font-jetbrains-mono)]">
+            This market has reached its deadline and is waiting for oracle resolution. Follow and Fade are disabled while the final outcome is being recorded.
+          </p>
+          <p className="text-[10px] text-[#94a3b8]/60 font-[family-name:var(--font-jetbrains-mono)]">
+            Deadline: {new Date(market.resolutionTime * 1000).toUTCString()}
+          </p>
         </div>
       )}
 

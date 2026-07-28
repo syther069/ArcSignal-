@@ -63,7 +63,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ resolved: [], skipped: [], errors: [], message: 'No markets found', contractUsed: CONTRACT_ADDRESS });
   }
 
-  const targetIds = allIds.slice(-40);
+  const targetIds = [...allIds].reverse();
 
   // ── 2. Pre-fetch live crypto prices once ─────────────────────────────────
   let coins: Awaited<ReturnType<typeof fetchCryptoMarkets>> = [];
@@ -85,7 +85,8 @@ export async function POST(req: Request) {
 
 
 
-  // ── 4. Loop through recent target markets ──────────────────────────────────
+  // ── 4. Loop through all markets. Markets are append-only, so old due markets
+  // must remain eligible for resolution forever.
   for (const marketId of targetIds) {
 
     // Read the full market struct

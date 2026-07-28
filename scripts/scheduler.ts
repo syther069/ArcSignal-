@@ -28,7 +28,8 @@ async function runHourlyTasks() {
 
 async function runDailyTasks() {
   console.log(`[${new Date().toISOString()}] Running daily tasks...`);
-  // Note: Here we would generate new markets and archive expired markets.
+  // Note: Market history is append-only. New market generation should create a
+  // new batch and must not archive or delete expired markets.
 }
 
 // If run directly, perform one run or mock cron behavior

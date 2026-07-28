@@ -49,7 +49,10 @@ export function toUiMarket(market: SerializableMarket): UiMarket {
     resolutionTime: market.resolutionTime,
     resolved: market.resolved,
     outcome: market.outcome,
+    status: market.status,
     resolution_source: category === 'football' ? 'API-Football' : 'CoinGecko',
+    resolution_timestamp: market.resolvedAt,
+    resolution_reason: market.resolutionReason,
     createdAt: market.analysis?.generatedAt ?? new Date().toISOString(),
     ...teams,
   };

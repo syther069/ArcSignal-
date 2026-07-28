@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, publicClient, ARCSIGNAL_ABI } from '@/lib/contracts';
-import { getMarketsFromChain } from '@/lib/markets';
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchUpcomingFixtures } from '@/lib/apifootball';
 import { generateCryptoAnalysis, generateFootballAnalysis } from '@/lib/gemini';
@@ -46,10 +45,6 @@ export async function POST(req: Request) {
   const errors: string[] = [];
   let totalCombinations = 0;
   const now = Math.floor(Date.now() / 1000);
-
-  // Fetch full market data for accurate deduplication based on expiration
-  const existingMarkets = await getMarketsFromChain();
-
 
   // CRYPTO MARKETS
   try {
@@ -122,16 +117,6 @@ export async function POST(req: Request) {
     for (const coin of selected) {
       for (const timeframe of timeframes) {
         const symbolUpper = coin.symbol.toUpperCase();
-
-        const alreadyExists = existingMarkets.some(m =>
-          m.marketId.includes(`${symbolUpper}-PRICE-${timeframe.label}-`) &&
-          m.resolutionTime > now &&
-          !m.resolved
-        );
-        if (alreadyExists) {
-          skipped.push(`[SKIP] ${symbolUpper} ${timeframe.label} — active market exists`);
-          continue;
-        }
 
         const target = getPriceTarget(coin.current_price, timeframe.label);
         const resolutionTime = BigInt(now + timeframe.minutes * 60);
@@ -230,16 +215,6 @@ export async function POST(req: Request) {
     const selected = fixtures.slice(0, 6);
 
     for (const fixture of selected) {
-      // Skip if an active non-expired market for this fixture already exists
-      const alreadyExists = existingMarkets.some(m => 
-        m.marketId.startsWith(`MATCH-${fixture.fixtureId}-`) &&
-        (!m.resolved && m.resolutionTime > now)
-      );
-      if (alreadyExists) {
-        created.push(`[SKIP] Match ${fixture.fixtureId} already exists`);
-        continue;
-      }
-
       const resolutionUnix = fixture.kickoffTime + 9000;
       const hoursFromNow = Math.max(1, Math.ceil((resolutionUnix - Date.now() / 1000) / 3600));
       const resolutionTime = resolutionTimestamp(hoursFromNow);

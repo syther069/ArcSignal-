@@ -8,51 +8,23 @@ export default async function MarketsPage() {
   try {
     const chainMarkets = await getMarketsFromChain();
     const now = Date.now() / 1000;
-    
-    // Filter to active/unresolved markets or recently resolved markets (last 24h)
-    const activeMarkets = chainMarkets.filter(m => {
-      if (!m.resolved) return true; // Never hide unresolved markets
-      if (m.resolved && m.resolutionTime < now - 86400) return false; // Hide resolved older than 24h
-      return true;
-    });
-    markets = activeMarkets.map(serializeMarket);
 
-    // Automation: Check if we need to run maintenance (resolve expired and generate new)
-    const pendingActive = activeMarkets.filter(m => !m.resolved && m.resolutionTime > now);
-    const cryptoPending = pendingActive.filter(m => m.category === 'CRYPTO');
-    const timeframes = ['5m', '15m', '1h', '4h', '24h'];
+    markets = chainMarkets.map(serializeMarket);
     
-    // Always trigger maintain if there are zero markets on the chain or if we have any expired markets waiting to be resolved
+    // Page-load maintenance only resolves due markets. Generation is explicit and append-only.
     const hasExpiredPending = chainMarkets.some(m => !m.resolved && m.resolutionTime <= now);
-    let needsMaintenance = hasExpiredPending || chainMarkets.length === 0;
-
-    if (!needsMaintenance) {
-      // Check if any crypto timeframe is completely depleted
-      if (cryptoPending.length === 0) {
-        needsMaintenance = true;
-      } else {
-        for (const tf of timeframes) {
-          const tfCount = cryptoPending.filter(m => m.marketId.includes(`-PRICE-${tf}-`)).length;
-          if (tfCount === 0) {
-            needsMaintenance = true;
-            break;
-          }
-        }
-      }
-    }
-
-    if (needsMaintenance) {
+    if (hasExpiredPending) {
       const appUrl = process.env.VERCEL_URL 
         ? `https://${process.env.VERCEL_URL}` 
         : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
       
-      // Await the fetch to prevent Vercel serverless environment from freezing before execution finishes
-      await fetch(`${appUrl}/api/cron/maintain`, {
+      await fetch(`${appUrl}/api/cron/resolve`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.CRON_SECRET}`
-        }
-      }).catch(err => console.error('Failed to trigger background maintenance:', err));
+        },
+        signal: AbortSignal.timeout(1_500),
+      }).catch(err => console.error('Failed to trigger market resolution:', err));
     }
   } catch (error) {
     console.error("Error fetching markets from chain:", error);

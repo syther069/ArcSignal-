@@ -30,7 +30,7 @@ export default function DashboardClient({ markets, aiAccuracy }: DashboardClient
   }, []);
 
   const uiMarkets = useMemo(() => markets.map(toUiMarket), [markets]);
-  const visibleMarkets = uiMarkets.slice(0, 4);
+  const visibleMarkets = uiMarkets;
   const icons = [Bitcoin, Cpu, BarChart3, Shield];
 
   return (
@@ -65,6 +65,8 @@ export default function DashboardClient({ markets, aiAccuracy }: DashboardClient
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {visibleMarkets.map((market, index) => {
                 const Icon = icons[index] ?? Bitcoin;
+                const isPendingResolution = !market.resolved && market.resolutionTime <= Math.floor(Date.now() / 1000);
+                const isActive = !market.resolved && !isPendingResolution;
                 return (
                   <div key={market.marketId} className="bg-surface-container rounded-xl border border-white/5 p-6 top-lit-border shadow-lg">
                     <div className="flex justify-between items-start mb-4">
@@ -76,7 +78,7 @@ export default function DashboardClient({ markets, aiAccuracy }: DashboardClient
                           <div className="flex items-center gap-2">
                             <h3 className="text-base font-bold text-on-surface">{market.title}</h3>
                             <span className="text-[10px] bg-tertiary/20 text-tertiary px-2 py-0.5 rounded font-bold uppercase tracking-widest">
-                              {market.resolved ? 'Resolved' : 'Active'}
+                              {market.resolved ? 'Resolved' : isPendingResolution ? 'Pending' : 'Active'}
                             </span>
                           </div>
                           <p className="text-[10px] font-mono text-on-surface-variant uppercase tracking-widest mt-1">
@@ -104,14 +106,14 @@ export default function DashboardClient({ markets, aiAccuracy }: DashboardClient
                     <div className="flex gap-3">
                       <button
                         onClick={() => setStakeModal({ market, side: 0 })}
-                        disabled={market.resolved}
+                        disabled={!isActive}
                         className="flex-1 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-sm py-2.5 rounded transition-colors disabled:opacity-50"
                       >
                         Follow
                       </button>
                       <button
                         onClick={() => setStakeModal({ market, side: 1 })}
-                        disabled={market.resolved}
+                        disabled={!isActive}
                         className="flex-1 bg-surface-container-highest hover:bg-surface-bright text-on-surface font-bold text-sm py-2.5 rounded transition-colors border border-white/5 disabled:opacity-50"
                       >
                         Fade
