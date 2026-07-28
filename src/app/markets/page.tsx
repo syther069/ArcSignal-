@@ -9,16 +9,16 @@ export default async function MarketsPage() {
     const chainMarkets = await getMarketsFromChain();
     const now = Date.now() / 1000;
     
-    // Filter to active markets only (not resolved, and resolution time is in the future or very recently passed)
+    // Filter to active/unresolved markets or recently resolved markets (last 24h)
     const activeMarkets = chainMarkets.filter(m => {
-      if (!m.resolved && m.resolutionTime < now - 86400) return false; // Hide pending older than 24h
+      if (!m.resolved) return true; // Never hide unresolved markets
       if (m.resolved && m.resolutionTime < now - 86400) return false; // Hide resolved older than 24h
       return true;
     });
     markets = activeMarkets.map(serializeMarket);
 
     // Automation: Check if we need to run maintenance (resolve expired and generate new)
-    const pendingActive = activeMarkets.filter(m => !m.resolved);
+    const pendingActive = activeMarkets.filter(m => !m.resolved && m.resolutionTime > now);
     const cryptoPending = pendingActive.filter(m => m.category === 'CRYPTO');
     const timeframes = ['5m', '15m', '1h', '4h', '24h'];
     
@@ -45,7 +45,9 @@ export default async function MarketsPage() {
       const appUrl = process.env.VERCEL_URL 
         ? `https://${process.env.VERCEL_URL}` 
         : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
-      fetch(`${appUrl}/api/cron/maintain`, {
+      
+      // Await the fetch to prevent Vercel serverless environment from freezing before execution finishes
+      await fetch(`${appUrl}/api/cron/maintain`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.CRON_SECRET}`

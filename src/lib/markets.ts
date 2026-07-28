@@ -58,7 +58,7 @@ export async function getMarketsFromChain(forceRefresh = false): Promise<Market[
       '24h': 86400,
     };
 
-    // Parse IDs to find active/recent markets (not expired > 24h ago)
+    // Parse IDs to find active/recent markets (not expired > 3 days ago)
     const activeOrRecentIds = allIds.filter(id => {
       const parts = id.split('-');
       if (parts.length < 4) return true; // Keep unrecognized formats just in case
@@ -69,13 +69,13 @@ export async function getMarketsFromChain(forceRefresh = false): Promise<Market[
       const durationSec = TIMEFRAME_SECONDS[timeframe] ?? 3600;
       const resolutionTime = genTime + durationSec;
       
-      // Keep if it resolves in the future, or resolved within the last 24h
-      return resolutionTime > now - 86400;
+      // Keep if it resolves in the future, or resolved within the last 3 days
+      return resolutionTime > now - 3 * 86400;
     });
 
-    // Take up to 150 of the most recent active/recent markets to avoid RPC timeouts,
+    // Take up to 200 of the most recent active/recent markets to avoid RPC timeouts,
     // prioritizing the most recently created ones if there are too many.
-    const targetIds = activeOrRecentIds.slice(-150);
+    const targetIds = activeOrRecentIds.slice(-200);
     const markets: Market[] = [];
 
     // Fetch in parallel chunks for fast execution

@@ -36,7 +36,9 @@ export default async function DashboardPage() {
       const appUrl = process.env.VERCEL_URL 
         ? `https://${process.env.VERCEL_URL}` 
         : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
-      fetch(`${appUrl}/api/cron/maintain`, {
+      
+      // Await the fetch to prevent Vercel serverless environment from freezing before execution finishes
+      await fetch(`${appUrl}/api/cron/maintain`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${process.env.CRON_SECRET}`

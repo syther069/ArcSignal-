@@ -117,10 +117,7 @@ export async function POST(req: Request) {
       return `Resolves YES if ${symbol}/USD daily close price on CoinGecko is above $${fmt(target)} at resolution time (${resolutionDate}). Current price: $${fmt(current)}. Target represents ~3.5% gain.`;
     }
 
-    let currentNonce = await publicClient.getTransactionCount({
-      address: account.address,
-      blockTag: 'pending',
-    });
+    const jobs: { coin: any; timeframe: any; target: number; resolutionTime: bigint; resolutionDate: string; question: string; marketId: string; }[] = [];
 
     for (const coin of selected) {
       for (const timeframe of timeframes) {
@@ -142,60 +139,82 @@ export async function POST(req: Request) {
         const question = getQuestion(symbolUpper, coin.current_price, target, timeframe.label);
         const marketId = `${symbolUpper}-PRICE-${timeframe.label}-${now}`;
 
-        try {
+        jobs.push({ coin, timeframe, target, resolutionTime, resolutionDate, question, marketId });
+      }
+    }
+
+    if (jobs.length > 0) {
+      console.log(`Generating ${jobs.length} crypto market analyses via Gemini in parallel...`);
+      const analysisResults = await Promise.allSettled(
+        jobs.map(async (job) => {
           const analysis = await generateCryptoAnalysis({
-            question,
-            resolutionCriteria: getResolutionCriteria(symbolUpper, coin.current_price, target, timeframe.label, resolutionDate),
-            resolutionTime: resolutionDate,
+            question: job.question,
+            resolutionCriteria: getResolutionCriteria(job.coin.symbol.toUpperCase(), job.coin.current_price, job.target, job.timeframe.label, job.resolutionDate),
+            resolutionTime: job.resolutionDate,
             cryptoData: {
-              id: coin.id,
-              symbol: coin.symbol,
-              current_price: coin.current_price,
-              price_change_percentage_24h: coin.price_change_percentage_24h,
-              market_cap: coin.market_cap,
-              total_volume: coin.total_volume,
-              high_24h: coin.high_24h,
-              low_24h: coin.low_24h,
-              target_price: target,
+              id: job.coin.id,
+              symbol: job.coin.symbol,
+              current_price: job.coin.current_price,
+              price_change_percentage_24h: job.coin.price_change_percentage_24h,
+              market_cap: job.coin.market_cap,
+              total_volume: job.coin.total_volume,
+              high_24h: job.coin.high_24h,
+              low_24h: job.coin.low_24h,
+              target_price: job.target,
             },
           });
+          return { job, analysis };
+        })
+      );
 
-          const analysisWithSubType = { ...analysis, subType: timeframe.label };
+      let currentNonce = await publicClient.getTransactionCount({
+        address: account.address,
+        blockTag: 'pending',
+      });
 
-          let hash = '';
-          for (let attempt = 1; attempt <= 4; attempt++) {
-            try {
-              hash = await walletClient.writeContract({
-                account,
-                chain: arcTestnet,
-                address: CONTRACT_ADDRESS,
-                abi: ARCSIGNAL_ABI,
-                functionName: 'createMarket',
-                args: [marketId, 'CRYPTO', question, JSON.stringify(analysisWithSubType), resolutionTime],
-                nonce: currentNonce++,
-              });
-              break;
-            } catch (err: any) {
-              const errMsg = err?.message || String(err);
-              if (attempt < 4 && (errMsg.includes('429') || errMsg.includes('limit') || errMsg.includes('nonce'))) {
-                await new Promise((r) => setTimeout(r, 2000));
-                try {
-                  currentNonce = await publicClient.getTransactionCount({
-                    address: account.address,
-                    blockTag: 'pending',
-                  });
-                } catch {}
-                continue;
+      for (const res of analysisResults) {
+        if (res.status === 'fulfilled') {
+          const { job, analysis } = res.value;
+          const analysisWithSubType = { ...analysis, subType: job.timeframe.label };
+          const symbolUpper = job.coin.symbol.toUpperCase();
+
+          try {
+            let hash = '';
+            for (let attempt = 1; attempt <= 4; attempt++) {
+              try {
+                hash = await walletClient.writeContract({
+                  account,
+                  chain: arcTestnet,
+                  address: CONTRACT_ADDRESS,
+                  abi: ARCSIGNAL_ABI,
+                  functionName: 'createMarket',
+                  args: [job.marketId, 'CRYPTO', job.question, JSON.stringify(analysisWithSubType), job.resolutionTime],
+                  nonce: currentNonce++,
+                });
+                break;
+              } catch (err: any) {
+                const errMsg = err?.message || String(err);
+                if (attempt < 4 && (errMsg.includes('429') || errMsg.includes('limit') || errMsg.includes('nonce'))) {
+                  await new Promise((r) => setTimeout(r, 2000));
+                  try {
+                    currentNonce = await publicClient.getTransactionCount({
+                      address: account.address,
+                      blockTag: 'pending',
+                    });
+                  } catch {}
+                  continue;
+                }
+                throw err;
               }
-              throw err;
             }
-          }
 
-          created.push(`[CRYPTO] ${question} (Tx: ${hash})`);
-          // Pace transactions to prevent RPC 429 rate limits
-          await new Promise(r => setTimeout(r, 1200));
-        } catch (err) {
-          errors.push(`[${symbolUpper}] ${timeframe.label}: ${err instanceof Error ? err.message : String(err)}`);
+            created.push(`[CRYPTO] ${job.question} (Tx: ${hash})`);
+            await new Promise(r => setTimeout(r, 1200));
+          } catch (err) {
+            errors.push(`[${symbolUpper}] ${job.timeframe.label}: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        } else {
+          errors.push(`Gemini generation failed: ${res.reason}`);
         }
       }
     }
