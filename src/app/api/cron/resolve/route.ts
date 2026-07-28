@@ -80,11 +80,7 @@ export async function POST(req: Request) {
     errors.push(`Football fixtures fetch failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  // Fetch current pending nonce
-  let currentNonce = await resolvePublicClient.getTransactionCount({
-    address: account.address,
-    blockTag: 'pending',
-  });
+
 
   // ── 4. Loop through recent target markets ──────────────────────────────────
   for (const marketId of targetIds) {
@@ -117,68 +113,83 @@ export async function POST(req: Request) {
       continue;
     }
 
-    // Skip already-resolved markets or those whose resolution time hasn't arrived yet
+    // Skip already-resolved markets
     if (market.resolved) {
       skipped.push(`${marketId}: already resolved`);
       continue;
     }
-    if (Number(market.resolutionTime) > now) {
-      if (marketId.includes('-1h-')) {
-        // Force resolve 1h markets early as requested
-      } else {
-        skipped.push(`${marketId}: not yet due (resolves at ${new Date(Number(market.resolutionTime) * 1000).toISOString()})`);
-        continue;
-      }
-    }
+
+    const isExpired = Number(market.resolutionTime) <= now;
 
     // ── 5. Determine outcome ────────────────────────────────────────────────
-    //   outcome 1 = Follow wins (AI prediction correct)
-    //   outcome 2 = Fade wins  (AI prediction wrong)
     try {
       let outcome: 1 | 2 = 2; // default: Fade wins if we can't determine
       let outcomeReason = 'default (unable to determine outcome)';
+      let shouldResolveNow = isExpired;
 
       const categoryNorm = market.category.toUpperCase();
 
       if (categoryNorm === 'CRYPTO') {
-        // Extract target price from the market question
-        // Handles patterns like: "$105,000", "$105000", "105,000", "105000"
         const priceMatch = market.question.match(/\$?([\d,]+(?:\.\d+)?)/);
         if (priceMatch) {
           const targetPrice = parseFloat(priceMatch[1].replace(/,/g, ''));
-          // Extract symbol from marketId (e.g. "btc-crypto-1234" → "btc")
           const symbolRaw = marketId.split('-')[0].toLowerCase();
           const coin = coins.find(
             (c) => c.symbol.toLowerCase() === symbolRaw || c.id.toLowerCase() === symbolRaw
           );
 
           if (coin) {
-            // outcome 1 = Follow wins = AI was right = price is ABOVE target
-            outcome = coin.current_price > targetPrice ? 1 : 2;
-            outcomeReason = `${coin.symbol.toUpperCase()} price $${coin.current_price} vs target $${targetPrice} → ${outcome === 1 ? 'ABOVE (Follow wins)' : 'BELOW (Fade wins)'}`;
+            const is5m = marketId.includes('-5m-');
+            
+            if (is5m) {
+              // 5m timeframe: "hold above" target.
+              if (coin.current_price < targetPrice) {
+                shouldResolveNow = true;
+                outcome = 2; // Fade wins if it drops below support
+                outcomeReason = `Dropped below support $${targetPrice} to $${coin.current_price}`;
+              } else if (isExpired) {
+                outcome = 1; // Follow wins if it held above until expiry
+                outcomeReason = `Held above $${targetPrice} until expiry (current $${coin.current_price})`;
+              }
+            } else {
+              // 15m, 1h, 4h, 24h timeframe: "reach" or "break above" target.
+              if (coin.current_price >= targetPrice) {
+                shouldResolveNow = true;
+                outcome = 1; // Follow wins if it hits target early
+                outcomeReason = `Hit target $${targetPrice} early (current $${coin.current_price})`;
+              } else if (isExpired) {
+                outcome = 2; // Fade wins if it never reached target by expiry
+                outcomeReason = `Failed to reach $${targetPrice} by expiry (current $${coin.current_price})`;
+              }
+            }
           } else {
-            outcomeReason = `coin not found for symbol "${symbolRaw}", defaulting Fade wins`;
+            if (isExpired) outcomeReason = `coin not found for symbol "${symbolRaw}", defaulting Fade wins`;
           }
         } else {
-          outcomeReason = `no price found in question: "${market.question}", defaulting Fade wins`;
+          if (isExpired) outcomeReason = `no price found in question: "${market.question}", defaulting Fade wins`;
         }
 
       } else if (categoryNorm === 'FOOTBALL') {
-        // Extract fixture ID from marketId (e.g. "football-12345-...")
-        const parts = marketId.split('-');
-        const fixtureId = parseInt(parts[1]);
-        if (!isNaN(fixtureId)) {
-          const fixture = completedFixtures.find((f) => f.fixtureId === fixtureId);
-          if (fixture && fixture.homeScore !== null && fixture.awayScore !== null) {
-            // outcome 1 = Follow wins = home team won
-            outcome = fixture.homeScore > fixture.awayScore ? 1 : 2;
-            outcomeReason = `fixture ${fixtureId}: ${fixture.homeScore}-${fixture.awayScore} → ${outcome === 1 ? 'Home wins (Follow)' : 'Away/Draw (Fade)'}`;
+        if (isExpired) {
+          const parts = marketId.split('-');
+          const fixtureId = parseInt(parts[1]);
+          if (!isNaN(fixtureId)) {
+            const fixture = completedFixtures.find((f) => f.fixtureId === fixtureId);
+            if (fixture && fixture.homeScore !== null && fixture.awayScore !== null) {
+              outcome = fixture.homeScore > fixture.awayScore ? 1 : 2;
+              outcomeReason = `fixture ${fixtureId}: ${fixture.homeScore}-${fixture.awayScore} → ${outcome === 1 ? 'Home wins (Follow)' : 'Away/Draw (Fade)'}`;
+            } else {
+              outcomeReason = `fixture ${fixtureId} not in completed list, defaulting Fade wins`;
+            }
           } else {
-            outcomeReason = `fixture ${fixtureId} not in completed list, defaulting Fade wins`;
+            outcomeReason = `invalid fixtureId in marketId "${marketId}", defaulting Fade wins`;
           }
-        } else {
-          outcomeReason = `invalid fixtureId in marketId "${marketId}", defaulting Fade wins`;
         }
+      }
+
+      if (!shouldResolveNow) {
+        skipped.push(`${marketId}: not yet due and target not hit`);
+        continue;
       }
 
       // ── 6. Call resolveMarket on-chain ────────────────────────────────────
@@ -189,14 +200,16 @@ export async function POST(req: Request) {
         abi: ARCSIGNAL_ABI,
         functionName: 'resolveMarket',
         args: [marketId, outcome],
-        nonce: currentNonce++,
       });
 
+      await resolvePublicClient.waitForTransactionReceipt({ hash });
       resolved.push(`${marketId}: outcome=${outcome} (${outcomeReason}) tx=${hash}`);
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 500));
 
     } catch (err) {
       errors.push(`${marketId}: ${err instanceof Error ? err.message : String(err)}`);
+      // Wait slightly on error to avoid 429 rate limits
+      await new Promise(r => setTimeout(r, 1000));
     }
   }
 

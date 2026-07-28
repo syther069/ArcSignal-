@@ -49,8 +49,33 @@ export async function getMarketsFromChain(forceRefresh = false): Promise<Market[
 
     if (!allIds || allIds.length === 0) return [];
 
-    // Include all recent and historical markets (up to 120 latest markets)
-    const targetIds = allIds.slice(-120);
+    const now = Math.floor(Date.now() / 1000);
+    const TIMEFRAME_SECONDS: Record<string, number> = {
+      '5m': 300,
+      '15m': 900,
+      '1h': 3600,
+      '4h': 14400,
+      '24h': 86400,
+    };
+
+    // Parse IDs to find active/recent markets (not expired > 24h ago)
+    const activeOrRecentIds = allIds.filter(id => {
+      const parts = id.split('-');
+      if (parts.length < 4) return true; // Keep unrecognized formats just in case
+      const timeframe = parts[2];
+      const genTime = parseInt(parts[3], 10);
+      if (isNaN(genTime)) return true;
+      
+      const durationSec = TIMEFRAME_SECONDS[timeframe] ?? 3600;
+      const resolutionTime = genTime + durationSec;
+      
+      // Keep if it resolves in the future, or resolved within the last 24h
+      return resolutionTime > now - 86400;
+    });
+
+    // Take up to 150 of the most recent active/recent markets to avoid RPC timeouts,
+    // prioritizing the most recently created ones if there are too many.
+    const targetIds = activeOrRecentIds.slice(-150);
     const markets: Market[] = [];
 
     // Fetch in parallel chunks for fast execution

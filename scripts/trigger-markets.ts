@@ -175,18 +175,20 @@ async function main() {
   // Find active non-expired markets
   const activeParsed = parsedMarkets.filter(m => m.resolutionTime > now);
   
-  // Find candidates for resolution (expired)
+  // Find candidates for resolution (expired and active)
   const expiredCandidateIds = parsedMarkets.filter(m => m.resolutionTime <= now).map(m => m.marketId);
+  const activeCandidateIds = activeParsed.map(m => m.marketId);
 
-  // STEP 2: Resolve Expired Markets
-  console.log(`\n⚖️ Checking ${expiredCandidateIds.length} candidate expired markets for resolution...`);
+  // STEP 2: Resolve Expired or Early Markets
+  console.log(`\n⚖️ Checking ${expiredCandidateIds.length} expired and ${activeCandidateIds.length} active markets for resolution...`);
   
-  // Inspect the most recent 30 expired market IDs
+  // Inspect the most recent expired markets and all active markets
   const recentExpiredIds = expiredCandidateIds.slice(-30);
+  const candidatesToCheck = [...recentExpiredIds, ...activeCandidateIds];
   const expiredToResolve: any[] = [];
 
-  for (let i = 0; i < recentExpiredIds.length; i += 10) {
-    const chunk = recentExpiredIds.slice(i, i + 10);
+  for (let i = 0; i < candidatesToCheck.length; i += 10) {
+    const chunk = candidatesToCheck.slice(i, i + 10);
     const results = await Promise.allSettled(
       chunk.map(id => publicClient.readContract({
         address: CONTRACT_ADDRESS,
@@ -199,7 +201,7 @@ async function main() {
     for (const res of results) {
       if (res.status === 'fulfilled' && res.value) {
         const m = res.value as any;
-        if (!m.resolved && Number(m.resolutionTime) <= now) {
+        if (!m.resolved) {
           expiredToResolve.push(m);
         }
       }
@@ -227,22 +229,56 @@ async function main() {
     for (const m of expiredToResolve) {
       try {
         let outcome: 1 | 2 = 2; // 1 = Follow, 2 = Fade
-        let reason = 'default';
+        let outcomeReason = 'default';
+        const isExpired = Number(m.resolutionTime) <= now;
+        let shouldResolveNow = isExpired;
 
-        const priceMatch = m.question.match(/\$?([\d,]+(?:\.\d+)?)/);
-        if (priceMatch) {
-          const targetPrice = parseFloat(priceMatch[1].replace(/,/g, ''));
-          const symbolRaw = m.marketId.split('-')[0].toLowerCase();
-          const coin = coins.find(
-            (c) => c.symbol.toLowerCase() === symbolRaw || c.id.toLowerCase() === symbolRaw
-          );
-          if (coin) {
-            outcome = coin.current_price >= targetPrice ? 1 : 2;
-            reason = `${coin.symbol.toUpperCase()} $${coin.current_price} vs target $${targetPrice}`;
+        const categoryNorm = m.category.toUpperCase();
+        
+        if (categoryNorm === 'CRYPTO') {
+          const priceMatch = m.question.match(/\$?([\d,]+(?:\.\d+)?)/);
+          if (priceMatch) {
+            const targetPrice = parseFloat(priceMatch[1].replace(/,/g, ''));
+            const symbolRaw = m.marketId.split('-')[0].toLowerCase();
+            const coin = coins.find(
+              (c) => c.symbol.toLowerCase() === symbolRaw || c.id.toLowerCase() === symbolRaw
+            );
+            
+            if (coin) {
+              const is5m = m.marketId.includes('-5m-');
+              
+              if (is5m) {
+                // 5m timeframe: "hold above" target.
+                if (coin.current_price < targetPrice) {
+                  shouldResolveNow = true;
+                  outcome = 2; // Fade wins if it drops below support
+                  outcomeReason = `Dropped below support $${targetPrice} to $${coin.current_price}`;
+                } else if (isExpired) {
+                  outcome = 1; // Follow wins if it held above until expiry
+                  outcomeReason = `Held above $${targetPrice} until expiry (current $${coin.current_price})`;
+                }
+              } else {
+                // 15m, 1h, 4h, 24h timeframe: "reach" or "break above" target.
+                if (coin.current_price >= targetPrice) {
+                  shouldResolveNow = true;
+                  outcome = 1; // Follow wins if it hits target early
+                  outcomeReason = `Hit target $${targetPrice} early (current $${coin.current_price})`;
+                } else if (isExpired) {
+                  outcome = 2; // Fade wins if it never reached target by expiry
+                  outcomeReason = `Failed to reach $${targetPrice} by expiry (current $${coin.current_price})`;
+                }
+              }
+            } else {
+              if (isExpired) outcomeReason = `coin not found for symbol "${symbolRaw}", defaulting Fade wins`;
+            }
           }
         }
+        
+        if (!shouldResolveNow) {
+          continue;
+        }
 
-        console.log(`  - Resolving ${m.marketId} -> Outcome ${outcome} (${reason})`);
+        console.log(`  - Resolving ${m.marketId} -> Outcome ${outcome} (${outcomeReason})`);
         const txHash = await writeContractWithRetry(
           walletClient,
           publicClient,
