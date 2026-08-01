@@ -84,12 +84,26 @@ async function generateAnalysis(prompt: string): Promise<AIAnalysis> {
 
   let lastError: unknown;
 
-  for (let attempt = 0; attempt < retryDelays.length; attempt++) {
-    try {
-      if (geminiKey) {
+  // Try Gemini first if key is present and looks valid (AIzaSy...)
+  if (geminiKey && geminiKey.startsWith('AIzaSy')) {
+    for (let attempt = 0; attempt < retryDelays.length; attempt++) {
+      try {
         const raw = await callGemini(geminiKey, prompt);
         return parseAnalysisJson(raw, 'gemini');
-      } else if (groqKey) {
+      } catch (error) {
+        lastError = error;
+        if (attempt < retryDelays.length - 1) {
+          await delay(retryDelays[attempt]);
+        }
+      }
+    }
+    console.warn(`[AI Provider] Gemini failed: ${lastError instanceof Error ? lastError.message : String(lastError)}. Falling back to Groq...`);
+  }
+
+  // Fallback / primary Groq provider
+  if (groqKey) {
+    for (let attempt = 0; attempt < retryDelays.length; attempt++) {
+      try {
         const groq = new Groq({ apiKey: groqKey });
         const completion = await groq.chat.completions.create({
           model: 'llama-3.3-70b-versatile',
@@ -102,17 +116,17 @@ async function generateAnalysis(prompt: string): Promise<AIAnalysis> {
         const raw = completion.choices[0]?.message?.content;
         if (!raw) throw new AIAnalysisError('Groq returned empty response', 'groq');
         return parseAnalysisJson(raw, 'groq');
-      }
-    } catch (error) {
-      lastError = error;
-      if (attempt < retryDelays.length - 1) {
-        await delay(retryDelays[attempt]);
+      } catch (error) {
+        lastError = error;
+        if (attempt < retryDelays.length - 1) {
+          await delay(retryDelays[attempt]);
+        }
       }
     }
   }
 
   throw new AIAnalysisError(
-    `Analysis failed after ${retryDelays.length} attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`
+    `Analysis failed after all provider attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`
   );
 }
 
