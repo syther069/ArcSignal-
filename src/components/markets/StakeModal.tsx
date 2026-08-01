@@ -6,6 +6,7 @@ import { parseUnits, formatUnits } from 'viem';
 import { Market, StakeSide } from '@/types';
 import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import { clearMarketCache } from '@/lib/markets';
 import toast from 'react-hot-toast';
 
 export interface StakeModalProps {
@@ -129,6 +130,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         }),
       });
 
+      clearMarketCache();
       setTxHash(stakeHash);
       toast.success(`Successfully placed ${side === 0 ? 'FOLLOW' : 'FADE'} position for ${amountStr} USDC!`);
       setStep('success');

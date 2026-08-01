@@ -30,6 +30,10 @@ let memoryCache: { markets: Market[]; timestamp: number } = {
   timestamp: 0,
 };
 
+export function clearMarketCache() {
+  memoryCache = { markets: [], timestamp: 0 };
+}
+
 const MARKET_CACHE_TTL_MS = 60_000;
 const MARKET_RPC_TIMEOUT_MS = 12_000;
 const DEFAULT_MARKET_PAGE_SIZE = 160;

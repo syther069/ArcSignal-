@@ -44,7 +44,11 @@ export const wagmiConfig = createConfig({
   ssr: true,
   connectors: getConnectors(),
   transports: {
-    [arcTestnet.id]: http(arcTestnetConfig.rpcUrl),
+    [arcTestnet.id]: http(arcTestnetConfig.rpcUrl, {
+      batch: true,
+      retryCount: 5,
+      retryDelay: 1000,
+    }),
     [mainnet.id]: http(),
     [sepolia.id]: http(),
   },
