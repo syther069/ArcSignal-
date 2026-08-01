@@ -1,0 +1,84 @@
+
+> arcsignal@0.1.0 dev
+> next dev -p 3002
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3002
+  - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Ready in 10.4s
+ ○ Compiling /markets ...
+ ✓ Compiled /markets in 37.2s (6432 modules)
+ GET /markets 200 in 50862ms
+ ○ Compiling / ...
+ ✓ Compiled / in 3.8s (6411 modules)
+ GET / 200 in 4805ms
+ GET /markets 200 in 61303ms
+ ✓ Compiled in 1944ms (2930 modules)
+ ✓ Compiled in 621ms (2930 modules)
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 1092ms (6394 modules)
+ ○ Compiling /markets ...
+ ✓ Compiled /markets in 656ms (3490 modules)
+ GET /markets 200 in 2920ms
+ GET /dashboard 200 in 59463ms
+ ✓ Compiled in 61ms
+ ○ Compiling /markets ...
+ ✓ Compiled /markets in 1265ms (3477 modules)
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 524ms (3490 modules)
+ GET /markets 200 in 29565ms
+ GET /dashboard 200 in 29268ms
+ ✓ Compiled in 464ms (3490 modules)
+ ✓ Compiled in 31ms
+ ✓ Compiled /markets in 389ms (3477 modules)
+ GET /markets 200 in 885ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 642ms (3490 modules)
+ GET /dashboard 200 in 1037ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.3s (3064 modules)
+ GET / 200 in 2493ms
+ ○ Compiling /api/stats ...
+ ✓ Compiled /api/stats in 1537ms (3096 modules)
+ ✓ Compiled (3507 modules)
+ GET /icon.png?f71bfc1e588d4208 200 in 2563ms
+ HEAD / 200 in 1453ms
+ GET /api/stats 200 in 2749ms
+ GET /api/stats 200 in 1175ms
+ GET / 200 in 50ms
+ GET /icon.png?f71bfc1e588d4208 200 in 37ms
+ GET /api/stats 200 in 350ms
+ HEAD / 200 in 70ms
+ GET /api/stats 200 in 1198ms
+ ✓ Compiled /markets in 502ms (3538 modules)
+ ○ Compiling /api/cron/generate ...
+ ✓ Compiled /api/cron/generate in 2.4s (3661 modules)
+Generating 30 crypto market analyses via Gemini in parallel...
+ POST /api/cron/generate 200 in 79030ms
+ GET /markets 200 in 502ms
+ GET /markets 200 in 802ms
+ HEAD /markets 200 in 81ms
+ GET /icon.png?f71bfc1e588d4208 200 in 100ms
+ GET /markets 200 in 709ms
+ HEAD /markets 200 in 47ms
+ GET / 200 in 64ms
+ HEAD / 200 in 23ms
+ GET /api/stats 200 in 1609ms
+ GET /api/stats 200 in 1354ms
+ ○ Compiling /api/markets ...
+ ✓ Compiled /api/markets in 808ms (3511 modules)
+ GET /api/markets 200 in 1530ms
+ ✓ Compiled in 698ms (3511 modules)
+ GET /api/markets 200 in 2039ms
+ ✓ Compiled in 826ms (3481 modules)
+ ✓ Compiled in 1037ms (2939 modules)
+ ✓ Compiled in 2.2s (2939 modules)
+ ○ Compiling /api/markets ...
+ ✓ Compiled /api/markets in 747ms (3509 modules)
+ GET /api/markets?limit=30 200 in 7211ms
+ GET /api/markets?limit=30&offset=0 200 in 4664ms
+ GET /markets 200 in 18031ms
+ HEAD /markets 200 in 64ms
+ GET /markets 200 in 17999ms

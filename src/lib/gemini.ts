@@ -3,10 +3,10 @@ import type { AIAnalysis } from '@/lib/types';
 
 type MarketContext = Record<string, unknown>;
 
-export class GeminiAnalysisError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'GeminiAnalysisError';
+export class AIAnalysisError extends Error {
+  constructor(message: string, public provider?: 'gemini' | 'groq') {
+    super(provider ? `[AI Provider: ${provider}] ${message}` : message);
+    this.name = 'AIAnalysisError';
   }
 }
 
@@ -16,9 +16,14 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function parseAnalysisJson(raw: string): AIAnalysis {
+function parseAnalysisJson(raw: string, provider?: 'gemini' | 'groq'): AIAnalysis {
   const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-  const parsed = JSON.parse(cleaned) as Partial<AIAnalysis>;
+  let parsed: Partial<AIAnalysis>;
+  try {
+    parsed = JSON.parse(cleaned) as Partial<AIAnalysis>;
+  } catch (err) {
+    throw new AIAnalysisError(`Invalid JSON formatting: ${err instanceof Error ? err.message : String(err)}`, provider);
+  }
 
   const required: (keyof AIAnalysis)[] = [
     'probability', 'confidence', 'prediction', 'summary',
@@ -27,49 +32,77 @@ function parseAnalysisJson(raw: string): AIAnalysis {
 
   for (const field of required) {
     if (parsed[field] === undefined || parsed[field] === null) {
-      throw new GeminiAnalysisError(`Response missing required field: ${field}`);
+      throw new AIAnalysisError(`Response missing required field: ${field}`, provider);
     }
   }
 
   if (typeof parsed.probability !== 'number' || parsed.probability < 0 || parsed.probability > 100) {
-    throw new GeminiAnalysisError('Invalid probability value');
+    throw new AIAnalysisError('Invalid probability value', provider);
   }
   if (typeof parsed.confidence !== 'number' || parsed.confidence < 0 || parsed.confidence > 100) {
-    throw new GeminiAnalysisError('Invalid confidence value');
+    throw new AIAnalysisError('Invalid confidence value', provider);
   }
   if (parsed.prediction !== 'YES' && parsed.prediction !== 'NO') {
-    throw new GeminiAnalysisError('Invalid prediction value');
+    throw new AIAnalysisError('Invalid prediction value', provider);
   }
   if (!Array.isArray(parsed.keyFactors) || !Array.isArray(parsed.riskFactors) || !Array.isArray(parsed.sources)) {
-    throw new GeminiAnalysisError('keyFactors, riskFactors, sources must be arrays');
+    throw new AIAnalysisError('keyFactors, riskFactors, sources must be arrays', provider);
   }
 
   return parsed as AIAnalysis;
 }
 
+async function callGemini(apiKey: string, prompt: string): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+      },
+    }),
+  });
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new AIAnalysisError(`Gemini API error ${response.status}: ${errText}`, 'gemini');
+  }
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new AIAnalysisError('Gemini API returned empty text', 'gemini');
+  return text;
+}
+
 async function generateAnalysis(prompt: string): Promise<AIAnalysis> {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    throw new GeminiAnalysisError('GROQ_API_KEY is not configured');
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const groqKey = process.env.GROQ_API_KEY;
+
+  if (!geminiKey && !groqKey) {
+    throw new AIAnalysisError('Neither GEMINI_API_KEY nor GROQ_API_KEY is configured in environment');
   }
 
-  const groq = new Groq({ apiKey });
   let lastError: unknown;
 
   for (let attempt = 0; attempt < retryDelays.length; attempt++) {
     try {
-      const completion = await groq.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.4,
-        max_tokens: 1000,
-        response_format: { type: 'json_object' },
-      });
+      if (geminiKey) {
+        const raw = await callGemini(geminiKey, prompt);
+        return parseAnalysisJson(raw, 'gemini');
+      } else if (groqKey) {
+        const groq = new Groq({ apiKey: groqKey });
+        const completion = await groq.chat.completions.create({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.4,
+          max_tokens: 1000,
+          response_format: { type: 'json_object' },
+        });
 
-      const raw = completion.choices[0]?.message?.content;
-      if (!raw) throw new GeminiAnalysisError('Groq returned empty response');
-
-      return parseAnalysisJson(raw);
+        const raw = completion.choices[0]?.message?.content;
+        if (!raw) throw new AIAnalysisError('Groq returned empty response', 'groq');
+        return parseAnalysisJson(raw, 'groq');
+      }
     } catch (error) {
       lastError = error;
       if (attempt < retryDelays.length - 1) {
@@ -78,7 +111,7 @@ async function generateAnalysis(prompt: string): Promise<AIAnalysis> {
     }
   }
 
-  throw new GeminiAnalysisError(
+  throw new AIAnalysisError(
     `Analysis failed after ${retryDelays.length} attempts: ${lastError instanceof Error ? lastError.message : String(lastError)}`
   );
 }

@@ -20,7 +20,9 @@ export const arcTestnetConfig = {
 
 function getConnectors() {
   try {
-    const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+    const projectId =
+      process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ??
+      process.env.NEXT_PUBLIC_ARC_APPKIT_PROJECT_ID;
     const connectorValues = [
       injected(),
       projectId ? walletConnect({ projectId }) : null,

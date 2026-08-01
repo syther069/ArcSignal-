@@ -43,25 +43,25 @@ export function useUnclaimedWinnings(): number {
           fromBlock = toBlock + 1n;
         }
 
-        // Unique market+side combinations for this user
-        const userPositions = new Map<string, number>();
+        // Map marketId -> Set of user staked sides (0 = Follow, 1 = Fade)
+        const positionsByMarket = new Map<string, Set<number>>();
         for (const log of allLogs) {
           const { user, marketId, side } = log.args as { user: string; marketId: string; side: number };
           if (user?.toLowerCase() !== address.toLowerCase()) continue;
-          const key = `${marketId}-${side}`;
-          if (!userPositions.has(key)) userPositions.set(key, Number(side));
+          if (!positionsByMarket.has(marketId)) {
+            positionsByMarket.set(marketId, new Set());
+          }
+          positionsByMarket.get(marketId)!.add(Number(side));
         }
 
-        if (userPositions.size === 0) {
+        if (positionsByMarket.size === 0) {
           if (!cancelled) setCount(0);
           return;
         }
 
-        // For each unique position, check market resolution + claimed status
         let unclaimed = 0;
-        const uniqueMarketIds = [...new Set([...userPositions.keys()].map(k => k.split('-')[0]))];
 
-        for (const marketId of uniqueMarketIds) {
+        for (const [marketId, userSides] of positionsByMarket.entries()) {
           try {
             const [marketResult, claimedResult] = await Promise.all([
               publicClient.readContract({
@@ -81,9 +81,9 @@ export function useUnclaimedWinnings(): number {
             if (!marketResult.resolved) continue;
             if (claimedResult) continue;
 
-            const winnerSide = marketResult.outcome; // 0=FOLLOW, 1=FADE
-            const userSide = userPositions.get(`${marketId}-${winnerSide}`);
-            if (userSide !== undefined) {
+            // On-chain outcome: 1 = Follow (side 0), 2 = Fade (side 1)
+            const winningSide = marketResult.outcome === 1 ? 0 : marketResult.outcome === 2 ? 1 : -1;
+            if (winningSide !== -1 && userSides.has(winningSide)) {
               unclaimed += 1;
             }
           } catch {

@@ -14,7 +14,14 @@ const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDRESS || 
 
 const publicClient = createPublicClient({
   chain: arcTestnet,
-  transport: http(RPC_URL),
+  transport: http(RPC_URL, {
+    batch: {
+      batchSize: 100,
+      wait: 50,
+    },
+    retryCount: 10,
+    retryDelay: 1000,
+  }),
 });
 
 const REQUIRED_SYMBOLS = ['BTC', 'ETH', 'SOL', 'XRP', 'SUI', 'AVAX'];
@@ -337,71 +344,85 @@ async function main() {
 
   let createdCount = 0;
   let errorCount = 0;
+  let retryJobs = [...missingJobs];
+  let failedJobs: typeof missingJobs = [];
 
-  for (const job of missingJobs) {
-    const { coin, timeframe } = job;
-    const symbolUpper = coin.symbol.toUpperCase();
-    const target = getPriceTarget(coin.current_price, timeframe.label);
-    const resolutionTime = BigInt(now + timeframe.minutes * 60);
-    const resolutionDate = new Date(Number(resolutionTime) * 1000).toUTCString();
-    const question = getQuestion(symbolUpper, coin.current_price, target, timeframe.label);
-    const marketId = `${symbolUpper}-PRICE-${timeframe.label}-${now}`;
+  while (retryJobs.length > 0) {
+    for (const job of retryJobs) {
+      const { coin, timeframe } = job;
+      const symbolUpper = coin.symbol.toUpperCase();
+      const target = getPriceTarget(coin.current_price, timeframe.label);
+      const resolutionTime = BigInt(now + timeframe.minutes * 60);
+      const resolutionDate = new Date(Number(resolutionTime) * 1000).toUTCString();
+      const question = getQuestion(symbolUpper, coin.current_price, target, timeframe.label);
+      const marketId = `${symbolUpper}-PRICE-${timeframe.label}-${now}`;
 
-    console.log(`  [${symbolUpper} ${timeframe.label}] "${question.slice(0, 50)}..."`);
+      console.log(`  [${symbolUpper} ${timeframe.label}] "${question.slice(0, 50)}..."`);
 
-    try {
-      const analysis = await generateCryptoAnalysis({
-        question,
-        resolutionCriteria: getResolutionCriteria(
-          symbolUpper,
-          coin.current_price,
-          target,
-          timeframe.label,
-          resolutionDate
-        ),
-        resolutionTime: resolutionDate,
-        cryptoData: {
-          id: coin.id,
-          symbol: coin.symbol,
-          current_price: coin.current_price,
-          price_change_percentage_24h: coin.price_change_percentage_24h,
-          market_cap: coin.market_cap,
-          total_volume: coin.total_volume,
-          high_24h: coin.high_24h,
-          low_24h: coin.low_24h,
-          target_price: target,
-        },
-      });
+      try {
+        const analysis = await generateCryptoAnalysis({
+          question,
+          resolutionCriteria: getResolutionCriteria(
+            symbolUpper,
+            coin.current_price,
+            target,
+            timeframe.label,
+            resolutionDate
+          ),
+          resolutionTime: resolutionDate,
+          cryptoData: {
+            id: coin.id,
+            symbol: coin.symbol,
+            current_price: coin.current_price,
+            price_change_percentage_24h: coin.price_change_percentage_24h,
+            market_cap: coin.market_cap,
+            total_volume: coin.total_volume,
+            high_24h: coin.high_24h,
+            low_24h: coin.low_24h,
+            target_price: target,
+          },
+        });
 
-      const analysisWithSubType = { ...analysis, subType: timeframe.label };
+        const analysisWithSubType = { ...analysis, subType: timeframe.label };
 
-      const hash = await writeContractWithRetry(
-        walletClient,
-        publicClient,
-        account,
-        {
+        const hash = await writeContractWithRetry(
+          walletClient,
+          publicClient,
           account,
-          chain: arcTestnet,
-          address: CONTRACT_ADDRESS,
-          abi: ARCSIGNAL_ABI,
-          functionName: 'createMarket',
-          args: [
-            marketId,
-            'CRYPTO',
-            question,
-            JSON.stringify(analysisWithSubType),
-            resolutionTime,
-          ],
-        },
-        nonceRef
-      );
+          {
+            account,
+            chain: arcTestnet,
+            address: CONTRACT_ADDRESS,
+            abi: ARCSIGNAL_ABI,
+            functionName: 'createMarket',
+            args: [
+              marketId,
+              'CRYPTO',
+              question,
+              JSON.stringify(analysisWithSubType),
+              resolutionTime,
+            ],
+          },
+          nonceRef
+        );
 
-      console.log(`  -> Tx: ${hash}`);
-      createdCount++;
-      await new Promise((r) => setTimeout(r, 1200));
-    } catch (err: any) {
-      console.log(`  -> ❌ ERROR: ${err.message}`);
-      errorCount++;
+        console.log(`  -> Tx: ${hash}`);
+        createdCount++;
+        await new Promise((r) => setTimeout(r, 1200));
+      } catch (err: any) {
+        console.log(`  -> ❌ ERROR: ${err.message}`);
+        errorCount++;
+        failedJobs.push(job);
+      }
+    }
+
+    if (failedJobs.length > 0) {
+      console.log(`\n♻️ Retrying ${failedJobs.length} failed markets...`);
+      await new Promise((r) => setTimeout(r, 5000));
+      retryJobs = [...failedJobs];
+      failedJobs = [];
+    } else {
+      retryJobs = [];
     }
   }
 

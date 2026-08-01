@@ -83,13 +83,8 @@ export async function POST(req: Request) {
     errors.push(`Football fixtures fetch failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-
-
-  // ── 4. Loop through all markets. Markets are append-only, so old due markets
-  // must remain eligible for resolution forever.
+  // ── 4. Loop through all markets. ─────────────────────────────────────────
   for (const marketId of targetIds) {
-
-    // Read the full market struct
     let market: {
       marketId: string;
       category: string;
@@ -103,21 +98,18 @@ export async function POST(req: Request) {
     };
 
     try {
-      // ABI returns a single tuple, viem unwraps it as an object with named fields
       const raw = await resolvePublicClient.readContract({
         address: CONTRACT_ADDRESS,
         abi: ARCSIGNAL_ABI,
         functionName: 'getMarket',
         args: [marketId],
       });
-      // viem returns the tuple as an object matching the struct field names
       market = raw as typeof market;
     } catch (err) {
       errors.push(`${marketId}: failed to read market — ${err instanceof Error ? err.message : String(err)}`);
       continue;
     }
 
-    // Skip already-resolved markets
     if (market.resolved) {
       skipped.push(`${marketId}: already resolved`);
       continue;
@@ -125,11 +117,11 @@ export async function POST(req: Request) {
 
     const isExpired = Number(market.resolutionTime) <= now;
 
-    // ── 5. Determine outcome ────────────────────────────────────────────────
+    // ── 5. Determine outcome safely (never resolve if oracle data is missing) ─
     try {
-      let outcome: 1 | 2 = 2; // default: Fade wins if we can't determine
-      let outcomeReason = 'default (unable to determine outcome)';
-      let shouldResolveNow = isExpired;
+      let outcome: 1 | 2 = 1;
+      let outcomeReason = '';
+      let shouldResolveNow = false;
 
       const categoryNorm = market.category.toUpperCase();
 
@@ -144,7 +136,7 @@ export async function POST(req: Request) {
 
           if (coin) {
             const is5m = marketId.includes('-5m-');
-            
+
             if (is5m) {
               // 5m timeframe: "hold above" target.
               if (coin.current_price < targetPrice) {
@@ -152,6 +144,7 @@ export async function POST(req: Request) {
                 outcome = 2; // Fade wins if it drops below support
                 outcomeReason = `Dropped below support $${targetPrice} to $${coin.current_price}`;
               } else if (isExpired) {
+                shouldResolveNow = true;
                 outcome = 1; // Follow wins if it held above until expiry
                 outcomeReason = `Held above $${targetPrice} until expiry (current $${coin.current_price})`;
               }
@@ -162,15 +155,16 @@ export async function POST(req: Request) {
                 outcome = 1; // Follow wins if it hits target early
                 outcomeReason = `Hit target $${targetPrice} early (current $${coin.current_price})`;
               } else if (isExpired) {
+                shouldResolveNow = true;
                 outcome = 2; // Fade wins if it never reached target by expiry
                 outcomeReason = `Failed to reach $${targetPrice} by expiry (current $${coin.current_price})`;
               }
             }
           } else {
-            if (isExpired) outcomeReason = `coin not found for symbol "${symbolRaw}", defaulting Fade wins`;
+            skipped.push(`${marketId}: reason=coin_not_found (symbol="${symbolRaw}")`);
           }
         } else {
-          if (isExpired) outcomeReason = `no price found in question: "${market.question}", defaulting Fade wins`;
+          skipped.push(`${marketId}: reason=target_unparseable (question="${market.question}")`);
         }
 
       } else if (categoryNorm === 'FOOTBALL') {
@@ -180,19 +174,20 @@ export async function POST(req: Request) {
           if (!isNaN(fixtureId)) {
             const fixture = completedFixtures.find((f) => f.fixtureId === fixtureId);
             if (fixture && fixture.homeScore !== null && fixture.awayScore !== null) {
+              shouldResolveNow = true;
               outcome = fixture.homeScore > fixture.awayScore ? 1 : 2;
               outcomeReason = `fixture ${fixtureId}: ${fixture.homeScore}-${fixture.awayScore} → ${outcome === 1 ? 'Home wins (Follow)' : 'Away/Draw (Fade)'}`;
             } else {
-              outcomeReason = `fixture ${fixtureId} not in completed list, defaulting Fade wins`;
+              skipped.push(`${marketId}: reason=fixture_not_completed (fixtureId=${fixtureId})`);
             }
           } else {
-            outcomeReason = `invalid fixtureId in marketId "${marketId}", defaulting Fade wins`;
+            skipped.push(`${marketId}: reason=invalid_fixture_id`);
           }
         }
       }
 
       if (!shouldResolveNow) {
-        skipped.push(`${marketId}: not yet due and target not hit`);
+        skipped.push(`${marketId}: not yet due or oracle data missing`);
         continue;
       }
 
@@ -212,7 +207,6 @@ export async function POST(req: Request) {
 
     } catch (err) {
       errors.push(`${marketId}: ${err instanceof Error ? err.message : String(err)}`);
-      // Wait slightly on error to avoid 429 rate limits
       await new Promise(r => setTimeout(r, 1000));
     }
   }
