@@ -45,8 +45,11 @@ export const wagmiConfig = createConfig({
   connectors: getConnectors(),
   transports: {
     [arcTestnet.id]: http(arcTestnetConfig.rpcUrl, {
-      batch: true,
-      retryCount: 5,
+      batch: {
+        batchSize: 100,
+        wait: 50,
+      },
+      retryCount: 10,
       retryDelay: 1000,
     }),
     [mainnet.id]: http(),

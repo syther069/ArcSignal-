@@ -120,12 +120,15 @@ export async function getMarketsFromChain(
   const limit = options.limit ?? DEFAULT_MARKET_PAGE_SIZE;
   const offset = options.offset ?? 0;
 
+  const isServer = typeof window === 'undefined';
+
   if (
     !forceRefresh &&
     offset === 0 &&
     limit === DEFAULT_MARKET_PAGE_SIZE &&
     memoryCache.markets.length > 0 &&
-    (now - memoryCache.timestamp) < MARKET_CACHE_TTL_MS
+    (now - memoryCache.timestamp) < MARKET_CACHE_TTL_MS &&
+    !isServer
   ) {
     return memoryCache.markets;
   }
@@ -187,7 +190,7 @@ export async function getMarketsFromChain(
 
     markets.sort((a, b) => b.resolutionTime - a.resolutionTime);
 
-    if (markets.length > 0 && offset === 0 && limit === DEFAULT_MARKET_PAGE_SIZE) {
+    if (markets.length > 0 && offset === 0 && limit === DEFAULT_MARKET_PAGE_SIZE && !isServer) {
       memoryCache = { markets, timestamp: Date.now() };
     }
 
