@@ -15,12 +15,8 @@ const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDRESS || 
 const publicClient = createPublicClient({
   chain: arcTestnet,
   transport: http(RPC_URL, {
-    batch: {
-      batchSize: 100,
-      wait: 50,
-    },
-    retryCount: 10,
-    retryDelay: 1000,
+    retryCount: 3,
+    retryDelay: 600,
   }),
 });
 
@@ -108,6 +104,7 @@ async function writeContractWithRetry(
     try {
       writeArgs.nonce = currentNonceRef.nonce;
       const hash = await walletClient.writeContract(writeArgs);
+      await publicClient.waitForTransactionReceipt({ hash });
       currentNonceRef.nonce++;
       return hash;
     } catch (err: any) {

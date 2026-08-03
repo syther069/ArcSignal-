@@ -5,7 +5,7 @@ import { arcTestnet, publicClient, ARCSIGNAL_ABI } from '@/lib/contracts';
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchUpcomingFixtures } from '@/lib/apifootball';
 import { generateCryptoAnalysis, generateFootballAnalysis } from '@/lib/gemini';
-import type { Address } from 'viem';
+import type { Address, Hash } from 'viem';
 
 // Always use the hardcoded correct deployed contract address
 const CONTRACT_ADDRESS = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as Address;
@@ -164,7 +164,7 @@ export async function POST(req: Request) {
           const symbolUpper = job.coin.symbol.toUpperCase();
 
           try {
-            let hash = '';
+            let hash: Hash | undefined;
             for (let attempt = 1; attempt <= 4; attempt++) {
               try {
                 hash = await walletClient.writeContract({
@@ -176,6 +176,7 @@ export async function POST(req: Request) {
                   args: [job.marketId, 'CRYPTO', job.question, JSON.stringify(analysisWithSubType), job.resolutionTime],
                   nonce: currentNonce++,
                 });
+                await publicClient.waitForTransactionReceipt({ hash });
                 break;
               } catch (err: any) {
                 const errMsg = err?.message || String(err);
@@ -193,7 +194,9 @@ export async function POST(req: Request) {
               }
             }
 
-            created.push(`[CRYPTO] ${job.question} (Tx: ${hash})`);
+            if (hash) {
+              created.push(`[CRYPTO] ${job.question} (Tx: ${hash})`);
+            }
             await new Promise(r => setTimeout(r, 1200));
           } catch (err) {
             errors.push(`[${symbolUpper}] ${job.timeframe.label}: ${err instanceof Error ? err.message : String(err)}`);

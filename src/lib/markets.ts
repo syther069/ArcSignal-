@@ -35,8 +35,10 @@ export function clearMarketCache() {
 }
 
 const MARKET_CACHE_TTL_MS = 60_000;
-const MARKET_RPC_TIMEOUT_MS = 12_000;
-const DEFAULT_MARKET_PAGE_SIZE = 160;
+const MARKET_RPC_TIMEOUT_MS = 8_000;
+const DEFAULT_MARKET_PAGE_SIZE = 60;
+const MARKET_READ_CONCURRENCY = 2;
+const MARKET_READ_STAGGER_MS = 90;
 
 async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   let timeout: ReturnType<typeof setTimeout>;
@@ -63,53 +65,78 @@ type ChainMarket = {
   outcome: number;
 };
 
-async function readMarketChunk(chunkIds: string[], chunkIndex: number): Promise<PromiseSettledResult<ChainMarket>[]> {
-  try {
-    const multicallResults = await withTimeout(
-      publicClient.multicall({
-        allowFailure: true,
-        contracts: chunkIds.map(id => ({
-          address: ARCSIGNAL_ADDRESS as Address,
-          abi: ARCSIGNAL_ABI,
-          functionName: 'getMarket',
-          args: [id],
-        })),
-      }),
-      MARKET_RPC_TIMEOUT_MS,
-      `getMarket multicall chunk ${chunkIndex}`
-    );
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-    return multicallResults.map((res) => {
-      if (res.status === 'success' && res.result) {
-        return { status: 'fulfilled', value: res.result as unknown as ChainMarket };
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>
+): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = new Array(items.length);
+  let cursor = 0;
+
+  async function worker() {
+    while (cursor < items.length) {
+      const index = cursor++;
+      try {
+        if (index > 0) await sleep(MARKET_READ_STAGGER_MS);
+        results[index] = { status: 'fulfilled', value: await mapper(items[index], index) };
+      } catch (reason) {
+        results[index] = { status: 'rejected', reason };
       }
-
-      return {
-        status: 'rejected',
-        reason: res.error ?? new Error('Market multicall failed'),
-      };
-    });
-  } catch (error) {
-    const isUnsupportedMulticall = error instanceof Error && error.message.includes('multicall3');
-    if (!isUnsupportedMulticall) {
-      throw error;
     }
-
-    return withTimeout(
-      Promise.allSettled(
-        chunkIds.map(id =>
-          publicClient.readContract({
-            address: ARCSIGNAL_ADDRESS as Address,
-            abi: ARCSIGNAL_ABI,
-            functionName: 'getMarket',
-            args: [id],
-          }) as Promise<ChainMarket>
-        )
-      ),
-      MARKET_RPC_TIMEOUT_MS,
-      `getMarket fallback chunk ${chunkIndex}`
-    );
   }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker())
+  );
+
+  return results;
+}
+
+async function readContractWithRetry<T>(
+  label: string,
+  read: () => Promise<T>,
+  timeoutMs = MARKET_RPC_TIMEOUT_MS
+): Promise<T> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await withTimeout(read(), timeoutMs, label);
+    } catch (err) {
+      if (attempt === 2) throw err;
+      await sleep(250 * (attempt + 1));
+    }
+  }
+
+  throw new Error(`Failed to read ${label}`);
+}
+
+async function fetchMarketIdByIndex(index: bigint): Promise<string> {
+  return readContractWithRetry(
+    `getMarketIdByIndex ${index}`,
+    () => publicClient.readContract({
+      address: ARCSIGNAL_ADDRESS as Address,
+      abi: ARCSIGNAL_ABI,
+      functionName: 'getMarketIdByIndex',
+      args: [index],
+    }) as Promise<string>,
+    4_000
+  );
+}
+
+async function fetchMarketWithRetry(id: string): Promise<ChainMarket> {
+  return readContractWithRetry(
+    `getMarket ${id}`,
+    () => publicClient.readContract({
+      address: ARCSIGNAL_ADDRESS as Address,
+      abi: ARCSIGNAL_ABI,
+      functionName: 'getMarket',
+      args: [id],
+    }) as Promise<ChainMarket>,
+    4_500
+  );
 }
 
 export async function getMarketsFromChain(
@@ -120,15 +147,12 @@ export async function getMarketsFromChain(
   const limit = options.limit ?? DEFAULT_MARKET_PAGE_SIZE;
   const offset = options.offset ?? 0;
 
-  const isServer = typeof window === 'undefined';
-
   if (
     !forceRefresh &&
     offset === 0 &&
     limit === DEFAULT_MARKET_PAGE_SIZE &&
     memoryCache.markets.length > 0 &&
-    (now - memoryCache.timestamp) < MARKET_CACHE_TTL_MS &&
-    !isServer
+    (now - memoryCache.timestamp) < MARKET_CACHE_TTL_MS
   ) {
     return memoryCache.markets;
   }
@@ -138,59 +162,72 @@ export async function getMarketsFromChain(
   }
 
   try {
-    const allIds = await withTimeout(
-      publicClient.readContract({
+    const marketCount = await readContractWithRetry(
+      'getMarketCount',
+      () => publicClient.readContract({
         address: ARCSIGNAL_ADDRESS as Address,
         abi: ARCSIGNAL_ABI,
-        functionName: 'getAllMarketIds',
-      }) as Promise<string[]>,
-      MARKET_RPC_TIMEOUT_MS,
-      'getAllMarketIds'
+        functionName: 'getMarketCount',
+      }) as Promise<bigint>
     );
 
-    if (!allIds || allIds.length === 0) return [];
+    if (marketCount === 0n) return [];
 
     const nowUnix = Math.floor(Date.now() / 1000);
-    const targetIds = [...allIds].reverse().slice(offset, offset + limit);
+    const startIndex = Number(marketCount) - 1 - offset;
+    if (startIndex < 0) return [];
+
+    const indexes = Array.from(
+      { length: Math.min(limit, startIndex + 1) },
+      (_, i) => BigInt(startIndex - i)
+    );
+
+    const idResults = await mapWithConcurrency(
+      indexes,
+      MARKET_READ_CONCURRENCY,
+      (index) => fetchMarketIdByIndex(index)
+    );
+    const targetIds = idResults
+      .filter((res): res is PromiseFulfilledResult<string> => res.status === 'fulfilled')
+      .map((res) => res.value);
     const markets: Market[] = [];
 
-    // Fetch in parallel chunks for fast execution
-    const CHUNK_SIZE = 20;
-    for (let i = 0; i < targetIds.length; i += CHUNK_SIZE) {
-      const chunkIds = targetIds.slice(i, i + CHUNK_SIZE);
-      const chunkResults = await readMarketChunk(chunkIds, Math.floor(i / CHUNK_SIZE) + 1);
+    const marketResults = await mapWithConcurrency(
+      targetIds,
+      MARKET_READ_CONCURRENCY,
+      (id) => fetchMarketWithRetry(id)
+    );
 
-      for (const res of chunkResults) {
-        if (res.status === 'fulfilled' && res.value) {
-          const data = res.value;
+    for (const res of marketResults) {
+      if (res.status === 'fulfilled' && res.value) {
+        const data = res.value;
 
-          markets.push({
-            marketId: data.marketId,
-            category: mapCategory(data.category),
-            question: data.question,
-            resolutionTime: Number(data.resolutionTime),
-            followPool: data.followPool,
-            fadePool: data.fadePool,
-            resolved: data.resolved,
-            outcome: mapOutcome(data.resolved, data.outcome),
-            status: data.resolved
-              ? 'RESOLVED'
-              : Number(data.resolutionTime) <= nowUnix
-                ? 'PENDING_RESOLUTION'
-                : 'ACTIVE',
-            resolvedAt: data.resolved ? Number(data.resolutionTime) : undefined,
-            resolutionReason: data.resolved
-              ? `Resolved on-chain with ${mapOutcome(data.resolved, data.outcome)} outcome.`
-              : undefined,
-            analysis: safeParseAnalysis(data.analysisJson),
-          });
-        }
+        markets.push({
+          marketId: data.marketId,
+          category: mapCategory(data.category),
+          question: data.question,
+          resolutionTime: Number(data.resolutionTime),
+          followPool: data.followPool,
+          fadePool: data.fadePool,
+          resolved: data.resolved,
+          outcome: mapOutcome(data.resolved, data.outcome),
+          status: data.resolved
+            ? 'RESOLVED'
+            : Number(data.resolutionTime) <= nowUnix
+              ? 'PENDING_RESOLUTION'
+              : 'ACTIVE',
+          resolvedAt: data.resolved ? Number(data.resolutionTime) : undefined,
+          resolutionReason: data.resolved
+            ? `Resolved on-chain with ${mapOutcome(data.resolved, data.outcome)} outcome.`
+            : undefined,
+          analysis: safeParseAnalysis(data.analysisJson),
+        });
       }
     }
 
     markets.sort((a, b) => b.resolutionTime - a.resolutionTime);
 
-    if (markets.length > 0 && offset === 0 && limit === DEFAULT_MARKET_PAGE_SIZE && !isServer) {
+    if (markets.length > 0 && offset === 0 && limit === DEFAULT_MARKET_PAGE_SIZE) {
       memoryCache = { markets, timestamp: Date.now() };
     }
 

@@ -17,11 +17,32 @@ const RPC_URL = process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.test
 const resolvePublicClient = createPublicClient({
   chain: arcTestnet,
   transport: http(RPC_URL, {
+    retryCount: 3,
+    retryDelay: 600,
     fetchOptions: {
       cache: 'no-store',
     },
   }),
 });
+
+const RESOLUTION_SCAN_LIMIT = Number(process.env.RESOLUTION_SCAN_LIMIT ?? 160);
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function readWithRetry<T>(label: string, read: () => Promise<T>): Promise<T> {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await read();
+    } catch (err) {
+      if (attempt === 3) throw err;
+      await sleep(250 * attempt);
+    }
+  }
+
+  throw new Error(`Failed to read ${label}`);
+}
 
 export async function POST(req: Request) {
   const auth = req.headers.get('authorization');
@@ -44,26 +65,43 @@ export async function POST(req: Request) {
   const errors: string[] = [];
   const skipped: string[] = [];
 
-  // ── 1. Fetch all market IDs ──────────────────────────────────────────────
-  let allIds: string[] = [];
+  // ── 1. Fetch recent market IDs without the large getAllMarketIds payload ──
+  let marketCount = 0;
+  let targetIds: string[] = [];
   try {
-    allIds = (await resolvePublicClient.readContract({
+    const count = await readWithRetry('getMarketCount', () => resolvePublicClient.readContract({
       address: CONTRACT_ADDRESS,
       abi: ARCSIGNAL_ABI,
-      functionName: 'getAllMarketIds',
-    })) as string[];
+      functionName: 'getMarketCount',
+    }) as Promise<bigint>);
+    marketCount = Number(count);
+
+    const scanCount = Math.min(marketCount, RESOLUTION_SCAN_LIMIT);
+    for (let i = 0; i < scanCount; i++) {
+      const index = BigInt(marketCount - 1 - i);
+      try {
+        const marketId = await readWithRetry(`getMarketIdByIndex ${index}`, () => resolvePublicClient.readContract({
+          address: CONTRACT_ADDRESS,
+          abi: ARCSIGNAL_ABI,
+          functionName: 'getMarketIdByIndex',
+          args: [index],
+        }) as Promise<string>);
+        targetIds.push(marketId);
+        await sleep(75);
+      } catch (err) {
+        errors.push(`index ${index}: failed to read market id - ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
   } catch (err) {
     return NextResponse.json({
-      error: `Failed to read market IDs: ${err instanceof Error ? err.message : String(err)}`,
+      error: `Failed to read market count: ${err instanceof Error ? err.message : String(err)}`,
       contractUsed: CONTRACT_ADDRESS,
     }, { status: 500 });
   }
 
-  if (!allIds || allIds.length === 0) {
+  if (targetIds.length === 0) {
     return NextResponse.json({ resolved: [], skipped: [], errors: [], message: 'No markets found', contractUsed: CONTRACT_ADDRESS });
   }
-
-  const targetIds = [...allIds].reverse();
 
   // ── 2. Pre-fetch live crypto prices once ─────────────────────────────────
   let coins: Awaited<ReturnType<typeof fetchCryptoMarkets>> = [];
@@ -98,12 +136,12 @@ export async function POST(req: Request) {
     };
 
     try {
-      const raw = await resolvePublicClient.readContract({
+      const raw = await readWithRetry(`getMarket ${marketId}`, () => resolvePublicClient.readContract({
         address: CONTRACT_ADDRESS,
         abi: ARCSIGNAL_ABI,
         functionName: 'getMarket',
         args: [marketId],
-      });
+      }));
       market = raw as typeof market;
     } catch (err) {
       errors.push(`${marketId}: failed to read market — ${err instanceof Error ? err.message : String(err)}`);
@@ -213,7 +251,8 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     contractUsed: CONTRACT_ADDRESS,
-    marketCount: allIds.length,
+    marketCount,
+    scanned: targetIds.length,
     resolved,
     skipped,
     errors,

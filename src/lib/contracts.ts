@@ -20,12 +20,8 @@ export const arcTestnet = {
 export const publicClient = createPublicClient({
   chain: arcTestnet,
   transport: http(process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network', {
-    batch: {
-      batchSize: 100,
-      wait: 50,
-    },
-    retryCount: 10,
-    retryDelay: 1000,
+    retryCount: 2,
+    retryDelay: 200,
     fetchOptions: {
       cache: 'no-store',
     },

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getMarketsFromChain } from '@/lib/markets';
 import { formatUnits } from 'viem';
 
-export const revalidate = 60; // Cache for 60 seconds
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
