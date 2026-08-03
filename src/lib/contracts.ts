@@ -28,10 +28,10 @@ export const publicClient = createPublicClient({
   }),
 });
 
-// Hardcoded to the currently deployed contract. The env var is kept as a named
-// fallback so that local overrides still work — but the hardcoded address is
-// always used in production to prevent the wrong contract being called.
-export const ARCSIGNAL_ADDRESS = (process.env.NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDRESS || '0x4f33115a18fe6a181be98610ddde3fab71efabed') as `0x${string}`;
+// The UI and resolver must share the same ARC Testnet contract. Do not allow a
+// stale Vercel environment variable to silently point reads and writes at an
+// older deployment, which makes current markets appear to be missing.
+export const ARCSIGNAL_ADDRESS = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as `0x${string}`;
 
 export const USDC_ADDRESS = '0x3600000000000000000000000000000000000000' as `0x${string}`;
 
