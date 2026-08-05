@@ -88,66 +88,30 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
   const activeTimeframes = selectedTimeframe ? [selectedTimeframe] : TIMEFRAMES;
 
   return (
-    <div className="flex min-h-screen bg-[#090b11] text-slate-100">
+    <div className="flex min-h-screen bg-[#131313]">
       <Sidebar />
 
-      <main className="lg:ml-[240px] pt-20 pb-24 md:pb-8 flex-1 min-w-0 min-h-screen">
-        <div className="max-w-[1440px] mx-auto w-full p-6 lg:p-8 space-y-6">
+      <main className="lg:ml-[264px] pt-24 pb-24 md:pb-8 flex-1 min-w-0 min-h-screen">
+        <div className="max-w-[1440px] mx-auto w-full p-6 lg:p-8">
 
           {/* Page header */}
-          <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <h1 className="text-3xl lg:text-4xl font-bold text-white tracking-tight mb-1">
+              <h1 className="font-[family-name:var(--font-hanken)] text-4xl font-bold text-white tracking-tight mb-2">
                 Markets Explorer
               </h1>
-              <p className="text-sm text-slate-400 max-w-2xl">
-                AI-generated prediction markets across multiple timeframes. Stake your conviction, earn from accuracy.
+              <p className="text-sm text-[#94a3b8] max-w-2xl">
+                AI-generated prediction markets across multiple timeframes.{' '}
+                Stake your conviction, earn from accuracy.
               </p>
             </div>
-
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#141722] border border-slate-800 text-xs font-mono text-slate-300 hover:text-white hover:border-slate-700 transition-colors shrink-0"
-            >
-              <RotateCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-indigo-400' : ''}`} />
-              Refresh Data
-            </button>
           </header>
 
-          {/* ── TOP PLATFORM STATS STRIP ── */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 bg-[#121622] border border-slate-800 rounded-xl overflow-hidden divide-x divide-slate-800/80">
-            <div className="p-4">
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">LIVE MARKETS</span>
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-lg font-bold font-mono text-white">
-                  {markets.filter(m => !m.resolved && m.resolutionTime > nowUnix).length} Active
-                </span>
-              </div>
-            </div>
-            <div className="p-4">
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">TOTAL LIQUIDITY</span>
-              <span className="text-lg font-bold font-mono text-white">$45,210 USDC</span>
-            </div>
-            <div className="p-4">
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">24H AI ACCURACY</span>
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold font-mono text-emerald-400">78.5%</span>
-                <span className="text-[10px] font-mono text-emerald-400/80 bg-emerald-500/10 px-1.5 py-0.5 rounded">+3.2%</span>
-              </div>
-            </div>
-            <div className="p-4">
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider block mb-1">NEXT RESOLUTION</span>
-              <span className="text-lg font-bold font-mono text-indigo-400">04m 12s</span>
-            </div>
-          </div>
-
-          {/* Filters + Sort + Search Strip */}
-          <div className="bg-[#121622] border border-slate-800 rounded-xl p-4 space-y-3">
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          {/* Filters + Sort + Search */}
+          <div className="flex flex-col mb-8 gap-4">
+            <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
               {/* Category tabs */}
-              <div className="inline-flex items-center gap-1 bg-[#0b0e17] rounded-lg p-1 border border-slate-800 overflow-x-auto scrollbar-none">
+              <div className="inline-flex items-center gap-1 bg-[#1c1b1b] rounded-full p-1 border border-white/5 shrink-0">
                 {categories.map((cat) => (
                   <button
                     key={cat}
@@ -155,70 +119,79 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                       setSelectedCategory(cat);
                       setSelectedTimeframe(null);
                     }}
-                    className={`whitespace-nowrap px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
-                      selectedCategory === cat
-                        ? 'bg-indigo-600 text-white shadow-sm font-semibold'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
+                    className={`whitespace-nowrap px-5 py-2 rounded-full text-sm font-[family-name:var(--font-inter)] font-medium transition-all ${selectedCategory === cat
+                        ? 'bg-[#353534] text-white shadow-sm'
+                        : 'text-[#94a3b8] hover:text-white'
+                      }`}
                   >
                     {cat}
                   </button>
                 ))}
               </div>
 
-              {/* Timeframe selector */}
-              {showCrypto && (
-                <div className="inline-flex items-center gap-1 bg-[#0b0e17] rounded-lg p-1 border border-slate-800 overflow-x-auto scrollbar-none">
-                  <button
-                    onClick={() => setSelectedTimeframe(null)}
-                    className={`whitespace-nowrap px-3 py-1 rounded text-xs font-mono transition-all ${
-                      selectedTimeframe === null
-                        ? 'bg-slate-700 text-white font-semibold'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    All TF
-                  </button>
-                  {TIMEFRAMES.map((tf) => {
-                    const count = getTimeframeCount(tf);
-                    return (
-                      <button
-                        key={tf}
-                        onClick={() => setSelectedTimeframe(selectedTimeframe === tf ? null : tf)}
-                        className={`whitespace-nowrap px-2.5 py-1 rounded text-xs font-mono transition-all flex items-center gap-1 ${
-                          selectedTimeframe === tf
-                            ? 'bg-slate-700 text-white font-semibold'
-                            : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        {tf}
-                        {count > 0 && (
-                          <span className="text-[10px] text-indigo-400 font-bold">({count})</span>
-                        )}
-                      </button>
-                    );
-                  })}
+              {/* Search + Timeframe selector + Refresh button */}
+              <div className="flex items-center gap-2.5 flex-wrap w-full lg:w-auto justify-between lg:justify-end">
+                {/* Search bar */}
+                <div className="relative flex-1 min-w-[180px] max-w-xs">
+                  <input
+                    type="text"
+                    placeholder="Search asset or question..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-[#1c1b1b] text-white text-xs px-4 py-2.5 rounded-full border border-white/5 focus:outline-none focus:border-[#ddb7ff]/50 transition-colors placeholder:text-[#94a3b8]/60 font-[family-name:var(--font-inter)]"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#94a3b8] hover:text-white"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
-              )}
 
-              {/* Search bar */}
-              <div className="relative flex-1 min-w-[200px] max-w-xs">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search asset or question..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#0b0e17] text-white text-xs pl-9 pr-7 py-2 rounded-lg border border-slate-800 focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-slate-500 font-sans"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
-                  >
-                    ✕
-                  </button>
+                {showCrypto && (
+                  <div className="inline-flex items-center gap-1 bg-[#1c1b1b] rounded-full p-1 border border-white/5">
+                    <button
+                      onClick={() => setSelectedTimeframe(null)}
+                      className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-[family-name:var(--font-inter)] font-medium transition-all ${selectedTimeframe === null
+                          ? 'bg-[#353534] text-white shadow-sm'
+                          : 'text-[#94a3b8] hover:text-white'
+                        }`}
+                    >
+                      All
+                    </button>
+                    {TIMEFRAMES.map((tf) => {
+                      const count = getTimeframeCount(tf);
+                      return (
+                        <button
+                          key={tf}
+                          onClick={() => setSelectedTimeframe(selectedTimeframe === tf ? null : tf)}
+                          className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-[family-name:var(--font-inter)] font-medium transition-all flex items-center gap-1.5 ${selectedTimeframe === tf
+                              ? 'bg-[#353534] text-white shadow-sm'
+                              : 'text-[#94a3b8] hover:text-white'
+                            }`}
+                        >
+                          {tf}
+                          {count > 0 && (
+                            <span className="bg-[#2a2a2a] text-[#4fdbc8] text-[9px] px-1.5 py-0.2 rounded-full font-[family-name:var(--font-jetbrains-mono)] font-bold">
+                              {count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
+
+                <button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  title="Refresh markets data"
+                  className="bg-[#1c1b1b] p-2.5 rounded-full text-[#94a3b8] hover:text-white hover:bg-[#353534] transition-colors shrink-0 border border-white/5 flex items-center gap-2"
+                >
+                  <RotateCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#ddb7ff]' : ''}`} />
+                </button>
               </div>
             </div>
           </div>

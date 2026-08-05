@@ -51,18 +51,18 @@ export default function Navbar() {
     { name: 'Docs', href: '/docs' },
   ];
   return (
-    <header className="fixed top-0 w-full z-50 bg-[#0c0f17]/90 backdrop-blur-md border-b border-slate-800/80">
+    <header className="fixed top-0 w-full z-50 bg-[#131313] border-b border-[#1e293b] shadow-2xl shadow-black/40">
       <div className="flex justify-between items-center h-16 px-6 lg:px-8 w-full">
         {/* Left: Logo + Nav */}
         <div className="flex items-center gap-10">
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logo.png" alt="ArcSignal Logo" width={32} height={32} className="w-8 h-8 object-contain" />
-            <span className="text-xl font-bold tracking-tight text-white">
+            <span className="font-[family-name:var(--font-hanken)] text-xl font-bold tracking-tight text-[#e5e2e1]">
               ArcSignal
             </span>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-6">
+          <nav className="hidden lg:flex items-center gap-8">
             {navLinks.map((link) => {
               const isActive =
                 pathname === link.href ||
@@ -71,11 +71,10 @@ export default function Navbar() {
                 <Link
                   key={link.name}
                   href={link.href}
-                  className={`text-xs font-medium transition-colors py-5 border-b-2 ${
-                    isActive
-                      ? 'text-indigo-400 border-indigo-500 font-semibold'
-                      : 'text-slate-400 hover:text-slate-200 border-transparent'
-                  }`}
+                  className={`text-sm font-medium transition-colors py-5 border-b-2 ${isActive
+                      ? 'text-[#ddb7ff] border-[#ddb7ff]'
+                      : 'text-[#94a3b8] hover:text-[#e5e2e1] border-transparent'
+                    }`}
                 >
                   {link.name}
                 </Link>

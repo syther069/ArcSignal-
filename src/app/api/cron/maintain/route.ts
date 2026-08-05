@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-async function handleMaintain(req: Request) {
+export async function POST(req: Request) {
   const auth = req.headers.get('authorization');
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -27,12 +27,4 @@ async function handleMaintain(req: Request) {
       reason: 'Automatic maintenance resolves due markets only. New market batches are created only by explicit generation.'
     }
   });
-}
-
-export async function GET(req: Request) {
-  return handleMaintain(req);
-}
-
-export async function POST(req: Request) {
-  return handleMaintain(req);
 }
