@@ -9,7 +9,12 @@ export default async function MarketsPage() {
     const chainMarkets = await getMarketsFromChain();
     const now = Date.now() / 1000;
 
-    markets = chainMarkets.map(serializeMarket);
+    // The dashboard is for tradable/current markets. Resolved markets remain
+    // available on-chain and in portfolio history, but must not occupy cards
+    // once a fresh market exists for the same timeframe.
+    markets = chainMarkets
+      .filter((market) => !market.resolved)
+      .map(serializeMarket);
     
     // Page-load maintenance only resolves due markets. Generation is explicit and append-only.
     const hasExpiredPending = chainMarkets.some(m => !m.resolved && m.resolutionTime <= now);

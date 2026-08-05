@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
@@ -27,6 +27,56 @@ interface Position {
 
 type Tab = 'open' | 'resolved' | 'all';
 
+type ChainMarket = {
+  marketId: string;
+  category: string;
+  question: string;
+  resolutionTime: bigint;
+  followPool: bigint;
+  fadePool: bigint;
+  resolved: boolean;
+  outcome: number;
+};
+
+const STAKED_EVENT = parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)');
+const POSITION_CACHE_PREFIX = 'arcsignal:portfolio:market-ids:';
+const BLOCK_CACHE_PREFIX = 'arcsignal:portfolio:last-block:';
+const LOG_CHUNK_SIZE = 50_000n;
+
+function cachedMarketIds(address: string): string[] {
+  try {
+    const value = window.localStorage.getItem(`${POSITION_CACHE_PREFIX}${address.toLowerCase()}`);
+    return value ? JSON.parse(value) as string[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveMarketIds(address: string, ids: string[]) {
+  try {
+    window.localStorage.setItem(`${POSITION_CACHE_PREFIX}${address.toLowerCase()}`, JSON.stringify(ids));
+  } catch {
+    // Storage is an optimization; portfolio reads remain authoritative.
+  }
+}
+
+function cachedLastBlock(address: string): bigint | null {
+  try {
+    const value = window.localStorage.getItem(`${BLOCK_CACHE_PREFIX}${address.toLowerCase()}`);
+    return value ? BigInt(value) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveLastBlock(address: string, block: bigint) {
+  try {
+    window.localStorage.setItem(`${BLOCK_CACHE_PREFIX}${address.toLowerCase()}`, block.toString());
+  } catch {
+    // Storage is an optimization; portfolio reads remain authoritative.
+  }
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function PortfolioClient() {
   const { address } = useAccount();
@@ -37,54 +87,41 @@ export default function PortfolioClient() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>('open');
   const [claiming, setClaiming] = useState<Record<string, boolean>>({});
+  const hasLoadedRef = useRef(false);
 
-  // ─── Fetch only this wallet's positions from Staked events ─────────────────
+  // ─── Fetch this wallet's positions with a cache and authoritative reads ────
   const fetchPortfolio = useCallback(async () => {
     if (!address || !publicClient) {
       setLoading(false);
       return;
     }
-    setLoading(true);
-    try {
-      const stakedEvent = parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)');
-      const logs = await publicClient.getLogs({
-        address: ARCSIGNAL_ADDRESS,
-        event: stakedEvent,
-        fromBlock: 0n,
-        toBlock: 'latest',
-      });
+    const cachedIds = cachedMarketIds(address);
+    // Do not blank already-loaded data during background refreshes.
+    if (!hasLoadedRef.current) setLoading(true);
 
-      const userStakes = new Map<string, { follow: bigint; fade: bigint }>();
-      for (const log of logs) {
-        const args = log.args as { marketId?: string; user?: string; side?: number; amount?: bigint };
-        if (!args.user || args.user.toLowerCase() !== address.toLowerCase() || !args.marketId || args.amount === undefined) continue;
-        const current = userStakes.get(args.marketId) ?? { follow: 0n, fade: 0n };
-        if (Number(args.side) === 0) current.follow += args.amount;
-        else current.fade += args.amount;
-        userStakes.set(args.marketId, current);
+    const readPositions = async (marketIds: string[]) => {
+      const uniqueIds = [...new Set(marketIds)];
+      const readOne = async (marketId: string) => {
+        const [data, followRaw, fadeRaw] = await Promise.all([
+          publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'getMarket', args: [marketId] }) as Promise<ChainMarket>,
+          publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'followStakes', args: [marketId, address] }) as Promise<bigint>,
+          publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'fadeStakes', args: [marketId, address] }) as Promise<bigint>,
+        ]);
+        const claimed = data.resolved && (data.outcome === 1 ? followRaw : fadeRaw) > 0n
+          ? await publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'claimed', args: [marketId, address] }) as boolean
+          : false;
+        return { data, followRaw, fadeRaw, claimed };
+      };
+
+      const results: PromiseSettledResult<Awaited<ReturnType<typeof readOne>>>[] = [];
+      for (let i = 0; i < uniqueIds.length; i += 2) {
+        results.push(...await Promise.allSettled(uniqueIds.slice(i, i + 2).map(readOne)));
       }
-
-      if (userStakes.size === 0) {
-        setPositions([]);
-        setLoading(false);
-        return;
-      }
-
-      const marketEntries = await Promise.all(Array.from(userStakes.entries()).map(async ([marketId, stake]) => {
-        const raw = await publicClient.readContract({
-          address: ARCSIGNAL_ADDRESS,
-          abi: ARCSIGNAL_ABI,
-          functionName: 'getMarket',
-          args: [marketId],
-        }) as {
-          marketId: string; category: string; question: string; resolutionTime: bigint;
-          followPool: bigint; fadePool: bigint; resolved: boolean; outcome: number;
-        };
-        return { raw, stake };
-      }));
 
       const newPositions: Position[] = [];
-      for (const { raw: data, stake } of marketEntries) {
+      for (const result of results) {
+        if (result.status !== 'fulfilled') continue;
+        const { data, followRaw, fadeRaw, claimed } = result.value;
         const market = {
           marketId: data.marketId,
           category: data.category === 'FOOTBALL' ? 'FOOTBALL' : 'CRYPTO',
@@ -98,45 +135,61 @@ export default function PortfolioClient() {
         } as Market;
 
         const winningSide = data.outcome === 1 ? 0 : data.outcome === 2 ? 1 : -1;
-        const sides: Array<[0 | 1, bigint]> = [[0, stake.follow], [1, stake.fade]];
-        for (const [side, stakeRaw] of sides) {
+        for (const [side, stakeRaw] of [[0, followRaw], [1, fadeRaw]] as Array<[0 | 1, bigint]>) {
           if (stakeRaw === 0n) continue;
           const stakeUsdc = Number(formatUnits(stakeRaw, 6));
-          const isResolved = data.resolved;
-          const userWon = isResolved && winningSide >= 0 ? side === winningSide : null;
+          const userWon = data.resolved && winningSide >= 0 ? side === winningSide : null;
           let payout = 0;
           let netPnl = 0;
 
-          if (isResolved && userWon) {
+          if (data.resolved && userWon) {
             const winPool = winningSide === 0 ? data.followPool : data.fadePool;
             const losePool = winningSide === 0 ? data.fadePool : data.followPool;
             payout = stakeUsdc + (stakeUsdc * Number(losePool)) / Number(winPool || 1n);
             netPnl = payout - stakeUsdc;
-          } else if (isResolved && userWon === false) {
+          } else if (data.resolved && userWon === false) {
             netPnl = -stakeUsdc;
           }
 
-          let claimed = false;
-          if (isResolved && userWon) {
-            claimed = await publicClient.readContract({
-              address: ARCSIGNAL_ADDRESS,
-              abi: ARCSIGNAL_ABI,
-              functionName: 'claimed',
-              args: [data.marketId, address],
-            }) as boolean;
-          }
-
-          newPositions.push({
-            market, side, stakeRaw, stakeUsdc, claimed,
-            isResolved, outcome: data.outcome, userWon, payout, netPnl,
-          });
+          newPositions.push({ market, side, stakeRaw, stakeUsdc, claimed, isResolved: data.resolved, outcome: data.outcome, userWon, payout, netPnl });
         }
       }
+      return newPositions;
+    };
 
-      setPositions(newPositions);
+    try {
+      if (cachedIds.length > 0) {
+        const cachedPositions = await readPositions(cachedIds);
+        setPositions(cachedPositions);
+        hasLoadedRef.current = true;
+        setLoading(false);
+      }
+
+      const latestBlock = await publicClient.getBlockNumber();
+      const lastBlock = cachedLastBlock(address);
+      let fromBlock = lastBlock === null ? 0n : lastBlock + 1n;
+
+      if (fromBlock <= latestBlock) {
+        const discovered = new Set(cachedIds);
+        for (let start = fromBlock; start <= latestBlock; start += LOG_CHUNK_SIZE) {
+          const end = start + LOG_CHUNK_SIZE - 1n < latestBlock ? start + LOG_CHUNK_SIZE - 1n : latestBlock;
+          const logs = await publicClient.getLogs({ address: ARCSIGNAL_ADDRESS, event: STAKED_EVENT, fromBlock: start, toBlock: end });
+          for (const log of logs) {
+            const args = log.args as { marketId?: string; user?: string };
+            if (args.user?.toLowerCase() === address.toLowerCase() && args.marketId) discovered.add(args.marketId);
+          }
+          saveLastBlock(address, end);
+          await new Promise((resolve) => setTimeout(resolve, 75));
+        }
+        const ids = [...discovered];
+        saveMarketIds(address, ids);
+        const freshPositions = await readPositions(ids);
+        setPositions(freshPositions);
+        hasLoadedRef.current = true;
+      }
     } catch (err) {
       console.error('Portfolio fetch failed:', err);
-      toast.error('Failed to load portfolio');
+      if (!hasLoadedRef.current) toast.error('Unable to load on-chain positions right now');
     } finally {
       setLoading(false);
     }
