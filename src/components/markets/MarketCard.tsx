@@ -18,6 +18,9 @@ import {
   ShieldCheck,
   ExternalLink,
   Sparkles,
+  Bookmark,
+  Share2,
+  Check,
 } from 'lucide-react';
 
 export interface MarketCardProps {
@@ -44,13 +47,12 @@ function getTimeframe(marketId: string): string | null {
 /** Extract price target from question text, e.g. "$103,500" → 103500 */
 function extractTargetFromQuestion(question: string | undefined): number | null {
   if (!question) return null;
-  // Match prices like $103,500 or $103500 or $2.45
   const match = question.match(/\$([0-9,]+(?:\.[0-9]+)?)/);
   if (!match) return null;
   return parseFloat(match[1].replace(/,/g, ''));
 }
 
-/** Build a human-readable resolution explanation from what we know */
+/** Build human-readable resolution explanation */
 function getResolutionExplanation(market: SerializableMarket): {
   headline: string;
   detail: string;
@@ -66,16 +68,16 @@ function getResolutionExplanation(market: SerializableMarket): {
     const timeframe = getTimeframe(market.marketId);
 
     const headline = followWon
-      ? `✓ FOLLOW WON — AI prediction was correct`
+      ? `✓ FOLLOW WON — AI prediction correct`
       : fadeWon
-        ? `✓ FADE WON — AI prediction was incorrect`
+        ? `✕ FADE WON — AI prediction incorrect`
         : 'Market resolved';
 
     const detail = target
       ? followWon
-        ? `At resolution, ${symbol} price was above the $${target.toLocaleString()} target${timeframe ? ` within the ${timeframe} window` : ''}.`
-        : `At resolution, ${symbol} price was below the $${target.toLocaleString()} target${timeframe ? ` within the ${timeframe} window` : ''}. The AI prediction did not materialise.`
-      : `Resolved via on-chain oracle. Outcome verified by contract at resolution time.`;
+        ? `Oracle settlement price exceeded $${target.toLocaleString()} target${timeframe ? ` within ${timeframe}` : ''}.`
+        : `Oracle settlement price missed $${target.toLocaleString()} target${timeframe ? ` within ${timeframe}` : ''}.`
+      : `Verified on-chain via oracle feeds.`;
 
     const coinGeckoUrl = `https://www.coingecko.com/en/coins/${symbol.toLowerCase()}`;
 
@@ -84,25 +86,23 @@ function getResolutionExplanation(market: SerializableMarket): {
 
   if (market.category === 'FOOTBALL') {
     const headline = followWon
-      ? `✓ FOLLOW WON — Home team won`
+      ? `✓ FOLLOW WON — Home team victory`
       : fadeWon
-        ? `✓ FADE WON — Away team won or draw`
+        ? `✕ FADE WON — Away win or draw`
         : 'Match resolved';
 
-    // Extract teams from question: "Will X beat Y on ..."
     const teamMatch = market.question?.match(/Will (.+?) beat (.+?) on/);
     const home = teamMatch?.[1] ?? 'Home team';
-    const away = teamMatch?.[2] ?? 'Away team';
 
     const detail = followWon
-      ? `${home} won the match. The Follow AI prediction was correct.`
-      : `${home} did not win (draw or ${away} victory). Fade won.`;
+      ? `${home} won the match as predicted.`
+      : `${home} did not win the match.`;
 
     return { headline, detail, coinGeckoUrl: null };
   }
 
   return {
-    headline: outcome === 'FOLLOW' ? '✓ FOLLOW WON' : '✓ FADE WON',
+    headline: outcome === 'FOLLOW' ? '✓ FOLLOW WON' : '✕ FADE WON',
     detail: 'Market resolved on-chain.',
     coinGeckoUrl: null,
   };
@@ -110,6 +110,8 @@ function getResolutionExplanation(market: SerializableMarket): {
 
 export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const { data } = useReadContract({
     address: ARCSIGNAL_ADDRESS,
@@ -123,15 +125,18 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
       staleTime: 10_000,
       refetchInterval: 15_000,
     },
-
   });
 
   const chainMarket = data as { followPool: bigint; fadePool: bigint } | undefined;
   const liveFollowPool = chainMarket?.followPool ?? numberToUsdc(Number(market.followPool));
   const liveFadePool = chainMarket?.fadePool ?? numberToUsdc(Number(market.fadePool));
   const totalPool = liveFollowPool + liveFadePool;
-  const followShare = totalPool > 0n ? Number((liveFollowPool * 100n) / totalPool) : 0;
-  const fadeShare = totalPool > 0n ? Number((liveFadePool * 100n) / totalPool) : 0;
+  const followShare = totalPool > 0n ? Number((liveFollowPool * 100n) / totalPool) : 50;
+  const fadeShare = totalPool > 0n ? Number((liveFadePool * 100n) / totalPool) : 50;
+
+  // Calculate estimated multiplier (x odds)
+  const followMultiplier = followShare > 0 ? (100 / followShare).toFixed(2) : '2.00';
+  const fadeMultiplier = fadeShare > 0 ? (100 / fadeShare).toFixed(2) : '2.00';
 
   const probability = market.analysis?.probability ?? market.analysis?.confidence ?? 50;
   const confidence = market.analysis?.confidence ?? 50;
@@ -141,351 +146,225 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
   const hasAnalysis = !!market.analysis;
   const timeframe = getTimeframe(market.marketId);
 
-  // AI summary snippet shown always (before betting)
-  const summarySnippet = market.analysis?.summary
-    ? market.analysis.summary.length > 130
-      ? market.analysis.summary.substring(0, 130) + '…'
-      : market.analysis.summary
-    : null;
-
-  // Resolution explanation
   const resolution = isResolved ? getResolutionExplanation(market) : null;
 
-  return (
-    <article className="bg-[#1c1b1b] rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300 ease-in-out hover:shadow-xl hover:shadow-[#ddb7ff]/5 relative overflow-hidden group">
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
-      {/* ── Top: Badges + Status ── */}
-      <div className="flex items-start justify-between gap-4">
+  const toggleBookmark = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setBookmarked(!bookmarked);
+  };
+
+  return (
+    <article
+      className={`rounded-xl p-5 flex flex-col justify-between gap-4 transition-all duration-200 border ${
+        isResolved
+          ? market.outcome === 'FOLLOW'
+            ? 'bg-[#10141f] border-emerald-500/30'
+            : 'bg-[#141014] border-rose-500/30'
+          : 'bg-[#131722] border-[#22283a] hover:border-slate-700 hover:shadow-lg hover:-translate-y-0.5'
+      }`}
+    >
+      {/* ── Header: Badges & Status ── */}
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="bg-[#ddb7ff]/10 text-[#ddb7ff] px-2.5 py-1 rounded-md text-[10px] font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider">
+          <span className="bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded text-[11px] font-mono font-medium uppercase tracking-wider">
             {market.category}
           </span>
           {timeframe && (
-            <span className="bg-[#4fdbc8]/10 text-[#4fdbc8] px-2.5 py-1 rounded-md text-[10px] font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider">
+            <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded text-[11px] font-mono font-medium uppercase tracking-wider">
               {timeframe}
             </span>
           )}
-          {isActive && (
-            <div className="w-1.5 h-1.5 rounded-full bg-[#4fdbc8] animate-pulse-dot" />
-          )}
         </div>
-        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wider border ${isResolved
-            ? 'bg-[#94a3b8]/10 border-[#94a3b8]/20 text-[#94a3b8]'
-            : 'bg-[#4fdbc8]/10 border-[#4fdbc8]/20 text-[#4fdbc8]'
-          }`}>
-          {isResolved ? 'RESOLVED' : isPendingResolution ? 'PENDING' : 'LIVE'}
-        </span>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleBookmark}
+            title="Bookmark market"
+            className={`p-1.5 rounded-md hover:bg-slate-800 transition-colors ${
+              bookmarked ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Bookmark size={14} className={bookmarked ? 'fill-amber-400' : ''} />
+          </button>
+          <button
+            onClick={handleShare}
+            title="Share market"
+            className="p-1.5 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+          >
+            {copied ? <Check size={14} className="text-emerald-400" /> : <Share2 size={14} />}
+          </button>
+
+          <span
+            className={`shrink-0 flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider border ${
+              isResolved
+                ? 'bg-slate-800/60 border-slate-700 text-slate-300'
+                : isPendingResolution
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+            }`}
+          >
+            {isActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />}
+            {isResolved ? 'RESOLVED' : isPendingResolution ? 'PENDING' : 'LIVE'}
+          </span>
+        </div>
       </div>
 
-      {/* ── Market question ── */}
-      <h2 className="font-[family-name:var(--font-hanken)] text-xl md:text-2xl font-bold text-white leading-tight">
+      {/* ── Dominant Question Title ── */}
+      <h2 className="text-base md:text-lg font-bold text-slate-100 leading-snug tracking-tight">
         {market.question}
       </h2>
 
-      {/* ── FEATURE 2: AI Analysis Preview (always visible before betting) ── */}
+      {/* ── AI Signal Banner (Compact) ── */}
       {hasAnalysis && (
-        <div className="bg-[#0f172a]/60 rounded-xl p-4 space-y-4">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-[family-name:var(--font-inter)] font-semibold text-[#ddb7ff] flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" /> AI Insight
-            </p>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-inter)] font-medium">Prediction</p>
-                <p className="text-xs font-[family-name:var(--font-inter)] font-bold text-[#4fdbc8]">
-                  {market.analysis?.prediction?.toUpperCase() || 'YES'}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-inter)] font-medium">Confidence</p>
-                <p className="text-xs font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#ddb7ff]">
-                  {confidence}%
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-inter)] font-medium">Probability</p>
-                <p className="text-xs font-[family-name:var(--font-jetbrains-mono)] font-bold text-white">
-                  {probability}%
-                </p>
-              </div>
-            </div>
+        <div className="bg-[#0b0e17] border border-[#1b2030] rounded-lg p-3 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+            <span className="text-slate-300 font-medium">AI Signal</span>
+            <span
+              className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${
+                market.analysis?.prediction?.toLowerCase() === 'yes'
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                  : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+              }`}
+            >
+              {market.analysis?.prediction?.toUpperCase() || 'YES'}
+            </span>
           </div>
-
-          {/* Confidence bar */}
-          <div className="h-1 w-full bg-[#1e293b] rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-[#ddb7ff] to-[#4fdbc8] transition-all duration-1000 rounded-full"
-              style={{ width: `${confidence}%` }}
-            />
+          <div className="flex items-center gap-3 font-mono text-[11px]">
+            <span className="text-slate-400">Conf: <strong className="text-slate-200">{confidence}%</strong></span>
+            <span className="text-slate-400">Prob: <strong className="text-white">{probability}%</strong></span>
           </div>
-
-          {/* AI Summary snippet */}
-          {summarySnippet && (
-            <p className="text-[11px] text-[#94a3b8] leading-relaxed font-[family-name:var(--font-jetbrains-mono)]">
-              {summarySnippet}
-            </p>
-          )}
-
-          {/* Key factors — top 2 always visible */}
-          {(market.analysis?.keyFactors?.length ?? 0) > 0 && (
-            <div className="space-y-1">
-              {market.analysis!.keyFactors!.slice(0, 2).map((factor, i) => (
-                <div key={`kf-${i}`} className="flex items-start gap-1.5 text-[10px] text-[#94a3b8]">
-                  <span className="text-[#4fdbc8] shrink-0 mt-0.5">▸</span>
-                  {factor}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
-      {/* ── Pool amounts ── */}
-      <div className="grid grid-cols-2 gap-3 pt-2">
-        <div className="rounded-xl bg-[#0f172a]/60 p-4">
-          <p className="text-[10px] font-[family-name:var(--font-inter)] font-semibold text-[#94a3b8] uppercase tracking-wide">Follow Pool</p>
-          <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-lg font-bold text-white">
-            {toPoolDisplay(liveFollowPool)}{' '}
-            <span className="text-xs text-[#94a3b8] font-medium">USDC</span>
-          </p>
-        </div>
-        <div className="rounded-xl bg-[#0f172a]/60 p-4">
-          <p className="text-[10px] font-[family-name:var(--font-inter)] font-semibold text-[#94a3b8] uppercase tracking-wide">Fade Pool</p>
-          <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-lg font-bold text-white">
-            {toPoolDisplay(liveFadePool)}{' '}
-            <span className="text-xs text-[#94a3b8] font-medium">USDC</span>
-          </p>
-        </div>
-      </div>
-
-      {/* Countdown */}
-      <div className="flex items-center justify-between text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8]">
-        <CountdownTimer resolutionTime={market.resolutionTime} resolved={isResolved} />
-        <span>Pool split: Follow {followShare}% / Fade {fadeShare}%</span>
-      </div>
-
-      {/* ── Follow / Fade buttons OR resolution panel ── */}
+      {/* ── Action Buttons OR Settlement Panel ── */}
       {isActive ? (
-        <div className="space-y-3">
-          <p className="text-[11px] text-[#94a3b8] text-center font-[family-name:var(--font-inter)]">
-            AI predicts{' '}
-            <span className="text-[#4fdbc8] font-bold">
-              {market.analysis?.prediction?.toUpperCase() || 'YES'}
-            </span>
-            . Agree? Follow. Disagree? Fade.
-          </p>
-          <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               onClick={onFollow}
-              className="group flex items-center justify-center gap-2 py-3 bg-[#4fdbc8]/10 text-[#4fdbc8] font-bold text-xs font-[family-name:var(--font-inter)] rounded-xl transition-all hover:bg-[#4fdbc8] hover:text-[#0f172a] active:scale-[0.98]"
+              className="flex flex-col items-center justify-center py-2.5 px-3 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 font-semibold rounded-lg transition-all active:scale-[0.98] group"
             >
-              <CheckCircle2 size={16} className="group-hover:scale-110 transition-transform" />
-              Follow AI
+              <div className="flex items-center gap-1.5 text-xs font-sans">
+                <CheckCircle2 size={14} />
+                <span>Follow AI (YES)</span>
+              </div>
+              <span className="text-[11px] font-mono font-normal opacity-80 group-hover:opacity-100">
+                {followMultiplier}x Return ({followShare}%)
+              </span>
             </button>
+
             <button
               onClick={onFade}
-              className="group flex items-center justify-center gap-2 py-3 bg-[#ffb4ab]/10 text-[#ffb4ab] font-bold text-xs font-[family-name:var(--font-inter)] rounded-xl transition-all hover:bg-[#ffb4ab] hover:text-[#0f172a] active:scale-[0.98]"
+              className="flex flex-col items-center justify-center py-2.5 px-3 bg-rose-500/10 border border-rose-500/30 hover:bg-rose-500 hover:text-slate-950 text-rose-400 font-semibold rounded-lg transition-all active:scale-[0.98] group"
             >
-              <XCircle size={16} className="group-hover:scale-110 transition-transform" />
-              Fade AI
+              <div className="flex items-center gap-1.5 text-xs font-sans">
+                <XCircle size={14} />
+                <span>Fade AI (NO)</span>
+              </div>
+              <span className="text-[11px] font-mono font-normal opacity-80 group-hover:opacity-100">
+                {fadeMultiplier}x Return ({fadeShare}%)
+              </span>
             </button>
           </div>
         </div>
       ) : isResolved ? (
-        /* ── FEATURE 1: Resolution Transparency Panel ── */
-        <div className={`rounded-lg border p-4 space-y-2.5 ${market.outcome === 'FOLLOW'
-            ? 'bg-[#4fdbc8]/5 border-[#4fdbc8]/25'
-            : 'bg-[#ffb4ab]/5 border-[#ffb4ab]/25'
-          }`}>
-          {/* Shield + headline */}
+        <div
+          className={`rounded-lg border p-3.5 space-y-2 ${
+            market.outcome === 'FOLLOW'
+              ? 'bg-emerald-500/5 border-emerald-500/30'
+              : 'bg-rose-500/5 border-rose-500/30'
+          }`}
+        >
           <div className="flex items-center gap-2">
-            <ShieldCheck className={`w-4 h-4 shrink-0 ${market.outcome === 'FOLLOW' ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'}`} />
-            <p className={`text-[11px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wide ${market.outcome === 'FOLLOW' ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'
-              }`}>
+            <ShieldCheck
+              className={`w-4 h-4 shrink-0 ${
+                market.outcome === 'FOLLOW' ? 'text-emerald-400' : 'text-rose-400'
+              }`}
+            />
+            <p
+              className={`text-xs font-mono font-bold uppercase tracking-wide ${
+                market.outcome === 'FOLLOW' ? 'text-emerald-400' : 'text-rose-400'
+              }`}
+            >
               {resolution?.headline}
             </p>
           </div>
 
-          {/* Detail explanation */}
-          <p className="text-[11px] text-[#94a3b8] leading-relaxed font-[family-name:var(--font-jetbrains-mono)]">
+          <p className="text-xs text-slate-300 leading-relaxed font-sans">
             {resolution?.detail}
           </p>
 
-          {/* Resolution time */}
-          <p className="text-[10px] text-[#94a3b8]/60 font-[family-name:var(--font-jetbrains-mono)]">
-            Resolved at: {new Date(market.resolutionTime * 1000).toUTCString()}
-          </p>
-
-          {/* Verify link for crypto */}
           {resolution?.coinGeckoUrl && (
             <a
               href={resolution.coinGeckoUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[10px] text-[#ddb7ff] hover:text-[#ddb7ff]/80 transition-colors font-[family-name:var(--font-jetbrains-mono)] underline underline-offset-2"
+              className="inline-flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 font-mono transition-colors"
             >
-              <ExternalLink className="w-3 h-3" />
-              Verify on CoinGecko
+              <ExternalLink size={12} /> Verify Oracle Feed
             </a>
           )}
         </div>
       ) : (
-        <div className="rounded-lg border border-[#ddb7ff]/25 bg-[#ddb7ff]/5 p-4 space-y-2.5">
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3.5 space-y-1.5">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 shrink-0 text-[#ddb7ff]" />
-            <p className="text-[11px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wide text-[#ddb7ff]">
+            <ShieldCheck className="w-4 h-4 text-amber-400" />
+            <p className="text-xs font-mono font-bold text-amber-400 uppercase">
               Pending Resolution
             </p>
           </div>
-          <p className="text-[11px] text-[#94a3b8] leading-relaxed font-[family-name:var(--font-jetbrains-mono)]">
-            This market has reached its deadline and is waiting for oracle resolution. Follow and Fade are disabled while the final outcome is being recorded.
-          </p>
-          <p className="text-[10px] text-[#94a3b8]/60 font-[family-name:var(--font-jetbrains-mono)]">
-            Deadline: {new Date(market.resolutionTime * 1000).toUTCString()}
+          <p className="text-xs text-slate-300">
+            Awaiting oracle resolution. Staking is currently locked.
           </p>
         </div>
       )}
 
-      {/* ── EXPANDABLE: Full AI Analysis ── */}
-      <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded ? 'max-h-[9999px] opacity-100' : 'max-h-0 opacity-0'
-          }`}
-        aria-hidden={!expanded}
-      >
-        <div className="border-t border-[#1e293b] pt-5 space-y-5">
-          {!hasAnalysis ? (
-            <p className="text-sm text-[#94a3b8] italic">AI analysis loading...</p>
-          ) : (
-            <>
-              {/* Full Summary */}
-              {market.analysis?.summary && (
-                <div className="bg-[#1c1b1b] border border-[#1e293b] p-5 rounded-lg relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                    <Brain className="w-14 h-14" />
-                  </div>
-                  <h3 className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#ddb7ff] uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <FileText size={13} /> FULL AI SUMMARY
-                  </h3>
-                  <p className="text-xs text-[#94a3b8] leading-relaxed relative z-10">
-                    {market.analysis.summary}
-                  </p>
-                </div>
-              )}
-
-              {/* Bull / Bear cases */}
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="bg-[#1c1b1b] p-4 rounded-lg border border-[#1e293b]/50">
-                  <h3 className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#4fdbc8] uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <TrendingUp size={13} /> BULL CASE
-                  </h3>
-                  <p className="text-xs text-[#94a3b8] leading-relaxed">
-                    {market.analysis?.bullCase || 'No bull case provided.'}
-                  </p>
-                </div>
-                <div className="bg-[#1c1b1b] p-4 rounded-lg border border-[#1e293b]/50">
-                  <h3 className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#ffb4ab] uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <TrendingDown size={13} /> BEAR CASE
-                  </h3>
-                  <p className="text-xs text-[#94a3b8] leading-relaxed">
-                    {market.analysis?.bearCase || 'No bear case provided.'}
-                  </p>
-                </div>
-              </div>
-
-              {/* All Key / Risk factors */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#ddb7ff] uppercase tracking-wider mb-2">KEY FACTORS</p>
-                  <ul className="space-y-1.5 text-xs">
-                    {market.analysis?.keyFactors?.map((factor, i) => (
-                      <li key={`factor-${i}`} className="flex items-start gap-2 text-[#94a3b8]">
-                        <span className="text-[#4fdbc8] mt-0.5 shrink-0">●</span>
-                        {factor}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#ddb7ff] uppercase tracking-wider mb-2">RISK FACTORS</p>
-                  <ul className="space-y-1.5 text-xs">
-                    {market.analysis?.riskFactors?.map((risk, i) => (
-                      <li key={`risk-${i}`} className="flex items-start gap-2 text-[#94a3b8]">
-                        <span className="text-[#ffb4ab] mt-0.5 shrink-0">●</span>
-                        {risk}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              {/* Model confidence bar */}
-              <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8] uppercase tracking-wider">MODEL CONFIDENCE</p>
-                  <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold text-white">{confidence}%</span>
-                </div>
-                <div className="h-1.5 w-full bg-[#1e293b] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-[#ddb7ff] to-[#4fdbc8] transition-all duration-1000"
-                    style={{ width: `${confidence}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Live pool split */}
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8] uppercase tracking-wider">LIVE POOL SPLIT</p>
-                  <div className="flex gap-4 font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-semibold">
-                    <span className="text-[#4fdbc8]">FOLLOW {followShare.toFixed(0)}%</span>
-                    <span className="text-[#ffb4ab]">FADE {fadeShare.toFixed(0)}%</span>
-                  </div>
-                </div>
-                {totalPool === 0n ? (
-                  <div className="flex h-2 rounded-full overflow-hidden bg-[#1e293b] items-center justify-center">
-                    <span className="text-[8px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8]">NO LIQUIDITY</span>
-                  </div>
-                ) : (
-                  <div className="flex h-2 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#4fdbc8] transition-all duration-1000" style={{ width: `${followShare}%` }} />
-                    <div className="h-full bg-[#ffb4ab] transition-all duration-1000" style={{ width: `${fadeShare}%` }} />
-                  </div>
-                )}
-              </div>
-
-              {/* Sources */}
-              {(market.analysis?.sources?.length ?? 0) > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {market.analysis?.sources?.map((source, i) => (
-                    <span
-                      key={`source-${i}`}
-                      className="text-[9px] bg-[#1c1b1b] text-[#94a3b8] px-2 py-1 rounded border border-[#1e293b] font-[family-name:var(--font-jetbrains-mono)] uppercase"
-                    >
-                      {source.length > 22 ? source.substring(0, 22) + '...' : source}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+      {/* ── Footer Stats & Expiry ── */}
+      <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-400">
+        <CountdownTimer resolutionTime={market.resolutionTime} resolved={isResolved} />
+        <span>Pool: {toPoolDisplay(totalPool)} USDC</span>
       </div>
 
-      {/* ── Toggle button ── */}
+      {/* ── Toggleable Details ── */}
       <button
-        onClick={() => setExpanded((v) => !v)}
-        className="flex items-center gap-1.5 mx-auto text-xs text-[#94a3b8] hover:text-white transition-colors font-[family-name:var(--font-inter)] font-medium pt-2"
-        aria-expanded={expanded}
-        aria-label={expanded ? 'Collapse analysis' : 'Expand analysis'}
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center justify-center gap-1 text-xs text-slate-400 hover:text-slate-200 transition-colors pt-1 font-medium"
       >
-        {expanded ? (
-          <>Collapse <ChevronUp size={14} /></>
-        ) : (
-          <>View Full Analysis <ChevronDown size={14} /></>
-        )}
+        <span>{expanded ? 'Hide Analysis' : 'View Analysis'}</span>
+        {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
       </button>
 
+      {/* Expanded view */}
+      {expanded && hasAnalysis && (
+        <div className="pt-3 border-t border-slate-800 space-y-3 text-xs text-slate-300 animate-fadeIn">
+          {market.analysis?.summary && (
+            <p className="leading-relaxed bg-[#0b0e17] p-3 rounded border border-slate-800">
+              {market.analysis.summary}
+            </p>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-[#0b0e17] p-2.5 rounded border border-emerald-500/20">
+              <span className="text-[10px] font-mono uppercase text-emerald-400 block mb-1">Bull Case</span>
+              <p className="text-slate-300">{market.analysis?.bullCase || 'N/A'}</p>
+            </div>
+            <div className="bg-[#0b0e17] p-2.5 rounded border border-rose-500/20">
+              <span className="text-[10px] font-mono uppercase text-rose-400 block mb-1">Bear Case</span>
+              <p className="text-slate-300">{market.analysis?.bearCase || 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </article>
   );
 }

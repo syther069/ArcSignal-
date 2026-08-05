@@ -205,81 +205,74 @@ export default function PortfolioClient() {
 
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-screen bg-[#0d0d0d] text-[#e5e2e1]">
+    <div className="flex min-h-screen bg-[#090b11] text-slate-100">
       <Sidebar />
-      <main className="lg:ml-[264px] pt-24 pb-20 flex-1 min-w-0">
-        <div className="max-w-[1440px] mx-auto w-full px-4 md:px-8">
+      <main className="lg:ml-[240px] pt-20 pb-20 flex-1 min-w-0">
+        <div className="max-w-[1440px] mx-auto w-full px-4 md:px-8 space-y-6">
 
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="font-[family-name:var(--font-hanken)] text-3xl font-bold text-white mb-1">Portfolio</h1>
-          <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#8e8e8e] tracking-widest uppercase">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-1 tracking-tight">Portfolio</h1>
+          <p className="font-mono text-xs text-slate-400 uppercase tracking-wider">
             On-Chain Positions · {address ? `${address.slice(0,6)}…${address.slice(-4)}` : 'Not connected'}
           </p>
         </div>
 
         {!address ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-            <div className="w-16 h-16 rounded-full bg-[#1c1b1b] border border-[#3a3939] flex items-center justify-center">
-              <AlertCircle size={28} className="text-[#8e8e8e]" />
+          <div className="flex flex-col items-center justify-center py-20 gap-4 text-center border border-slate-800 rounded-xl bg-[#121622]">
+            <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center">
+              <AlertCircle size={24} className="text-slate-400" />
             </div>
-            <p className="font-[family-name:var(--font-hanken)] text-lg text-white">Connect your wallet</p>
-            <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#8e8e8e]">to view your positions</p>
+            <p className="text-base font-semibold text-white">Connect your wallet</p>
+            <p className="text-xs text-slate-400 font-mono">Connect your Web3 wallet to view on-chain positions</p>
           </div>
         ) : loading ? (
           <>
-            {/* ── Stats Bar Skeleton ─────────────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+            {/* ── Stats Bar Skeleton ── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                {Array.from({length: 4}).map((_, i) => (
-                 <div key={i} className="rounded-xl border border-[#3a3939] bg-[#1c1b1b] p-4 h-[84px] animate-pulse" />
+                 <div key={i} className="rounded-xl border border-slate-800 bg-[#121622] p-4 h-[84px] animate-pulse" />
                ))}
             </div>
 
-            {/* ── Tabs Skeleton ──────────────────────────────────────────────────────── */}
-            <div className="flex items-center border border-[#3a3939] rounded-lg overflow-hidden mb-6 w-fit animate-pulse bg-[#1c1b1b]">
-               <div className="w-24 h-9 border-r border-[#3a3939]" />
-               <div className="w-32 h-9 border-r border-[#3a3939]" />
-               <div className="w-20 h-9" />
-            </div>
-
-            {/* ── Positions List Skeleton ────────────────────────────────────────────── */}
+            {/* ── Positions List Skeleton ── */}
             <div className="flex flex-col gap-3">
                {Array.from({length: 3}).map((_, i) => (
-                 <div key={i} className="rounded-xl border border-[#3a3939] bg-[#1c1b1b] p-5 h-[146px] animate-pulse" />
+                 <div key={i} className="rounded-xl border border-slate-800 bg-[#121622] p-5 h-[146px] animate-pulse" />
                ))}
             </div>
           </>
         ) : (
           <>
-            {/* ── Stats Bar ─────────────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-              <StatCard icon={<Coins size={18} />} label="Total Staked" value={`${stats.totalStaked.toFixed(2)} USDC`} />
+            {/* ── Stats Bar ── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <StatCard icon={<Coins size={16} />} label="Total Staked" value={`${stats.totalStaked.toFixed(2)} USDC`} />
               <StatCard
-                icon={stats.totalPnl >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                icon={stats.totalPnl >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
                 label="Net P&L"
                 value={`${stats.totalPnl >= 0 ? '+' : ''}${stats.totalPnl.toFixed(2)} USDC`}
                 positive={stats.totalPnl >= 0}
                 negative={stats.totalPnl < 0}
               />
-              <StatCard icon={<Trophy size={18} />} label="Win Rate" value={`${stats.winRate.toFixed(1)}%`} />
+              <StatCard icon={<Trophy size={16} />} label="Win Rate" value={`${stats.winRate.toFixed(1)}%`} />
               <StatCard
-                icon={<BarChart3 size={18} />}
+                icon={<BarChart3 size={16} />}
                 label="Unclaimed"
                 value={`${stats.unclaimed.toFixed(2)} USDC`}
                 highlight={stats.unclaimed > 0}
               />
             </div>
 
-            {/* ── Tabs ──────────────────────────────────────────────────────── */}
-            <div className="flex items-center gap-0 border border-[#3a3939] rounded-lg overflow-hidden mb-6 w-fit">
+            {/* ── Tabs ── */}
+            <div className="flex items-center gap-1 bg-[#121622] border border-slate-800 rounded-lg p-1 w-fit">
               {(['open', 'resolved', 'all'] as Tab[]).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-5 py-2.5 font-[family-name:var(--font-jetbrains-mono)] text-xs uppercase tracking-widest transition-colors ${
+                  className={`px-4 py-1.5 font-mono text-xs uppercase tracking-wider rounded transition-colors ${
                     activeTab === tab
-                      ? 'bg-[#a855f7] text-white'
-                      : 'bg-transparent text-[#8e8e8e] hover:text-white hover:bg-white/5'
+                      ? 'bg-indigo-600 text-white font-semibold'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   {tab === 'open' ? `Open (${stats.openCount})` : tab === 'resolved' ? `Resolved (${stats.resolved})` : `All (${positions.length})`}
@@ -287,7 +280,7 @@ export default function PortfolioClient() {
               ))}
             </div>
 
-            {/* ── Positions List ────────────────────────────────────────────── */}
+            {/* ── Positions List ── */}
             {displayed.length === 0 ? (
               <EmptyState tab={activeTab} />
             ) : (
@@ -322,16 +315,16 @@ const StatCard = React.memo(function StatCard({ icon, label, value, positive, ne
 }) {
   return (
     <div className={`rounded-xl border p-4 ${
-      highlight ? 'border-[#a855f7]/50 bg-[#a855f7]/5 shadow-[0_0_20px_rgba(168,85,247,0.1)]' : 'border-[#3a3939] bg-[#131313]'
+      highlight ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-slate-800 bg-[#121622]'
     }`}>
-      <div className={`flex items-center gap-2 mb-2 text-xs font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest ${
-        highlight ? 'text-[#a855f7]' : 'text-[#8e8e8e]'
+      <div className={`flex items-center gap-2 mb-1.5 text-xs font-mono uppercase tracking-wider ${
+        highlight ? 'text-emerald-400' : 'text-slate-400'
       }`}>
         {icon}
         {label}
       </div>
-      <p className={`font-[family-name:var(--font-jetbrains-mono)] font-bold text-lg ${
-        positive ? 'text-[#34d399]' : negative ? 'text-[#f87171]' : highlight ? 'text-[#a855f7]' : 'text-white'
+      <p className={`font-mono font-bold text-lg ${
+        positive ? 'text-emerald-400' : negative ? 'text-rose-400' : highlight ? 'text-emerald-400' : 'text-white'
       }`}>
         {value}
       </p>
@@ -351,71 +344,64 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }
   const odds      = sidePool > 0 && totalPool > 0 ? (totalPool / sidePool).toFixed(2) : '—';
 
   const canClaim = pos.isResolved && pos.userWon === true && !pos.claimed;
-  const alreadyClaimed = pos.isResolved && pos.userWon === true && pos.claimed;
 
   return (
     <div className={`rounded-xl border p-5 transition-all ${
       canClaim
-        ? 'border-[#34d399]/40 bg-[#34d399]/5 shadow-[0_0_24px_rgba(52,211,153,0.08)]'
-        : pos.isResolved && pos.userWon === false
-        ? 'border-[#3a3939] bg-[#131313] opacity-75'
-        : 'border-[#3a3939] bg-[#131313]'
+        ? 'border-emerald-500/40 bg-emerald-500/5'
+        : 'border-slate-800 bg-[#121622]'
     }`}>
       <div className="flex flex-col gap-4">
 
         {/* Top row: badges + title */}
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            {/* Category */}
-            <span className={`px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border ${
-              pos.market.category === 'FOOTBALL'
-                ? 'bg-[#38bdf8]/10 text-[#38bdf8] border-[#38bdf8]/20'
-                : 'bg-[#818cf8]/10 text-[#818cf8] border-[#818cf8]/20'
-            }`}>{pos.market.category}</span>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-slate-800 text-slate-300">
+              {pos.market.category}
+            </span>
 
-            {/* Status */}
             {!pos.isResolved && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#8e8e8e]/30 text-[#8e8e8e]">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider border border-slate-700 text-slate-400">
                 PENDING
               </span>
             )}
             {pos.isResolved && pos.userWon === true && !pos.claimed && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#34d399]/30 text-[#34d399] bg-[#34d399]/10">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider border border-emerald-500/30 text-emerald-400 bg-emerald-500/10">
                 WON
               </span>
             )}
             {pos.isResolved && pos.userWon === true && pos.claimed && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#8e8e8e]/30 text-[#8e8e8e]">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider border border-slate-700 text-slate-400">
                 CLAIMED
               </span>
             )}
             {pos.isResolved && pos.userWon === false && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#f87171]/30 text-[#f87171] bg-[#f87171]/10">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider border border-rose-500/30 text-rose-400 bg-rose-500/10">
                 LOST
               </span>
             )}
           </div>
 
           <div className="flex items-start justify-between gap-4">
-            <Link href={`/market/${pos.market.marketId}`} className="hover:text-[#a855f7] transition-colors flex-1">
-              <p className="font-[family-name:var(--font-hanken)] font-semibold text-white text-sm leading-snug">{shortTitle}</p>
+            <Link href={`/market/${pos.market.marketId}`} className="hover:text-indigo-400 transition-colors flex-1">
+              <p className="font-semibold text-white text-sm leading-snug">{shortTitle}</p>
             </Link>
           </div>
         </div>
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <MiniStat label="Position" value={isFollow ? 'FOLLOW AI' : 'FADE AI'} color={isFollow ? '#34d399' : '#f87171'} />
+          <MiniStat label="Position" value={isFollow ? 'FOLLOW AI (YES)' : 'FADE AI (NO)'} color={isFollow ? '#10b981' : '#f43f5e'} />
           <MiniStat label="Staked" value={`${pos.stakeUsdc.toFixed(2)} USDC`} />
           <MiniStat label="Pool Odds" value={`${odds}×`} />
           {pos.isResolved ? (
             pos.userWon === true ? (
-              <MiniStat label="Payout" value={`+${pos.payout.toFixed(2)} USDC`} color="#34d399" />
+              <MiniStat label="Payout" value={`+${pos.payout.toFixed(2)} USDC`} color="#10b981" />
             ) : (
-              <MiniStat label="P&L" value={`-${pos.stakeUsdc.toFixed(2)} USDC`} color="#f87171" />
+              <MiniStat label="P&L" value={`-${pos.stakeUsdc.toFixed(2)} USDC`} color="#f43f5e" />
             )
           ) : (
-            <MiniStat label="Est. Payout" value={sidePool > 0 ? `${(pos.stakeUsdc * (totalPool / sidePool)).toFixed(2)} USDC` : '—'} color="#8e8e8e" />
+            <MiniStat label="Est. Payout" value={sidePool > 0 ? `${(pos.stakeUsdc * (totalPool / sidePool)).toFixed(2)} USDC` : '—'} color="#94a3b8" />
           )}
         </div>
 
@@ -424,21 +410,9 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }
           <button
             onClick={() => onClaim(pos.market.marketId)}
             disabled={claiming}
-            className="w-full py-3 rounded-lg font-[family-name:var(--font-jetbrains-mono)] text-sm font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-            style={{
-              background: claiming ? '#1c1b1b' : 'linear-gradient(135deg, #a855f7, #34d399)',
-              color: 'white',
-              boxShadow: claiming ? 'none' : '0 0 20px rgba(168,85,247,0.3)',
-            }}
+            className="w-full py-2.5 rounded-lg font-mono text-xs font-bold tracking-wider uppercase transition-all bg-emerald-500 hover:bg-emerald-400 text-slate-950 flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {claiming ? (
-              <>
-                <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                Claiming…
-              </>
-            ) : (
-              `Claim Winnings (${pos.payout.toFixed(2)} USDC)`
-            )}
+            {claiming ? 'Claiming…' : `Claim Winnings (${pos.payout.toFixed(2)} USDC)`}
           </button>
         )}
       </div>
@@ -448,9 +422,9 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }
 
 const MiniStat = React.memo(function MiniStat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div className="bg-[#0d0d0d] border border-[#3a3939] rounded-lg p-3">
-      <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#8e8e8e] uppercase tracking-widest mb-1">{label}</p>
-      <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm" style={{ color: color || '#e5e2e1' }}>{value}</p>
+    <div className="bg-[#0b0e17] border border-slate-800 rounded-lg p-2.5">
+      <p className="font-mono text-[10px] text-slate-400 uppercase tracking-wider mb-0.5">{label}</p>
+      <p className="font-mono font-bold text-xs" style={{ color: color || '#f1f5f9' }}>{value}</p>
     </div>
   );
 });
@@ -463,13 +437,14 @@ const EmptyState = React.memo(function EmptyState({ tab }: { tab: Tab }) {
   };
   const { title, sub } = msgs[tab];
   return (
-    <div className="flex flex-col items-center justify-center py-20 gap-4 text-center border border-[#3a3939] rounded-xl bg-[#131313]">
-      <Clock size={36} className="text-[#3a3939]" />
-      <p className="font-[family-name:var(--font-hanken)] text-lg text-white">{title}</p>
-      <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#8e8e8e] max-w-xs">{sub}</p>
-      <Link href="/markets" className="mt-2 px-5 py-2.5 rounded-lg bg-[#a855f7] text-white font-[family-name:var(--font-jetbrains-mono)] text-xs font-bold tracking-widest uppercase hover:opacity-90 transition-opacity">
+    <div className="flex flex-col items-center justify-center py-16 gap-3 text-center border border-slate-800 rounded-xl bg-[#121622]">
+      <Clock size={32} className="text-slate-500" />
+      <p className="text-base font-semibold text-white">{title}</p>
+      <p className="font-mono text-xs text-slate-400 max-w-xs">{sub}</p>
+      <Link href="/markets" className="mt-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-mono text-xs font-semibold tracking-wider uppercase transition-colors">
         Browse Markets
       </Link>
     </div>
   );
 });
+
