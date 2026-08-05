@@ -4,9 +4,8 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
-import { getMarketsFromChain } from '@/lib/markets';
 import type { Market } from '@/lib/types';
-import { formatUnits } from 'viem';
+import { formatUnits, parseAbiItem } from 'viem';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { TrendingUp, TrendingDown, Clock, Trophy, Coins, BarChart3, AlertCircle } from 'lucide-react';
@@ -39,7 +38,7 @@ export default function PortfolioClient() {
   const [activeTab, setActiveTab] = useState<Tab>('open');
   const [claiming, setClaiming] = useState<Record<string, boolean>>({});
 
-  // ─── Fetch all positions via multicall ──────────────────────────────────────
+  // ─── Fetch only this wallet's positions from Staked events ─────────────────
   const fetchPortfolio = useCallback(async () => {
     if (!address || !publicClient) {
       setLoading(false);
@@ -47,78 +46,92 @@ export default function PortfolioClient() {
     }
     setLoading(true);
     try {
-      const markets = await getMarketsFromChain();
-      if (markets.length === 0) {
+      const stakedEvent = parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)');
+      const logs = await publicClient.getLogs({
+        address: ARCSIGNAL_ADDRESS,
+        event: stakedEvent,
+        fromBlock: 0n,
+        toBlock: 'latest',
+      });
+
+      const userStakes = new Map<string, { follow: bigint; fade: bigint }>();
+      for (const log of logs) {
+        const args = log.args as { marketId?: string; user?: string; side?: number; amount?: bigint };
+        if (!args.user || args.user.toLowerCase() !== address.toLowerCase() || !args.marketId || args.amount === undefined) continue;
+        const current = userStakes.get(args.marketId) ?? { follow: 0n, fade: 0n };
+        if (Number(args.side) === 0) current.follow += args.amount;
+        else current.fade += args.amount;
+        userStakes.set(args.marketId, current);
+      }
+
+      if (userStakes.size === 0) {
         setPositions([]);
         setLoading(false);
         return;
       }
 
-      // ARC Testnet does not have Multicall3 deployed, so we use Promise.all
-      // Fire all read queries simultaneously in parallel for instant execution
-      const fetchMarketData = async (m: any) => {
-        const [followRes, fadeRes, claimedRes] = await Promise.allSettled([
-          publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'followStakes', args: [m.marketId, address] }),
-          publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'fadeStakes', args: [m.marketId, address] }),
-          publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'claimed', args: [m.marketId, address] }),
-        ]);
-
-        const followRaw = followRes.status === 'fulfilled' ? (followRes.value as bigint) : 0n;
-        const fadeRaw   = fadeRes.status   === 'fulfilled' ? (fadeRes.value   as bigint) : 0n;
-        const isClaimed = claimedRes.status === 'fulfilled' ? (claimedRes.value as boolean) : false;
-
-        return { followRaw, fadeRaw, isClaimed };
-      };
-
-      const results = await Promise.all(markets.map(fetchMarketData));
+      const marketEntries = await Promise.all(Array.from(userStakes.entries()).map(async ([marketId, stake]) => {
+        const raw = await publicClient.readContract({
+          address: ARCSIGNAL_ADDRESS,
+          abi: ARCSIGNAL_ABI,
+          functionName: 'getMarket',
+          args: [marketId],
+        }) as {
+          marketId: string; category: string; question: string; resolutionTime: bigint;
+          followPool: bigint; fadePool: bigint; resolved: boolean; outcome: number;
+        };
+        return { raw, stake };
+      }));
 
       const newPositions: Position[] = [];
+      for (const { raw: data, stake } of marketEntries) {
+        const market = {
+          marketId: data.marketId,
+          category: data.category === 'FOOTBALL' ? 'FOOTBALL' : 'CRYPTO',
+          question: data.question,
+          resolutionTime: Number(data.resolutionTime),
+          followPool: data.followPool,
+          fadePool: data.fadePool,
+          resolved: data.resolved,
+          outcome: data.outcome === 1 ? 'FOLLOW' : data.outcome === 2 ? 'FADE' : 'PENDING',
+          status: data.resolved ? 'RESOLVED' : 'ACTIVE',
+        } as Market;
 
-      markets.forEach((market, i) => {
-        const { followRaw, fadeRaw, isClaimed } = results[i];
-
-        const addPosition = (side: 0 | 1, stakeRaw: bigint) => {
+        const winningSide = data.outcome === 1 ? 0 : data.outcome === 2 ? 1 : -1;
+        const sides: Array<[0 | 1, bigint]> = [[0, stake.follow], [1, stake.fade]];
+        for (const [side, stakeRaw] of sides) {
+          if (stakeRaw === 0n) continue;
           const stakeUsdc = Number(formatUnits(stakeRaw, 6));
-          const isResolved = market.resolved;
-          const userSide = side === 0 ? 'FOLLOW' : 'FADE';
-          
-          let userWon: boolean | null = null;
+          const isResolved = data.resolved;
+          const userWon = isResolved && winningSide >= 0 ? side === winningSide : null;
           let payout = 0;
           let netPnl = 0;
 
-          if (isResolved) {
-            userWon = (market.outcome === 'FOLLOW' && userSide === 'FOLLOW') ||
-                      (market.outcome === 'FADE' && userSide === 'FADE');
-
-            if (userWon) {
-              const followPoolUsdc = typeof market.followPool === 'bigint' 
-                ? Number(formatUnits(market.followPool, 6)) 
-                : Number(market.followPool || 0);
-              const fadePoolUsdc = typeof market.fadePool === 'bigint' 
-                ? Number(formatUnits(market.fadePool, 6)) 
-                : Number(market.fadePool || 0);
-              
-              const winPool  = userSide === 'FOLLOW' ? followPoolUsdc : fadePoolUsdc;
-              const losePool = userSide === 'FOLLOW' ? fadePoolUsdc   : followPoolUsdc;
-              
-              if (winPool > 0) {
-                payout = stakeUsdc + (stakeUsdc * losePool) / winPool;
-                netPnl = payout - stakeUsdc;
-              }
-            } else {
-              netPnl = -stakeUsdc;
-            }
+          if (isResolved && userWon) {
+            const winPool = winningSide === 0 ? data.followPool : data.fadePool;
+            const losePool = winningSide === 0 ? data.fadePool : data.followPool;
+            payout = stakeUsdc + (stakeUsdc * Number(losePool)) / Number(winPool || 1n);
+            netPnl = payout - stakeUsdc;
+          } else if (isResolved && userWon === false) {
+            netPnl = -stakeUsdc;
           }
 
-          // We'll preserve outcome as a numeric code just in case other parts of the UI rely on it (though we just refactored it out of use mostly)
-          const outcome = isResolved ? (market.outcome === 'FOLLOW' ? 1 : market.outcome === 'FADE' ? 2 : 0) : 0;
+          let claimed = false;
+          if (isResolved && userWon) {
+            claimed = await publicClient.readContract({
+              address: ARCSIGNAL_ADDRESS,
+              abi: ARCSIGNAL_ABI,
+              functionName: 'claimed',
+              args: [data.marketId, address],
+            }) as boolean;
+          }
 
-          newPositions.push({ market, side, stakeRaw, stakeUsdc, claimed: isClaimed, isResolved, outcome, userWon, payout, netPnl });
-        };
-
-        if (followRaw > 0n) addPosition(0, followRaw);
-        if (fadeRaw   > 0n) addPosition(1, fadeRaw);
-      });
+          newPositions.push({
+            market, side, stakeRaw, stakeUsdc, claimed,
+            isResolved, outcome: data.outcome, userWon, payout, netPnl,
+          });
+        }
+      }
 
       setPositions(newPositions);
     } catch (err) {
