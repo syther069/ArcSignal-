@@ -33,21 +33,38 @@ interface AnalyticsClientProps {
   markets?: any[];
 }
 
-const StatCardCustom = React.memo(function StatCardCustom({ title, value, subtext, icon, emptyMsg }: any) {
+const StatCardCustom = React.memo(function StatCardCustom({ title, value, subtext, icon, emptyMsg, accent }: any) {
+  const accentColor = accent?.color || '#ddb7ff';
+  const accentBg = accent?.bg || 'rgba(221,183,255,0.08)';
   return (
-    <div className="bg-surface-charcoal border border-border-subtle p-6 relative overflow-hidden flex flex-col h-full rounded">
-      <div className="absolute top-4 right-4 opacity-5 text-[64px] material-symbols-outlined pointer-events-none">
-        {icon}
-      </div>
-      <div className="text-text-muted font-headline-md mb-4">{title}</div>
-      {value === null || value === undefined || value === 0 || value === '0 USDC' ? (
-        <div className="text-text-muted font-code-sm mt-auto">{emptyMsg}</div>
-      ) : (
-        <div className="mt-auto">
-          <div className="text-primary font-code-sm text-3xl mb-1">{value}</div>
-          {subtext && <div className="text-text-muted font-label-caps">{subtext}</div>}
+    <div
+      className="bg-surface-charcoal border border-border-subtle relative overflow-hidden flex flex-col h-full rounded"
+      style={{ borderTop: `2px solid ${accentColor}` }}
+    >
+      {/* Top accent bar is via borderTop above */}
+      <div className="p-5 flex flex-col h-full">
+        {/* Header row */}
+        <div className="flex items-start justify-between mb-auto">
+          <span className="stat-card-title">{title}</span>
+          <span
+            className="material-symbols-outlined stat-card-icon"
+            style={{ color: accentColor, background: accentBg }}
+          >
+            {icon}
+          </span>
         </div>
-      )}
+        {/* Value */}
+        <div className="mt-4">
+          {value === null || value === undefined || value === 0 || value === '0 USDC' ? (
+            <div className="stat-card-empty">{emptyMsg}</div>
+          ) : (
+            <>
+              <div className="stat-card-value" style={{ color: accentColor }}>{value}</div>
+              {subtext && <div className="stat-card-subtext">{subtext}</div>}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 });
@@ -134,6 +151,52 @@ export default function AnalyticsClient({
         .font-label-caps { font-family: var(--font-inter), sans-serif; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
         .font-headline-md { font-family: var(--font-hanken), sans-serif; font-size: 1.125rem; font-weight: 700; }
         .font-headline-lg { font-family: var(--font-hanken), sans-serif; font-size: 1.5rem; font-weight: 700; }
+
+        /* Stat card system */
+        .stat-card-title {
+          font-family: var(--font-inter), sans-serif;
+          font-size: 0.72rem;
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          color: #64748b;
+        }
+        .stat-card-icon {
+          font-size: 16px;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 6px;
+          font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+          flex-shrink: 0;
+          line-height: 1;
+          padding: 0;
+          text-align: center;
+        }
+        .stat-card-value {
+          font-family: var(--font-jetbrains-mono), monospace;
+          font-size: 2rem;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          line-height: 1;
+        }
+        .stat-card-subtext {
+          font-family: var(--font-inter), sans-serif;
+          font-size: 0.7rem;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: #475569;
+          margin-top: 6px;
+        }
+        .stat-card-empty {
+          font-family: var(--font-jetbrains-mono), monospace;
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #334155;
+          letter-spacing: -0.02em;
+        }
       `}} />
       
       <Sidebar />
@@ -143,30 +206,34 @@ export default function AnalyticsClient({
         
         {/* Section 1: Stat Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 h-[160px]">
-          <StatCardCustom 
-            title="Total Volume Staked" 
-            value={totalStakedUsdc ? `${totalStakedUsdc} USDC` : null} 
-            emptyMsg="No stakes yet" 
-            icon="monitoring" 
+          <StatCardCustom
+            title="Total Volume Staked"
+            value={totalStakedUsdc ? `${totalStakedUsdc} USDC` : null}
+            emptyMsg="—"
+            icon="monitoring"
+            accent={{ color: '#c4b5fd', bg: 'rgba(196,181,253,0.09)' }}
           />
-          <StatCardCustom 
-            title="Active Markets" 
-            value={pendingCount} 
-            subtext={`of ${totalMarkets} total`} 
-            icon="query_stats" 
-            emptyMsg="0" 
+          <StatCardCustom
+            title="Active Markets"
+            value={pendingCount}
+            subtext={`of ${totalMarkets} total`}
+            icon="query_stats"
+            emptyMsg="—"
+            accent={{ color: '#4fdbc8', bg: 'rgba(79,219,200,0.09)' }}
           />
-          <StatCardCustom 
-            title="AI Win Rate" 
-            value={aiAccuracy !== null ? `${aiAccuracy}%` : null} 
-            emptyMsg="Pending first resolution" 
-            icon="psychology" 
+          <StatCardCustom
+            title="AI Win Rate"
+            value={aiAccuracy !== null ? `${aiAccuracy}%` : null}
+            emptyMsg="—"
+            icon="psychology"
+            accent={{ color: '#fbbf24', bg: 'rgba(251,191,36,0.09)' }}
           />
-          <StatCardCustom 
-            title="Markets Resolved" 
-            value={resolvedCount} 
-            emptyMsg="0" 
-            icon="done_all" 
+          <StatCardCustom
+            title="Markets Resolved"
+            value={resolvedCount}
+            emptyMsg="—"
+            icon="done_all"
+            accent={{ color: '#86efac', bg: 'rgba(134,239,172,0.09)' }}
           />
         </div>
 
