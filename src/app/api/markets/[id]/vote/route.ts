@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { clearMarketCache } from '@/lib/markets';
 import { revalidatePath } from 'next/cache';
-import { publicClient, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
-import { parseAbiItem, type Address } from 'viem';
+import { publicClient, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import { decodeEventLog, type Address } from 'viem';
+import { getSql } from '@/lib/db';
 
 export async function POST(
   req: Request,
@@ -59,6 +60,80 @@ export async function POST(
 
     if (!receipt.logs || receipt.logs.length === 0) {
       return NextResponse.json({ success: false, error: 'No event logs found in transaction receipt' }, { status: 400 });
+    }
+
+    // The background indexer may be behind by millions of blocks. Index this
+    // verified stake immediately so the trader's portfolio is available as
+    // soon as the transaction is confirmed. Database failures must not turn a
+    // successful on-chain trade into a failed UI confirmation.
+    try {
+      const stakedLog = receipt.logs.find((log) => {
+        try {
+          const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: log.data, topics: log.topics });
+          if (decoded.eventName !== 'Staked') return false;
+          const args = decoded.args as { marketId?: string; user?: string };
+          return args.marketId === marketId && args.user?.toLowerCase() === walletAddress.toLowerCase();
+        } catch {
+          return false;
+        }
+      });
+
+      if (!stakedLog) {
+        return NextResponse.json({ success: false, error: 'Verified transaction does not contain the requested stake event' }, { status: 400 });
+      }
+
+      const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: stakedLog.data, topics: stakedLog.topics });
+      const args = decoded.args as { marketId: string; user: Address; side: number; amount: bigint };
+      const sql = getSql();
+      const blockNumber = receipt.blockNumber;
+      const transactionHash = receipt.transactionHash;
+      const logIndex = Number(stakedLog.logIndex ?? 0n);
+
+      const market = await publicClient.readContract({
+        address: ARCSIGNAL_ADDRESS,
+        abi: ARCSIGNAL_ABI,
+        functionName: 'getMarket',
+        args: [marketId],
+      }) as {
+        marketId: string; category: string; question: string; analysisJson: string;
+        resolutionTime: bigint; followPool: bigint; fadePool: bigint; resolved: boolean; outcome: number;
+      };
+
+      await sql`
+        insert into markets_index
+          (market_id, category, question, analysis_json, resolution_time, follow_pool, fade_pool, resolved, outcome, updated_block)
+        values
+          (${market.marketId}, ${market.category}, ${market.question}, ${market.analysisJson || null}, ${market.resolutionTime}, ${market.followPool}, ${market.fadePool}, ${market.resolved}, ${market.outcome}, ${blockNumber})
+        on conflict (market_id) do update set
+          category = excluded.category,
+          question = excluded.question,
+          analysis_json = excluded.analysis_json,
+          resolution_time = excluded.resolution_time,
+          follow_pool = excluded.follow_pool,
+          fade_pool = excluded.fade_pool,
+          resolved = excluded.resolved,
+          outcome = excluded.outcome,
+          updated_block = excluded.updated_block,
+          updated_at = now()
+      `;
+
+      await sql`
+        insert into indexed_events (transaction_hash, log_index, event_name, block_number)
+        values (${transactionHash}, ${logIndex}, 'Staked', ${blockNumber})
+        on conflict (transaction_hash, log_index) do nothing
+      `;
+
+      await sql`
+        insert into positions_index
+          (market_id, wallet_address, side, amount, first_staked_block, last_staked_block)
+        values
+          (${args.marketId}, ${args.user.toLowerCase()}, ${Number(args.side)}, ${args.amount}, ${blockNumber}, ${blockNumber})
+        on conflict (market_id, wallet_address, side) do update set
+          amount = positions_index.amount + excluded.amount,
+          last_staked_block = excluded.last_staked_block
+      `;
+    } catch (indexError) {
+      console.warn('Immediate portfolio indexing failed; background indexer will retry:', indexError);
     }
 
     // Clear the memory cache in the Node process

@@ -8,8 +8,10 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 const RPC_URL = process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network';
-const CHUNK_SIZE = BigInt(process.env.INDEX_CHUNK_SIZE ?? '500');
-const MAX_CHUNKS_PER_RUN = Number(process.env.INDEX_MAX_CHUNKS_PER_RUN ?? 4);
+// Keep each request moderate for ARC RPC, while allowing the external cron to
+// make useful progress during the initial historical catch-up.
+const CHUNK_SIZE = BigInt(process.env.INDEX_CHUNK_SIZE ?? '2000');
+const MAX_CHUNKS_PER_RUN = Number(process.env.INDEX_MAX_CHUNKS_PER_RUN ?? 8);
 
 const publicClient = createPublicClient({
   chain: arcTestnet,
@@ -135,7 +137,7 @@ async function sync(req: Request) {
     `;
       cursor = end + 1n;
       chunksProcessed++;
-      await sleep(250);
+      await sleep(200);
     }
 
     for (const marketId of changedMarkets) {

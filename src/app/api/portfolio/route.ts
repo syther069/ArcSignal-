@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
+import { publicClient } from '@/lib/contracts';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +34,23 @@ export async function GET(req: Request) {
       where lower(p.wallet_address) = lower(${address}) and p.amount > 0
       order by p.last_staked_block desc nulls last
     `;
+
+    // An empty database result is not authoritative while the event indexer is
+    // still catching up. Signal the client to use its bounded on-chain
+    // fallback instead of rendering an empty portfolio.
+    const [stateRows, latestBlock] = await Promise.all([
+      sql`select last_block from sync_state where id = 'arc-main' limit 1`,
+      publicClient.getBlockNumber(),
+    ]);
+    const lastScannedBlock = stateRows.length > 0 ? BigInt(String(stateRows[0].last_block)) : 0n;
+    const indexerLagging = latestBlock > lastScannedBlock + 1_000n;
+    if (rows.length === 0 && indexerLagging) {
+      return NextResponse.json({
+        error: 'Portfolio indexer is catching up',
+        lastScannedBlock: lastScannedBlock.toString(),
+        latestBlock: latestBlock.toString(),
+      }, { status: 503 });
+    }
 
     return NextResponse.json({
       source: 'neon',

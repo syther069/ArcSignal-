@@ -41,7 +41,9 @@ type ChainMarket = {
 const STAKED_EVENT = parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)');
 const POSITION_CACHE_PREFIX = 'arcsignal:portfolio:market-ids:';
 const BLOCK_CACHE_PREFIX = 'arcsignal:portfolio:last-block:';
-const LOG_CHUNK_SIZE = 50_000n;
+const CONTRACT_DEPLOY_BLOCK = 50_012_000n;
+const LOG_CHUNK_SIZE = 2_000n;
+const MAX_FALLBACK_BLOCKS = 100_000n;
 
 function cachedMarketIds(address: string): string[] {
   try {
@@ -106,21 +108,23 @@ export default function PortfolioClient() {
           isResolved: boolean; outcome: number; userWon: boolean | null; payout: number; netPnl: number;
           market: { marketId: string; category: string; question: string; resolutionTime: number; followPool: string; fadePool: string; resolved: boolean; outcome: number };
         }> };
-        setPositions(indexed.positions.map((position) => ({
-          ...position,
-          stakeRaw: BigInt(position.stakeRaw),
-          market: {
-            ...position.market,
-            category: position.market.category === 'FOOTBALL' ? 'FOOTBALL' : 'CRYPTO',
-            followPool: BigInt(position.market.followPool),
-            fadePool: BigInt(position.market.fadePool),
-            outcome: position.market.outcome === 1 ? 'FOLLOW' : position.market.outcome === 2 ? 'FADE' : 'PENDING',
-            status: position.market.resolved ? 'RESOLVED' : 'ACTIVE',
-          },
-        } as Position)));
-        hasLoadedRef.current = true;
-        setLoading(false);
-        return;
+        if (indexed.positions.length > 0) {
+          setPositions(indexed.positions.map((position) => ({
+            ...position,
+            stakeRaw: BigInt(position.stakeRaw),
+            market: {
+              ...position.market,
+              category: position.market.category === 'FOOTBALL' ? 'FOOTBALL' : 'CRYPTO',
+              followPool: BigInt(position.market.followPool),
+              fadePool: BigInt(position.market.fadePool),
+              outcome: position.market.outcome === 1 ? 'FOLLOW' : position.market.outcome === 2 ? 'FADE' : 'PENDING',
+              status: position.market.resolved ? 'RESOLVED' : 'ACTIVE',
+            },
+          } as Position)));
+          hasLoadedRef.current = true;
+          setLoading(false);
+          return;
+        }
       }
     } catch (error) {
       console.warn('Indexed portfolio unavailable; using chain fallback.', error);
@@ -198,7 +202,10 @@ export default function PortfolioClient() {
 
       const latestBlock = await publicClient.getBlockNumber();
       const lastBlock = cachedLastBlock(address);
-      let fromBlock = lastBlock === null ? 0n : lastBlock + 1n;
+      let fromBlock = lastBlock === null
+        ? (latestBlock > MAX_FALLBACK_BLOCKS ? latestBlock - MAX_FALLBACK_BLOCKS + 1n : CONTRACT_DEPLOY_BLOCK)
+        : lastBlock + 1n;
+      if (fromBlock < CONTRACT_DEPLOY_BLOCK) fromBlock = CONTRACT_DEPLOY_BLOCK;
 
       if (fromBlock <= latestBlock) {
         const discovered = new Set(cachedIds);
@@ -228,6 +235,18 @@ export default function PortfolioClient() {
 
   useEffect(() => {
     fetchPortfolio();
+  }, [fetchPortfolio]);
+
+  useEffect(() => {
+    const refreshOnFocus = () => {
+      if (document.visibilityState === 'visible') void fetchPortfolio();
+    };
+    window.addEventListener('focus', refreshOnFocus);
+    document.addEventListener('visibilitychange', refreshOnFocus);
+    return () => {
+      window.removeEventListener('focus', refreshOnFocus);
+      document.removeEventListener('visibilitychange', refreshOnFocus);
+    };
   }, [fetchPortfolio]);
 
   // ─── Claim Handler ──────────────────────────────────────────────────────────
