@@ -17,13 +17,12 @@ interface MarketsClientProps {
 
 const TIMEFRAME_META: Record<string, { label: string; description: string; color: string; border: string; bg: string }> = {
   '5m': { label: '5 Minutes', description: 'Ultra-short price momentum', color: 'text-[#4fdbc8]', border: 'border-[#4fdbc8]/40', bg: 'bg-[#4fdbc8]/10' },
-  '15m': { label: '15 Minutes', description: 'Short-term price action', color: 'text-[#7dd3fc]', border: 'border-[#7dd3fc]/40', bg: 'bg-[#7dd3fc]/10' },
   '1h': { label: '1 Hour', description: 'Hourly trend prediction', color: 'text-[#ddb7ff]', border: 'border-[#ddb7ff]/40', bg: 'bg-[#ddb7ff]/10' },
   '4h': { label: '4 Hours', description: 'Mid-session momentum', color: 'text-[#fbbf24]', border: 'border-[#fbbf24]/40', bg: 'bg-[#fbbf24]/10' },
   '24h': { label: '24 Hours', description: 'Daily close prediction', color: 'text-[#fb923c]', border: 'border-[#fb923c]/40', bg: 'bg-[#fb923c]/10' },
 };
 
-const TIMEFRAMES = ['5m', '15m', '1h', '4h', '24h'];
+const TIMEFRAMES = ['5m', '1h', '4h', '24h'];
 
 export default function MarketsClient({ markets }: MarketsClientProps) {
   const [selectedCategory, setSelectedCategory] = useState('All Markets');

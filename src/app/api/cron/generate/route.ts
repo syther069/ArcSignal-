@@ -63,7 +63,6 @@ export async function POST(req: Request) {
 
     const allTimeframes = [
       { label: '5m',  minutes: 5 },
-      { label: '15m', minutes: 15 },
       { label: '1h',  minutes: 60 },
       { label: '4h',  minutes: 240 },
       { label: '24h', minutes: 1440 },
