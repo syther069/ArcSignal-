@@ -31,6 +31,10 @@ export const metadata: Metadata = {
   description: 'AI-powered prediction markets on ARC Network',
 };
 
+export const viewport = {
+  themeColor: '#131313',
+};
+
 import { Toaster } from 'react-hot-toast';
 
 export default function RootLayout({
@@ -43,6 +47,12 @@ export default function RootLayout({
       lang="en"
       className={`dark ${jetBrainsMono.variable} ${inter.variable} ${hankenGrotesk.variable}`}
     >
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        />
+      </head>
       <body>
         <Web3Provider>
           <NotificationManager />
