@@ -2,10 +2,20 @@ import AnalyticsClient from './AnalyticsClient';
 import { getMarketsFromChain, serializeMarket } from '@/lib/markets';
 import { toUiMarket } from '@/lib/ui-market';
 import { publicClient, ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
+import { getIndexedAnalytics } from '@/lib/indexed-analytics';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AnalyticsPage() {
+  try {
+    const indexed = await getIndexedAnalytics();
+    if (indexed) {
+      return <AnalyticsClient {...indexed} />;
+    }
+  } catch (error) {
+    console.warn('Indexed analytics unavailable; using chain fallback.', error);
+  }
+
   let markets: any[] = [];
 
   try {

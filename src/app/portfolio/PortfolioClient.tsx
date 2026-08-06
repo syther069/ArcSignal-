@@ -95,6 +95,37 @@ export default function PortfolioClient() {
       setLoading(false);
       return;
     }
+
+    // Neon is the fast read model. Keep the chain reader below as a fallback
+    // while the indexer is being installed or catching up.
+    try {
+      const indexedResponse = await fetch(`/api/portfolio?address=${address}`, { cache: 'no-store' });
+      if (indexedResponse.ok) {
+        const indexed = await indexedResponse.json() as { positions: Array<{
+          marketId: string; side: 0 | 1; stakeRaw: string; stakeUsdc: number; claimed: boolean;
+          isResolved: boolean; outcome: number; userWon: boolean | null; payout: number; netPnl: number;
+          market: { marketId: string; category: string; question: string; resolutionTime: number; followPool: string; fadePool: string; resolved: boolean; outcome: number };
+        }> };
+        setPositions(indexed.positions.map((position) => ({
+          ...position,
+          stakeRaw: BigInt(position.stakeRaw),
+          market: {
+            ...position.market,
+            category: position.market.category === 'FOOTBALL' ? 'FOOTBALL' : 'CRYPTO',
+            followPool: BigInt(position.market.followPool),
+            fadePool: BigInt(position.market.fadePool),
+            outcome: position.market.outcome === 1 ? 'FOLLOW' : position.market.outcome === 2 ? 'FADE' : 'PENDING',
+            status: position.market.resolved ? 'RESOLVED' : 'ACTIVE',
+          },
+        } as Position)));
+        hasLoadedRef.current = true;
+        setLoading(false);
+        return;
+      }
+    } catch (error) {
+      console.warn('Indexed portfolio unavailable; using chain fallback.', error);
+    }
+
     const cachedIds = cachedMarketIds(address);
     // Do not blank already-loaded data during background refreshes.
     if (!hasLoadedRef.current) setLoading(true);
