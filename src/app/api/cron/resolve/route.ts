@@ -26,19 +26,21 @@ const resolvePublicClient = createPublicClient({
   }),
 });
 
-const RESOLUTION_SCAN_LIMIT = Number(process.env.RESOLUTION_SCAN_LIMIT ?? 160);
+const RESOLUTION_SCAN_LIMIT = Number(process.env.RESOLUTION_SCAN_LIMIT ?? 40);
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function readWithRetry<T>(label: string, read: () => Promise<T>): Promise<T> {
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
     try {
       return await read();
     } catch (err) {
-      if (attempt === 3) throw err;
-      await sleep(250 * attempt);
+      if (attempt === 5) throw err;
+      const message = err instanceof Error ? err.message : String(err);
+      const isRateLimit = message.includes('429') || message.toLowerCase().includes('rate limit');
+      await sleep(isRateLimit ? 1000 * attempt * attempt : 300 * attempt);
     }
   }
 
@@ -88,7 +90,7 @@ export async function POST(req: Request) {
           args: [index],
         }) as Promise<string>);
         targetIds.push(marketId);
-        await sleep(75);
+        await sleep(250);
       } catch (err) {
         errors.push(`index ${index}: failed to read market id - ${err instanceof Error ? err.message : String(err)}`);
       }
@@ -144,6 +146,7 @@ export async function POST(req: Request) {
         args: [marketId],
       }));
       market = raw as typeof market;
+      await sleep(250);
     } catch (err) {
       errors.push(`${marketId}: failed to read market — ${err instanceof Error ? err.message : String(err)}`);
       continue;
