@@ -13,6 +13,7 @@ const CONTRACT_ADDRESS = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as Address
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 function resolutionTimestamp(hoursFromNow: number): bigint {
   return BigInt(Math.floor(Date.now() / 1000) + hoursFromNow * 3600);

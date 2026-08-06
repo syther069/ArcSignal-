@@ -7,6 +7,7 @@ import { fetchCompletedFixtures } from '@/lib/apifootball';
 import type { Address } from 'viem';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 // Always use the hardcoded correct deployed contract address
 const CONTRACT_ADDRESS = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as Address;
