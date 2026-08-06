@@ -24,11 +24,22 @@ export default function LandingPage() {
 
   return (
     <main className="min-h-screen bg-background pt-32 pb-16 px-6 lg:px-12 flex flex-col items-center">
-      {/* Network Status Badge */}
-      <div className="mb-10 inline-flex items-center gap-2 bg-surface-container-highest px-3 py-1 rounded-full border border-white/5">
-        <div className="w-2 h-2 rounded-full bg-tertiary"></div>
-        <span className="text-[10px] font-mono font-bold text-tertiary uppercase tracking-widest">Network Status: Live</span>
-      </div>
+      {/* Live Data Ticker Header */}
+      <Link
+        href="/markets"
+        className="mb-8 inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-[#1c1b1b] border border-[#1e293b] hover:border-[#4fdbc8]/40 transition-all text-xs font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8] group"
+      >
+        <span className="flex items-center gap-1.5 text-[#4fdbc8] font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#4fdbc8] animate-pulse" />
+          {stats.activeMarkets > 0 ? `${stats.activeMarkets} ACTIVE MARKETS` : 'LIVE PROTOCOL'}
+        </span>
+        <span className="text-[#334155]">•</span>
+        <span>{stats.totalVolume > 0 ? `${stats.totalVolume.toLocaleString()} USDC VOLUME` : 'PARI-MUTUEL POOLS'}</span>
+        <span className="text-[#334155]">•</span>
+        <span className="text-[#ddb7ff] group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
+          EXPLORE <span className="text-xs">→</span>
+        </span>
+      </Link>
 
       {/* Hero Header */}
       <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-center text-on-surface max-w-4xl tracking-tight leading-tight mb-6">
