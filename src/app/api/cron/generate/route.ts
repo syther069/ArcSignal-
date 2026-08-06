@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       .filter((coin): coin is NonNullable<typeof coin> => Boolean(coin));
 
     const url = new URL(req.url);
-    const onlyTimeframe = url.searchParams.get('timeframe');
+    const onlyTimeframe = url.searchParams.get('timeframe') || '5m';
 
     const allTimeframes = [
       { label: '5m',  minutes: 5 },
@@ -69,9 +69,9 @@ export async function POST(req: Request) {
       { label: '24h', minutes: 1440 },
     ];
 
-    const timeframes = (onlyTimeframe && onlyTimeframe !== 'all')
-      ? allTimeframes.filter(t => t.label === onlyTimeframe)
-      : allTimeframes;
+    const timeframes = onlyTimeframe === 'all'
+      ? allTimeframes
+      : allTimeframes.filter(t => t.label === onlyTimeframe);
     
     totalCombinations = selected.length * timeframes.length;
 
