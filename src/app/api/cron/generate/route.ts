@@ -73,7 +73,14 @@ export async function POST(req: Request) {
       .filter((coin): coin is NonNullable<typeof coin> => Boolean(coin));
 
     const url = new URL(req.url);
-    const onlyTimeframe = url.searchParams.get('timeframe') || '5m';
+    let onlyTimeframe = url.searchParams.get('timeframe');
+    if (!onlyTimeframe) {
+      try {
+        const body = await req.clone().json();
+        onlyTimeframe = body?.timeframe;
+      } catch {}
+    }
+    if (!onlyTimeframe) onlyTimeframe = '5m';
 
     const allTimeframes = [
       { label: '5m',  minutes: 5 },
