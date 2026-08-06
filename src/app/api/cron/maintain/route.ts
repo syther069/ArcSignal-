@@ -11,16 +11,19 @@ export async function POST(req: Request) {
   }
 
   try {
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : (process.env.NEXT_PUBLIC_BASE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
+    const baseUrl = new URL(req.url).origin;
 
     const resolveRes = await fetch(`${baseUrl}/api/cron/resolve`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` }
     });
     const resolveText = await resolveRes.text();
-    const resolveData = resolveText ? JSON.parse(resolveText) : null;
+    let resolveData: unknown = null;
+    try {
+      resolveData = resolveText ? JSON.parse(resolveText) : null;
+    } catch {
+      resolveData = { raw: resolveText.slice(0, 500) };
+    }
 
     if (!resolveRes.ok) {
       return NextResponse.json({
