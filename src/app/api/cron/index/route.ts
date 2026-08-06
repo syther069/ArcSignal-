@@ -53,8 +53,10 @@ async function sync(req: Request) {
   try {
     const sql = getSql();
     const stateRows = await sql`select last_block from sync_state where id = 'arc-main' limit 1`;
-    const configuredStart = BigInt(process.env.ARCSIGNAL_DEPLOYMENT_BLOCK ?? '0');
-    const lastBlock = stateRows.length > 0 ? BigInt(String(stateRows[0].last_block)) : configuredStart - 1n;
+    const configuredStart = BigInt(process.env.ARCSIGNAL_DEPLOYMENT_BLOCK ?? '50012000');
+    const minimumLastBlock = configuredStart - 1n;
+    const savedLastBlock = stateRows.length > 0 ? BigInt(String(stateRows[0].last_block)) : minimumLastBlock;
+    const lastBlock = savedLastBlock < minimumLastBlock ? minimumLastBlock : savedLastBlock;
     const latestBlock = await withRpcBackoff('getBlockNumber', () => publicClient.getBlockNumber());
 
     if (lastBlock >= latestBlock) {
