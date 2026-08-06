@@ -82,7 +82,6 @@ export default function ConnectWalletButton() {
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           className="flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-[#1c1b1b] border border-[#3a3939] hover:border-[#ddb7ff]/50 transition-all duration-200 shadow-lg shadow-black/20 focus:outline-none focus:ring-2 focus:ring-[#ddb7ff]/50 focus:ring-offset-2 focus:ring-offset-[#131313]"
         >
-          <div className="w-2 h-2 rounded-full bg-[#4fdbc8] shrink-0" />
           <span className="text-[#e5e2e1] text-sm font-[family-name:var(--font-inter)] font-semibold">
             {shortAddress}
           </span>
@@ -109,7 +108,6 @@ export default function ConnectWalletButton() {
             <div className="p-3 border-b border-[#3a3939]">
               <span className="text-[#94a3b8] text-[10px] uppercase tracking-wider block mb-1">Network</span>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#4fdbc8] shrink-0" />
                 <span className="text-[#e5e2e1] text-sm font-medium">Arc Testnet</span>
               </div>
             </div>
