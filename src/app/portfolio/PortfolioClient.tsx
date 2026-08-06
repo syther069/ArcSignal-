@@ -289,15 +289,15 @@ export default function PortfolioClient() {
 
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-screen bg-[#0d0d0d] text-[#e5e2e1]">
+    <div className="flex min-h-screen bg-[#131313] text-[#e5e2e1]">
       <Sidebar />
       <main className="lg:ml-[264px] pt-24 pb-20 flex-1 min-w-0">
         <div className="max-w-[1440px] mx-auto w-full px-4 md:px-8">
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="font-[family-name:var(--font-hanken)] text-3xl font-bold text-white mb-1">Portfolio</h1>
-          <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#8e8e8e] tracking-widest uppercase">
+          <h1 className="font-[family-name:var(--font-hanken)] text-3xl font-bold text-[#ddb7ff] mb-1">Portfolio</h1>
+          <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#94a3b8] tracking-widest uppercase">
             On-Chain Positions · {address ? `${address.slice(0,6)}…${address.slice(-4)}` : 'Not connected'}
           </p>
         </div>
@@ -305,17 +305,17 @@ export default function PortfolioClient() {
         {!address ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
             <div className="w-16 h-16 rounded-full bg-[#1c1b1b] border border-[#3a3939] flex items-center justify-center">
-              <AlertCircle size={28} className="text-[#8e8e8e]" />
+              <AlertCircle size={28} className="text-[#94a3b8]" />
             </div>
             <p className="font-[family-name:var(--font-hanken)] text-lg text-white">Connect your wallet</p>
-            <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#8e8e8e]">to view your positions</p>
+            <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#94a3b8]">to view your positions</p>
           </div>
         ) : loading ? (
           <>
             {/* ── Stats Bar Skeleton ─────────────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                {Array.from({length: 4}).map((_, i) => (
-                 <div key={i} className="rounded-xl border border-[#3a3939] bg-[#1c1b1b] p-4 h-[84px] animate-pulse" />
+                 <div key={i} className="rounded-xl border border-[#3a3939] bg-[#1c1b1b] p-5 h-[100px] animate-pulse" />
                ))}
             </div>
 
@@ -335,35 +335,47 @@ export default function PortfolioClient() {
           </>
         ) : (
           <>
-            {/* ── Stats Bar ─────────────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-              <StatCard icon={<Coins size={18} />} label="Total Staked" value={`${stats.totalStaked.toFixed(2)} USDC`} />
-              <StatCard
-                icon={stats.totalPnl >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
-                label="Net P&L"
-                value={`${stats.totalPnl >= 0 ? '+' : ''}${stats.totalPnl.toFixed(2)} USDC`}
-                positive={stats.totalPnl >= 0}
-                negative={stats.totalPnl < 0}
+            {/* ── Stats Bar (Unified Analytics Design System) ─────────────────────────────────── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <StatCardCustom
+                title="Total Staked"
+                value={`${stats.totalStaked.toFixed(2)} USDC`}
+                icon={<Coins size={16} />}
+                accent={{ color: '#c4b5fd', bg: 'rgba(196,181,253,0.09)' }}
               />
-              <StatCard icon={<Trophy size={18} />} label="Win Rate" value={`${stats.winRate.toFixed(1)}%`} />
-              <StatCard
-                icon={<BarChart3 size={18} />}
-                label="Unclaimed"
+              <StatCardCustom
+                title="Net P&L"
+                value={`${stats.totalPnl >= 0 ? '+' : ''}${stats.totalPnl.toFixed(2)} USDC`}
+                icon={stats.totalPnl >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                accent={{
+                  color: stats.totalPnl >= 0 ? '#86efac' : '#ffb4ab',
+                  bg: stats.totalPnl >= 0 ? 'rgba(134,239,172,0.09)' : 'rgba(255,180,171,0.09)'
+                }}
+              />
+              <StatCardCustom
+                title="Win Rate"
+                value={`${stats.winRate.toFixed(1)}%`}
+                icon={<Trophy size={16} />}
+                accent={{ color: '#fbbf24', bg: 'rgba(251,191,36,0.09)' }}
+              />
+              <StatCardCustom
+                title="Unclaimed"
                 value={`${stats.unclaimed.toFixed(2)} USDC`}
-                highlight={stats.unclaimed > 0}
+                icon={<BarChart3 size={16} />}
+                accent={{ color: '#4fdbc8', bg: 'rgba(79,219,200,0.09)' }}
               />
             </div>
 
-            {/* ── Tabs ──────────────────────────────────────────────────────── */}
-            <div className="flex items-center gap-0 border border-[#3a3939] rounded-lg overflow-hidden mb-6 w-fit">
+            {/* ── Tabs (Unified Primary Palette) ──────────────────────────────────────── */}
+            <div className="flex items-center gap-0 border border-[#3a3939] rounded-lg overflow-hidden mb-6 w-fit bg-[#1c1b1b]">
               {(['open', 'resolved', 'all'] as Tab[]).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-5 py-2.5 font-[family-name:var(--font-jetbrains-mono)] text-xs uppercase tracking-widest transition-colors ${
+                  className={`px-5 py-2.5 font-[family-name:var(--font-jetbrains-mono)] text-xs uppercase tracking-widest transition-all ${
                     activeTab === tab
-                      ? 'bg-[#a855f7] text-white'
-                      : 'bg-transparent text-[#8e8e8e] hover:text-white hover:bg-white/5'
+                      ? 'bg-[#ddb7ff] text-[#0f172a] font-bold'
+                      : 'bg-transparent text-[#94a3b8] hover:text-white hover:bg-white/5'
                   }`}
                 >
                   {tab === 'open' ? `Open (${stats.openCount})` : tab === 'resolved' ? `Resolved (${stats.resolved})` : `All (${positions.length})`}
@@ -394,31 +406,38 @@ export default function PortfolioClient() {
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Unified StatCard Component ───────────────────────────────────────────────
 
-const StatCard = React.memo(function StatCard({ icon, label, value, positive, negative, highlight }: {
-  icon: React.ReactNode;
-  label: string;
+const StatCardCustom = React.memo(function StatCardCustom({
+  title,
+  value,
+  icon,
+  accent,
+}: {
+  title: string;
   value: string;
-  positive?: boolean;
-  negative?: boolean;
-  highlight?: boolean;
+  icon: React.ReactNode;
+  accent: { color: string; bg: string };
 }) {
   return (
-    <div className={`rounded-xl border p-4 ${
-      highlight ? 'border-[#a855f7]/50 bg-[#a855f7]/5 shadow-[0_0_20px_rgba(168,85,247,0.1)]' : 'border-[#3a3939] bg-[#131313]'
-    }`}>
-      <div className={`flex items-center gap-2 mb-2 text-xs font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest ${
-        highlight ? 'text-[#a855f7]' : 'text-[#8e8e8e]'
-      }`}>
-        {icon}
-        {label}
+    <div
+      className="bg-[#1c1b1b] border border-[#3a3939] relative overflow-hidden flex flex-col h-full rounded-xl p-5"
+      style={{ borderTop: `2px solid ${accent.color}` }}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <span className="font-[family-name:var(--font-inter)] text-[0.72rem] font-medium uppercase tracking-[0.1em] text-[#64748b]">
+          {title}
+        </span>
+        <span
+          className="w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0"
+          style={{ color: accent.color, backgroundColor: accent.bg }}
+        >
+          {icon}
+        </span>
       </div>
-      <p className={`font-[family-name:var(--font-jetbrains-mono)] font-bold text-lg ${
-        positive ? 'text-[#34d399]' : negative ? 'text-[#f87171]' : highlight ? 'text-[#a855f7]' : 'text-white'
-      }`}>
+      <div className="mt-auto font-[family-name:var(--font-jetbrains-mono)] text-2xl font-bold tracking-tight" style={{ color: accent.color }}>
         {value}
-      </p>
+      </div>
     </div>
   );
 });

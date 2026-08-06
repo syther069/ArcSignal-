@@ -363,14 +363,14 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
       
       {/* ─── LEFT COLUMN: IDENTITY ─── */}
       <aside className="w-full md:w-80 flex-shrink-0 flex flex-col gap-6">
-        <div className="bg-surface-charcoal border border-border-subtle rounded-2xl p-6 text-center">
+        <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-2xl p-6 text-center shadow-xl">
           
-          <div className="w-32 h-32 mx-auto rounded-full mb-4 overflow-hidden bg-surface-base border border-border-subtle flex items-center justify-center relative group">
+          <div className="w-32 h-32 mx-auto rounded-full mb-4 overflow-hidden bg-[#131313] border border-[#3a3939] flex items-center justify-center relative group">
             {avatarUrl ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
-              <span className="text-4xl text-primary font-headline-xl">{targetAddress.slice(2, 4).toUpperCase()}</span>
+              <span className="text-4xl text-[#ddb7ff] font-headline-xl">{targetAddress.slice(2, 4).toUpperCase()}</span>
             )}
           </div>
           
@@ -378,46 +378,47 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
             {username || 'Anonymous User'}
           </h1>
           
-          <div className="flex items-center justify-center gap-2 mb-4 text-text-muted">
+          <div className="flex items-center justify-center gap-2 mb-4 text-[#94a3b8]">
             <Wallet size={14} />
             <span className="font-code-sm">{fmt(targetAddress)}</span>
-            <button onClick={copyAddress} className="hover:text-primary transition-colors">
-              {copied ? <Check size={14} className="text-tertiary" /> : <Copy size={14} />}
+            <button onClick={copyAddress} className="hover:text-[#ddb7ff] transition-colors">
+              {copied ? <Check size={14} className="text-[#4fdbc8]" /> : <Copy size={14} />}
             </button>
           </div>
           
-          {bio && <p className="text-sm text-text-muted mb-6 leading-relaxed">{bio}</p>}
+          {bio && <p className="text-sm text-[#94a3b8] mb-6 leading-relaxed">{bio}</p>}
           
           {!isPublic && (
             <button
               onClick={handleEditClick}
-              className="w-full py-3 rounded-lg border border-border-subtle hover:bg-white/5 transition-colors text-sm font-[family-name:var(--font-inter)] font-semibold"
+              className="w-full py-3 rounded-xl bg-[#ddb7ff] text-[#0f172a] font-[family-name:var(--font-inter)] font-bold text-sm hover:bg-[#f0dbff] transition-all shadow-lg shadow-[#ddb7ff]/10 flex items-center justify-center gap-2"
             >
+              <Pencil size={15} />
               Edit Profile
             </button>
           )}
 
           {isPublic && (
-            <button className="w-full py-3 rounded-lg bg-[#ddb7ff] text-[#0f172a] font-[family-name:var(--font-inter)] font-semibold hover:opacity-90 transition-opacity">
+            <button className="w-full py-3 rounded-xl bg-[#ddb7ff] text-[#0f172a] font-[family-name:var(--font-inter)] font-bold text-sm hover:bg-[#f0dbff] transition-all shadow-lg shadow-[#ddb7ff]/10">
               Follow Operator
             </button>
           )}
 
-          <div className="mt-6 flex flex-col gap-2 border-t border-border-subtle pt-6 text-left">
+          <div className="mt-6 flex flex-col gap-2 border-t border-[#3a3939] pt-6 text-left">
             <div className="flex justify-between items-center text-sm">
-              <span className="text-text-muted">Win Rate</span>
+              <span className="text-[#94a3b8]">Win Rate</span>
               {loadingPositions ? (
-                <div className="h-4 w-12 bg-[#1c1b1b] rounded animate-pulse"></div>
+                <div className="h-4 w-12 bg-[#2a2929] rounded animate-pulse"></div>
               ) : (
-                <span className="font-code-sm text-tertiary">{stats.winRate.toFixed(1)}%</span>
+                <span className="font-code-sm text-[#fbbf24] font-bold">{stats.winRate.toFixed(1)}%</span>
               )}
             </div>
             <div className="flex justify-between items-center text-sm">
-              <span className="text-text-muted">Net P&L</span>
+              <span className="text-[#94a3b8]">Net P&L</span>
               {loadingPositions ? (
-                <div className="h-4 w-16 bg-[#1c1b1b] rounded animate-pulse"></div>
+                <div className="h-4 w-16 bg-[#2a2929] rounded animate-pulse"></div>
               ) : (
-                <span className={`font-code-sm ${stats.netProfit >= 0 ? 'text-tertiary' : 'text-error'}`}>
+                <span className={`font-code-sm font-bold ${stats.netProfit >= 0 ? 'text-[#86efac]' : 'text-[#ffb4ab]'}`}>
                   {stats.netProfit >= 0 ? '+' : ''}{stats.netProfit.toFixed(2)} USDC
                 </span>
               )}
@@ -431,13 +432,13 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
       <main className="flex-1 flex flex-col gap-6">
         
         {/* Tabs */}
-        <div className="flex items-center gap-6 border-b border-border-subtle pb-4">
+        <div className="flex items-center gap-6 border-b border-[#3a3939] pb-4">
           {['overview', 'positions', 'achievements'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
               className={`text-sm font-[family-name:var(--font-inter)] font-medium tracking-wide transition-colors pb-4 -mb-[17px] capitalize ${
-                activeTab === tab ? 'text-[#ddb7ff] border-b-2 border-[#ddb7ff]' : 'text-text-muted hover:text-white'
+                activeTab === tab ? 'text-[#ddb7ff] border-b-2 border-[#ddb7ff]' : 'text-[#94a3b8] hover:text-white'
               }`}
             >
               {tab}
@@ -450,25 +451,27 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {loadingPositions ? (
               <>
-                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl h-28 animate-pulse"></div>
-                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl h-28 animate-pulse"></div>
-                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl h-28 animate-pulse"></div>
+                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl h-[100px] animate-pulse"></div>
+                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl h-[100px] animate-pulse"></div>
+                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl h-[100px] animate-pulse"></div>
               </>
             ) : (
               <>
-                 <div className="bg-surface-charcoal border border-border-subtle rounded-xl p-6">
-                    <p className="text-text-muted text-xs font-label-caps mb-2">Total Staked</p>
-                    <p className="text-2xl font-code-sm">{stats.totalStaked.toLocaleString(undefined, {maximumFractionDigits:2})} USDC</p>
+                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl p-5 border-t-2 border-t-[#c4b5fd]">
+                    <p className="text-[#64748b] text-[0.72rem] font-medium uppercase tracking-[0.1em] mb-2">Total Staked</p>
+                    <p className="text-2xl font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#c4b5fd]">
+                      {stats.totalStaked.toLocaleString(undefined, {maximumFractionDigits:2})} USDC
+                    </p>
                  </div>
-                 <div className="bg-surface-charcoal border border-border-subtle rounded-xl p-6 border-t-2 border-t-tertiary">
-                    <p className="text-text-muted text-xs font-label-caps mb-2">Total P&L</p>
-                    <p className={`text-2xl font-code-sm ${stats.netProfit >= 0 ? 'text-tertiary' : 'text-error'}`}>
+                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl p-5 border-t-2" style={{ borderTopColor: stats.netProfit >= 0 ? '#86efac' : '#ffb4ab' }}>
+                    <p className="text-[#64748b] text-[0.72rem] font-medium uppercase tracking-[0.1em] mb-2">Total P&L</p>
+                    <p className={`text-2xl font-[family-name:var(--font-jetbrains-mono)] font-bold ${stats.netProfit >= 0 ? 'text-[#86efac]' : 'text-[#ffb4ab]'}`}>
                       {stats.netProfit >= 0 ? '+' : ''}{stats.netProfit.toLocaleString(undefined, {maximumFractionDigits:2})} USDC
                     </p>
                  </div>
-                 <div className="bg-surface-charcoal border border-border-subtle rounded-xl p-6">
-                    <p className="text-text-muted text-xs font-label-caps mb-2">Markets Entered</p>
-                    <p className="text-2xl font-code-sm text-primary">{stats.marketsEntered}</p>
+                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl p-5 border-t-2 border-t-[#fbbf24]">
+                    <p className="text-[#64748b] text-[0.72rem] font-medium uppercase tracking-[0.1em] mb-2">Markets Entered</p>
+                    <p className="text-2xl font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#fbbf24]">{stats.marketsEntered}</p>
                  </div>
               </>
             )}
@@ -476,11 +479,11 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
         )}
 
         {activeTab === 'positions' && (
-          <div className="bg-surface-charcoal border border-border-subtle rounded-xl overflow-hidden">
+          <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl overflow-hidden shadow-xl">
             {loadingPositions ? (
               <div className="p-6 space-y-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-[#1c1b1b] rounded-lg animate-pulse border border-[#3a3939]">
+                  <div key={i} className="flex items-center justify-between p-4 bg-[#131313] rounded-lg animate-pulse border border-[#3a3939]">
                     <div className="h-4 w-48 bg-[#2a2929] rounded"></div>
                     <div className="h-4 w-16 bg-[#2a2929] rounded"></div>
                     <div className="h-4 w-24 bg-[#2a2929] rounded"></div>
@@ -488,25 +491,25 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
                 ))}
               </div>
             ) : stakes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-4 text-center border border-border-subtle rounded-xl bg-surface-charcoal">
-                <Clock size={36} className="text-text-muted opacity-50" />
-                <p className="font-headline-lg text-lg text-primary">No positions found</p>
-                <p className="font-code-sm text-xs text-text-muted max-w-xs">This operator hasn&apos;t staked on any markets yet.</p>
-                <Link href="/markets" className="mt-2 px-5 py-2.5 rounded-lg bg-tertiary text-background font-label-caps text-xs font-bold tracking-widest uppercase hover:opacity-90 transition-opacity">
-                  Browse Markets
+              <div className="flex flex-col items-center justify-center py-20 gap-4 text-center border border-[#3a3939] rounded-xl bg-[#1c1b1b]">
+                <Clock size={36} className="text-[#94a3b8] opacity-50" />
+                <p className="font-headline-lg text-lg text-[#ddb7ff] font-bold">No positions found</p>
+                <p className="font-code-sm text-xs text-[#94a3b8] max-w-xs">This operator hasn&apos;t staked on any markets yet.</p>
+                <Link href="/markets" className="mt-2 px-5 py-2.5 rounded-xl bg-[#ddb7ff] text-[#0f172a] font-[family-name:var(--font-inter)] text-xs font-bold tracking-wide hover:bg-[#f0dbff] transition-all shadow-lg shadow-[#ddb7ff]/10">
+                  Browse Markets →
                 </Link>
               </div>
             ) : (
               <table className="w-full text-left">
-                <thead className="bg-surface-base border-b border-border-subtle">
+                <thead className="bg-[#131313] border-b border-[#3a3939]">
                   <tr>
-                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-text-muted">Market</th>
-                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-text-muted">Side</th>
-                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-text-muted">Size</th>
-                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-text-muted">P&L</th>
+                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-[#94a3b8]">Market</th>
+                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-[#94a3b8]">Side</th>
+                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-[#94a3b8]">Size</th>
+                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-[#94a3b8]">P&L</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border-subtle">
+                <tbody className="divide-y divide-[#3a3939]">
                   {stakes.map(stake => (
                     <tr key={stake.id} className="hover:bg-white/[0.02]">
                       <td className="px-6 py-4 font-[family-name:var(--font-inter)] font-semibold text-sm">Market #{stake.marketId.slice(0, 8)}...</td>
@@ -518,9 +521,9 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
                       <td className="px-6 py-4 font-code-sm text-sm">{stake.amountUsdc} USDC</td>
                       <td className="px-6 py-4 font-code-sm text-sm">
                         {stake.pnl === undefined ? (
-                           <span className="text-text-muted">Pending</span>
+                           <span className="text-[#94a3b8]">Pending</span>
                         ) : (
-                           <span className={stake.pnl > 0 ? 'text-tertiary' : 'text-error'}>
+                           <span className={stake.pnl > 0 ? 'text-[#86efac]' : 'text-[#ffb4ab]'}>
                              {stake.pnl > 0 ? '+' : ''}{stake.pnl.toFixed(2)}
                            </span>
                         )}
@@ -535,19 +538,19 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
 
         {activeTab === 'achievements' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-surface-charcoal border-l-2 border-l-tertiary border-y border-r border-y-border-subtle border-r-border-subtle p-4 flex gap-4 items-center rounded-r-xl">
-              <div className="bg-tertiary/20 text-tertiary p-3 rounded-lg"><TrendingUp size={24} /></div>
+            <div className="bg-[#1c1b1b] border-l-2 border-l-[#4fdbc8] border-y border-r border-[#3a3939] p-4 flex gap-4 items-center rounded-r-xl shadow-lg">
+              <div className="bg-[#4fdbc8]/20 text-[#4fdbc8] p-3 rounded-lg"><TrendingUp size={24} /></div>
               <div>
-                <p className="font-semibold text-sm">First Stake</p>
-                <p className="text-xs text-text-muted">Executed your first position on ArcSignal.</p>
+                <p className="font-semibold text-sm text-white">First Stake</p>
+                <p className="text-xs text-[#94a3b8]">Executed your first position on ArcSignal.</p>
               </div>
             </div>
             {stats.totalStaked >= 1000 && (
-              <div className="bg-surface-charcoal border-l-2 border-l-primary border-y border-r border-y-border-subtle border-r-border-subtle p-4 flex gap-4 items-center rounded-r-xl">
-                <div className="bg-primary/20 text-primary p-3 rounded-lg"><Trophy size={24} /></div>
+              <div className="bg-[#1c1b1b] border-l-2 border-l-[#ddb7ff] border-y border-r border-[#3a3939] p-4 flex gap-4 items-center rounded-r-xl shadow-lg">
+                <div className="bg-[#ddb7ff]/20 text-[#ddb7ff] p-3 rounded-lg"><Trophy size={24} /></div>
                 <div>
-                  <p className="font-semibold text-sm">Whale Operator</p>
-                  <p className="text-xs text-text-muted">Staked over 1,000 USDC total volume.</p>
+                  <p className="font-semibold text-sm text-white">Whale Operator</p>
+                  <p className="text-xs text-[#94a3b8]">Staked over 1,000 USDC total volume.</p>
                 </div>
               </div>
             )}
