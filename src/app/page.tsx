@@ -42,26 +42,26 @@ export default function LandingPage() {
       </Link>
 
       {/* Hero Header */}
-      <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-center text-on-surface max-w-4xl tracking-tight leading-tight mb-6">
-        Professional Intelligence for <span className="text-primary">Predictive Markets</span>
+      <h1 className="text-4xl md:text-6xl font-extrabold text-center text-white max-w-4xl tracking-tight leading-[1.1] mb-6">
+        Bet against the machine. <span className="text-[#ddb7ff]">Or with it.</span>
       </h1>
-      <p className="text-on-surface-variant text-center max-w-2xl mb-12 text-lg">
-        Leverage decentralized AI clusters to forecast high-stakes outcomes with unprecedented precision and institutional-grade security.
+      <p className="text-[#94a3b8] text-center max-w-2xl mb-10 text-lg leading-relaxed font-[family-name:var(--font-inter)]">
+        Every market runs on an AI-generated prediction. Follow it and split the pool with everyone who agreed. Fade it and profit if the model is wrong.
       </p>
 
-      {/* CTA Buttons */}
-      <div className="flex items-center gap-4 mb-24">
+      {/* CTA Buttons - Asymmetric Weight */}
+      <div className="flex flex-col sm:flex-row items-center gap-6 mb-24">
         <Link 
           href="/markets" 
-          className="bg-primary text-background font-bold text-sm uppercase tracking-widest px-8 py-3 rounded hover:bg-primary-fixed transition-colors"
+          className="bg-[#ddb7ff] text-[#0f172a] font-bold text-sm tracking-wide px-8 py-3.5 rounded-xl hover:bg-[#f0dbff] transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[#ddb7ff]/10"
         >
-          Explore Markets
+          Explore Live Markets →
         </Link>
         <Link 
           href="/whitepaper"
-          className="bg-surface-container-highest text-on-surface font-bold text-sm uppercase tracking-widest px-8 py-3 rounded border border-white/5 hover:bg-surface-bright transition-colors"
+          className="text-xs font-semibold text-[#94a3b8] hover:text-white transition-colors tracking-wide underline underline-offset-4"
         >
-          Read Whitepaper
+          or read the whitepaper →
         </Link>
       </div>
 

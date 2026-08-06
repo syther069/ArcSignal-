@@ -187,9 +187,12 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
         <div className="bg-[#0f172a]/60 rounded-xl p-4 space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <p className="text-xs font-[family-name:var(--font-inter)] font-semibold text-[#ddb7ff] flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" /> AI Insight
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#ddb7ff]" />
+              <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#ddb7ff] uppercase tracking-widest">
+                MODEL SIGNAL
+              </span>
+            </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <p className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-inter)] font-medium">Prediction</p>
