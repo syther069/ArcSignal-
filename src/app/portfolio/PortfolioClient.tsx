@@ -266,11 +266,33 @@ export default function PortfolioClient() {
       toast.loading('Transaction submitted, confirming…', { id: toastId });
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status === 'reverted') throw new Error('The transaction reverted on-chain. No funds were claimed.');
+
+      // Optimistically mark position as claimed so UI updates instantly
+      setPositions(prev => prev.map(p =>
+        p.market.marketId === marketId && p.userWon === true
+          ? { ...p, claimed: true }
+          : p
+      ));
+
       toast.success('Winnings claimed!', { id: toastId });
-      await fetchPortfolio();
+      // Background refresh for full data sync
+      fetchPortfolio();
     } catch (err: any) {
       console.error('Claim failed:', err);
-      toast.error('Claim failed: ' + (err?.shortMessage || err?.message || 'Unknown error'), { id: toastId });
+      const raw = err?.shortMessage || err?.message || 'Unknown error';
+      const lower = raw.toLowerCase();
+      let friendly = raw;
+      if (lower.includes('user rejected') || lower.includes('rejected the request'))
+        friendly = 'You rejected the transaction in your wallet.';
+      else if (lower.includes('already claimed'))
+        friendly = 'Already claimed — winnings were already withdrawn.';
+      else if (lower.includes('no winning stake'))
+        friendly = 'No winning stake found for this market.';
+      else if (lower.includes('not resolved'))
+        friendly = "Market hasn't been resolved yet.";
+      else if (lower.includes('reverted'))
+        friendly = 'Transaction failed on-chain. You may have already claimed.';
+      toast.error(friendly, { id: toastId });
     } finally {
       setClaiming(p => ({ ...p, [marketId]: false }));
     }
