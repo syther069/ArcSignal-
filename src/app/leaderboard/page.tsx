@@ -14,6 +14,10 @@ export default async function LeaderboardPage() {
     correctPredictions: number;
     totalPredictions: number;
     winRate: number;
+    totalPayout: string;
+    resolvedStaked: string;
+    netPnl: number;
+    roi: number;
   }> = [];
 
   try {
@@ -61,6 +65,10 @@ export default async function LeaderboardPage() {
         correctPredictions: data.correct,
         totalPredictions: data.total,
         winRate: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
+        totalPayout: '0',
+        resolvedStaked: data.totalStaked.toString(),
+        netPnl: 0,
+        roi: 0,
       }))
       // Sort: first by win rate desc (only for those who have resolved predictions), then by totalStaked desc
       .sort((a, b) => {
@@ -90,6 +98,10 @@ export default async function LeaderboardPage() {
     correctPredictions: entry.correctPredictions,
     totalPredictions: entry.totalPredictions,
     winRate: entry.winRate,
+    totalPayout: String(entry.totalPayout ?? '0'),
+    resolvedStaked: String(entry.resolvedStaked ?? '0'),
+    netPnl: Number(entry.netPnl ?? 0),
+    roi: Number(entry.roi ?? 0),
   }));
 
   return <LeaderboardClient leaderboard={serializableLeaderboard} markets={markets} />;

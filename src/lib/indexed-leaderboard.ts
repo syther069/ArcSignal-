@@ -6,6 +6,10 @@ export interface IndexedLeaderboardEntry {
   correctPredictions: number;
   totalPredictions: number;
   winRate: number;
+  totalPayout: string;
+  resolvedStaked: string;
+  netPnl: number;
+  roi: number;
 }
 
 /**
@@ -30,6 +34,12 @@ export async function getIndexedLeaderboard(limit = 100) {
       select
         mp.wallet_address,
         sum(mp.total_staked)::numeric as total_staked,
+        sum(case when m.resolved and m.outcome in (1, 2) then mp.total_staked else 0 end)::numeric as resolved_staked,
+        sum(case
+          when m.resolved and m.outcome = 1 then mp.follow_staked + (mp.follow_staked * m.fade_pool / nullif(m.follow_pool, 0))
+          when m.resolved and m.outcome = 2 then mp.fade_staked + (mp.fade_staked * m.follow_pool / nullif(m.fade_pool, 0))
+          else 0
+        end)::numeric as total_payout,
         count(*) filter (where m.resolved and m.outcome in (1, 2))::int as total_predictions,
         count(*) filter (
           where m.resolved and (
@@ -41,7 +51,7 @@ export async function getIndexedLeaderboard(limit = 100) {
       join markets_index m on m.market_id = mp.market_id
       group by mp.wallet_address
     )
-    select wallet_address, total_staked, total_predictions, correct_predictions
+    select wallet_address, total_staked, resolved_staked, total_payout, total_predictions, correct_predictions
     from trader_stats
     order by
       (total_predictions >= 5) desc,
@@ -53,12 +63,20 @@ export async function getIndexedLeaderboard(limit = 100) {
   return rows.map((row) => {
     const totalPredictions = Number(row.total_predictions ?? 0);
     const correctPredictions = Number(row.correct_predictions ?? 0);
+    const totalPayout = String(row.total_payout ?? '0');
+    const resolvedStaked = String(row.resolved_staked ?? '0');
+    const netPnl = (Number(totalPayout) - Number(resolvedStaked)) / 1e6;
+    const roi = Number(resolvedStaked) > 0 ? (netPnl / (Number(resolvedStaked) / 1e6)) * 100 : 0;
     return {
       address: String(row.wallet_address),
       totalStaked: String(row.total_staked ?? '0'),
       correctPredictions,
       totalPredictions,
       winRate: totalPredictions > 0 ? Math.round((correctPredictions / totalPredictions) * 100) : 0,
+      totalPayout,
+      resolvedStaked,
+      netPnl,
+      roi: Math.round(roi * 10) / 10,
     } satisfies IndexedLeaderboardEntry;
   });
 }

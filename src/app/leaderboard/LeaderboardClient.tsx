@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWatchContractEvent } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import Sidebar from '@/components/layout/Sidebar';
 import { Trophy } from 'lucide-react';
@@ -14,6 +15,10 @@ interface LeaderboardEntry {
   correctPredictions: number;
   totalPredictions: number;
   winRate: number;
+  totalPayout: string;
+  resolvedStaked: string;
+  netPnl: number;
+  roi: number;
 }
 
 interface LeaderboardClientProps {
@@ -25,6 +30,9 @@ const formatAddress = (addr: string) => `${addr.substring(0, 6)}...${addr.slice(
 
 export default function LeaderboardClient({ leaderboard, markets }: LeaderboardClientProps) {
   const router = useRouter();
+  const { address } = useAccount();
+  const [metric, setMetric] = useState<'accuracy' | 'profit' | 'roi' | 'volume'>('accuracy');
+  const [minPredictions, setMinPredictions] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -67,6 +75,20 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
     };
   }, [leaderboard, markets]);
 
+  const filteredLeaderboard = useMemo(() => {
+    const filtered = leaderboard.filter((entry) => entry.totalPredictions >= minPredictions);
+    return [...filtered].sort((a, b) => {
+      if (metric === 'profit') return b.netPnl - a.netPnl;
+      if (metric === 'roi') return b.roi - a.roi;
+      if (metric === 'volume') return Number(b.totalStaked) - Number(a.totalStaked);
+      if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+      return b.totalPredictions - a.totalPredictions;
+    });
+  }, [leaderboard, metric, minPredictions]);
+
+  const connectedRank = address ? leaderboard.findIndex((entry) => entry.address.toLowerCase() === address.toLowerCase()) + 1 : 0;
+  const connectedEntry = address ? leaderboard.find((entry) => entry.address.toLowerCase() === address.toLowerCase()) : undefined;
+
   return (
     <div className="flex min-h-screen bg-[#131313] text-[#e5e2e1]">
       <Sidebar />
@@ -77,9 +99,17 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
         <section className="flex-1 overflow-y-auto px-4 md:px-8 py-10 scrollbar-hide h-[calc(100vh-64px)]">
           {/* Header */}
           <div className="mb-10">
-            <h1 className="font-headline-xl text-3xl font-bold text-on-surface mb-2 tracking-tight">Elite Users</h1>
-            <p className="text-text-muted font-sans text-base">Real-time performance ranking of the most accurate prediction traders on ARC Testnet.</p>
+            <h1 className="font-headline-xl text-3xl font-bold text-on-surface mb-2 tracking-tight">Prediction Rankings</h1>
+            <p className="text-text-muted font-sans text-base">Transparent performance rankings for ArcSignal prediction traders.</p>
           </div>
+
+          {connectedEntry && (
+            <div className="mb-6 rounded-xl border border-[#ddb7ff]/30 bg-[#ddb7ff]/5 p-4 flex flex-wrap items-center justify-between gap-4">
+              <div><p className="font-label-caps text-xs text-text-muted">Your leaderboard position</p><p className="font-code-sm text-xl text-primary">#{connectedRank}</p></div>
+              <div className="text-sm"><span className="text-text-muted">Win rate </span><span className="font-code-sm text-tertiary">{connectedEntry.winRate}%</span></div>
+              <div className="text-sm"><span className="text-text-muted">Net P&amp;L </span><span className={`font-code-sm ${connectedEntry.netPnl >= 0 ? 'text-tertiary' : 'text-error'}`}>{connectedEntry.netPnl >= 0 ? '+' : ''}{connectedEntry.netPnl.toFixed(2)} USDC</span></div>
+            </div>
+          )}
 
           {/* Stats Row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
@@ -123,7 +153,13 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
 
           {/* Rankings Table */}
           <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden mb-10">
-            {leaderboard.length === 0 ? (
+            <div className="flex flex-col gap-3 border-b border-outline-variant p-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-2">
+                {([['accuracy', 'Accuracy'], ['profit', 'Net P&L'], ['roi', 'ROI'], ['volume', 'Volume']] as const).map(([value, label]) => <button key={value} onClick={() => setMetric(value)} aria-pressed={metric === value} className={`min-h-[40px] rounded-full px-3 text-xs transition-colors ${metric === value ? 'bg-[#ddb7ff] text-[#131313]' : 'text-text-muted hover:text-white'}`}>{label}</button>)}
+              </div>
+              <label className="flex items-center gap-2 text-xs text-text-muted">Minimum resolved <select value={minPredictions} onChange={(event) => setMinPredictions(Number(event.target.value))} className="min-h-[40px] rounded-lg border border-outline-variant bg-[#131313] px-2 text-white"><option value={0}>Any</option><option value={5}>5+</option><option value={10}>10+</option><option value={25}>25+</option></select></label>
+            </div>
+            {filteredLeaderboard.length === 0 ? (
               <div className="w-full py-16 flex items-center justify-center text-text-muted font-code-sm text-center">
                 No traders have placed positions yet. Be the first to stake on a market.
               </div>
@@ -135,13 +171,15 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
                       <th className="px-6 py-4 font-label-caps text-xs text-text-muted whitespace-nowrap">Rank</th>
                       <th className="px-6 py-4 font-label-caps text-xs text-text-muted whitespace-nowrap">User</th>
                       <th className="px-6 py-4 font-label-caps text-xs text-text-muted whitespace-nowrap">Win Rate</th>
+                      <th className="px-6 py-4 font-label-caps text-xs text-text-muted whitespace-nowrap">Net P&amp;L</th>
+                      <th className="px-6 py-4 font-label-caps text-xs text-text-muted whitespace-nowrap">ROI</th>
                       <th className="px-6 py-4 font-label-caps text-xs text-text-muted whitespace-nowrap">Total Staked</th>
                       <th className="px-6 py-4 font-label-caps text-xs text-text-muted whitespace-nowrap">Predictions</th>
                       <th className="px-6 py-4 font-label-caps text-xs text-text-muted text-right whitespace-nowrap">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/50">
-                    {leaderboard.map((entry, index) => {
+                    {filteredLeaderboard.map((entry, index) => {
                       const rank = index + 1;
                       const isRank1 = rank === 1;
                       const isRank2 = rank === 2;
@@ -186,6 +224,8 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
                               </div>
                             </div>
                           </td>
+                          <td className={`px-6 py-5 font-code-sm ${entry.netPnl >= 0 ? 'text-tertiary' : 'text-error'}`}>{entry.netPnl >= 0 ? '+' : ''}{entry.netPnl.toFixed(2)} USDC</td>
+                          <td className={`px-6 py-5 font-code-sm ${entry.roi >= 0 ? 'text-tertiary' : 'text-error'}`}>{entry.roi >= 0 ? '+' : ''}{entry.roi.toFixed(1)}%</td>
                           <td className="px-6 py-5 font-code-sm">
                             {stakedUsdc.toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC
                           </td>
