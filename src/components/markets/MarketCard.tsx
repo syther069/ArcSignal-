@@ -41,6 +41,31 @@ function getTimeframe(marketId: string): string | null {
   return match ? match[1] : null;
 }
 
+function getTimeframeSeconds(timeframe: string | null): number | null {
+  if (!timeframe) return null;
+  const durations: Record<string, number> = {
+    '5m': 5 * 60,
+    '15m': 15 * 60,
+    '1h': 60 * 60,
+    '4h': 4 * 60 * 60,
+    '24h': 24 * 60 * 60,
+  };
+  return durations[timeframe] ?? null;
+}
+
+function formatMarketDate(timestamp: number) {
+  return new Date(timestamp * 1000).toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+}
+
+function getResolutionSource(market: SerializableMarket) {
+  return market.category === 'FOOTBALL'
+    ? 'API-Football result, recorded on-chain'
+    : 'CoinGecko price, recorded on-chain';
+}
+
 /** Extract price target from question text, e.g. "$103,500" → 103500 */
 function extractTargetFromQuestion(question: string | undefined): number | null {
   if (!question) return null;
@@ -130,8 +155,8 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
   const liveFollowPool = chainMarket?.followPool ?? numberToUsdc(Number(market.followPool));
   const liveFadePool = chainMarket?.fadePool ?? numberToUsdc(Number(market.fadePool));
   const totalPool = liveFollowPool + liveFadePool;
-  const followShare = totalPool > 0n ? Number((liveFollowPool * 100n) / totalPool) : 0;
-  const fadeShare = totalPool > 0n ? Number((liveFadePool * 100n) / totalPool) : 0;
+  const followShare = totalPool > 0n ? Number((liveFollowPool * 1000n) / totalPool) / 10 : 0;
+  const fadeShare = totalPool > 0n ? Number((liveFadePool * 1000n) / totalPool) / 10 : 0;
 
   const probability = market.analysis?.probability ?? market.analysis?.confidence ?? 50;
   const confidence = market.analysis?.confidence ?? 50;
@@ -140,6 +165,9 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
   const isActive = !isResolved && !isPendingResolution;
   const hasAnalysis = !!market.analysis;
   const timeframe = getTimeframe(market.marketId);
+  const timeframeSeconds = getTimeframeSeconds(timeframe);
+  const openingTime = timeframeSeconds ? market.resolutionTime - timeframeSeconds : null;
+  const target = extractTargetFromQuestion(market.question);
 
   // AI summary snippet shown always (before betting)
   const summarySnippet = market.analysis?.summary
@@ -181,6 +209,49 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
       <h2 className="font-[family-name:var(--font-hanken)] text-xl md:text-2xl font-bold text-white leading-tight">
         {market.question}
       </h2>
+
+      {/* ── Market terms ── */}
+      <div className="rounded-xl border border-[#1e293b] bg-[#0f172a]/45 p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#ddb7ff] uppercase tracking-widest">
+            MARKET TERMS
+          </p>
+          <span className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-inter)]">
+            {market.category === 'CRYPTO' ? 'Price market' : 'Match market'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-[10px] font-[family-name:var(--font-inter)]">
+          <div>
+            <p className="text-[#94a3b8]">Market window (timeframe)</p>
+            <p className="mt-0.5 text-white leading-relaxed">
+              {openingTime ? `${formatMarketDate(openingTime)} → ` : 'Closes '}
+              {formatMarketDate(market.resolutionTime)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[#94a3b8]">Resolution source</p>
+            <p className="mt-0.5 text-white leading-relaxed">{getResolutionSource(market)}</p>
+          </div>
+          <div>
+            <p className="text-[#94a3b8]">Target value</p>
+            <p className="mt-0.5 text-white">
+              {target !== null ? `$${target.toLocaleString()}` : 'Defined by match result'}
+            </p>
+          </div>
+          <div>
+            <p className="text-[#94a3b8]">Protocol fee</p>
+            <p className="mt-0.5 text-white">None</p>
+          </div>
+        </div>
+
+        <div className="border-t border-[#1e293b] pt-3">
+          <p className="text-[10px] text-[#94a3b8]">How settlement works</p>
+          <p className="mt-1 text-[10px] text-white leading-relaxed">
+            Follow supports the AI prediction; Fade takes the opposing side. After on-chain resolution, winning stakers can claim their proportional share of the losing pool.
+          </p>
+        </div>
+      </div>
 
       {/* ── FEATURE 2: AI Analysis Preview (always visible before betting) ── */}
       {hasAnalysis && (
@@ -244,13 +315,26 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
         </div>
       )}
 
-      {/* ── Pool amounts ── */}
-      <div className="grid grid-cols-2 gap-3 pt-2">
+      {/* ── Pool amounts and market-implied indicators ── */}
+      <div className="rounded-xl border border-[#1e293b] bg-[#0f172a]/45 p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-[family-name:var(--font-inter)] font-semibold text-[#94a3b8] uppercase tracking-wide">
+            LIVE LIQUIDITY
+          </p>
+          <p className="text-xs font-[family-name:var(--font-jetbrains-mono)] font-bold text-white">
+            {toPoolDisplay(totalPool)} USDC total
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-[#0f172a]/60 p-4">
           <p className="text-[10px] font-[family-name:var(--font-inter)] font-semibold text-[#94a3b8] uppercase tracking-wide">Follow Pool</p>
           <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-lg font-bold text-white">
             {toPoolDisplay(liveFollowPool)}{' '}
             <span className="text-xs text-[#94a3b8] font-medium">USDC</span>
+          </p>
+          <p className="mt-1 text-[10px] text-[#4fdbc8] font-[family-name:var(--font-jetbrains-mono)]">
+            {followShare.toFixed(1)}% market-implied share
           </p>
         </div>
         <div className="rounded-xl bg-[#0f172a]/60 p-4">
@@ -259,13 +343,33 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
             {toPoolDisplay(liveFadePool)}{' '}
             <span className="text-xs text-[#94a3b8] font-medium">USDC</span>
           </p>
+          <p className="mt-1 text-[10px] text-[#ffb4ab] font-[family-name:var(--font-jetbrains-mono)]">
+            {fadeShare.toFixed(1)}% market-implied share
+          </p>
         </div>
+        </div>
+
+        {totalPool === 0n ? (
+          <p className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-inter)]">
+            No liquidity yet. Market-implied shares will appear after staking begins.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex h-2 rounded-full overflow-hidden bg-[#1e293b]" aria-label={`Market-implied split: Follow ${followShare.toFixed(1)}%, Fade ${fadeShare.toFixed(1)}%`}>
+              <div className="h-full bg-[#4fdbc8] transition-all duration-1000" style={{ width: `${followShare}%` }} />
+              <div className="h-full bg-[#ffb4ab] transition-all duration-1000" style={{ width: `${fadeShare}%` }} />
+            </div>
+            <p className="text-[10px] text-[#94a3b8] leading-relaxed">
+              Pool shares are market-implied indicators, not guaranteed probabilities or forecasts.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Countdown */}
       <div className="flex items-center justify-between text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8]">
         <CountdownTimer resolutionTime={market.resolutionTime} resolved={isResolved} />
-        <span>Pool split: Follow {followShare}% / Fade {fadeShare}%</span>
+        <span>{isResolved ? 'Settlement recorded on-chain' : `Time to close: ${timeframe ? timeframe : 'event deadline'}`}</span>
       </div>
 
       {/* ── Follow / Fade buttons OR resolution panel ── */}
@@ -318,6 +422,10 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
           {/* Resolution time */}
           <p className="text-[10px] text-[#94a3b8]/60 font-[family-name:var(--font-jetbrains-mono)]">
             Resolved at: {new Date(market.resolutionTime * 1000).toUTCString()}
+          </p>
+
+          <p className="text-[10px] text-[#94a3b8] leading-relaxed font-[family-name:var(--font-inter)]">
+            Claim instructions: connect the wallet that staked on the winning side, then claim winnings from your portfolio.
           </p>
 
           {/* Verify link for crypto */}
