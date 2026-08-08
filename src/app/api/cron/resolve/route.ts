@@ -27,6 +27,7 @@ const resolvePublicClient = createPublicClient({
 });
 
 const RESOLUTION_SCAN_LIMIT = Number(process.env.RESOLUTION_SCAN_LIMIT ?? 40);
+const VALID_TIMEFRAMES = new Set(['5m', '15m', '1h', '4h', '24h']);
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -51,6 +52,16 @@ export async function POST(req: Request) {
   const auth = req.headers.get('authorization');
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const url = new URL(req.url);
+  const timeframeParam = url.searchParams.get('timeframe')?.trim();
+  const timeframe = timeframeParam && timeframeParam !== 'all' ? timeframeParam : null;
+
+  if (timeframe && !VALID_TIMEFRAMES.has(timeframe)) {
+    return NextResponse.json({
+      error: `Invalid timeframe "${timeframe}". Use one of: 5m, 15m, 1h, 4h, 24h, all.`,
+    }, { status: 400 });
   }
 
   const privateKey = process.env.RESOLVER_PRIVATE_KEY;
@@ -89,6 +100,11 @@ export async function POST(req: Request) {
           functionName: 'getMarketIdByIndex',
           args: [index],
         }) as Promise<string>);
+        if (timeframe && !marketId.includes(`-${timeframe}-`)) {
+          skipped.push(`${marketId}: skipped by timeframe filter (${timeframe})`);
+          await sleep(100);
+          continue;
+        }
         targetIds.push(marketId);
         await sleep(250);
       } catch (err) {
@@ -103,7 +119,14 @@ export async function POST(req: Request) {
   }
 
   if (targetIds.length === 0) {
-    return NextResponse.json({ resolved: [], skipped: [], errors: [], message: 'No markets found', contractUsed: CONTRACT_ADDRESS });
+    return NextResponse.json({
+      resolved: [],
+      skipped,
+      errors: [],
+      message: timeframe ? `No ${timeframe} markets found in recent scan` : 'No markets found',
+      contractUsed: CONTRACT_ADDRESS,
+      timeframe: timeframe ?? 'all',
+    });
   }
 
   // ── 2. Pre-fetch live crypto prices once ─────────────────────────────────
@@ -233,6 +256,20 @@ export async function POST(req: Request) {
         continue;
       }
 
+      // Re-read immediately before submitting. This makes repeated or
+      // overlapping cron runs safe: only an unresolved market may be sent.
+      const latestMarket = await readWithRetry(`getMarket ${marketId} before resolve`, () => resolvePublicClient.readContract({
+        address: CONTRACT_ADDRESS,
+        abi: ARCSIGNAL_ABI,
+        functionName: 'getMarket',
+        args: [marketId],
+      })) as typeof market;
+
+      if (latestMarket.resolved) {
+        skipped.push(`${marketId}: already resolved before submission`);
+        continue;
+      }
+
       // ── 6. Call resolveMarket on-chain ────────────────────────────────────
       const hash = await walletClient.writeContract({
         account,
@@ -248,13 +285,32 @@ export async function POST(req: Request) {
       await new Promise(r => setTimeout(r, 500));
 
     } catch (err) {
-      errors.push(`${marketId}: ${err instanceof Error ? err.message : String(err)}`);
+      // Another cron invocation may have resolved the market between the
+      // preflight read and the transaction submission. Treat that race as an
+      // idempotent skip instead of reporting a failed resolution.
+      try {
+        const currentMarket = await readWithRetry(`getMarket ${marketId} after resolve error`, () => resolvePublicClient.readContract({
+          address: CONTRACT_ADDRESS,
+          abi: ARCSIGNAL_ABI,
+          functionName: 'getMarket',
+          args: [marketId],
+        })) as typeof market;
+
+        if (currentMarket.resolved) {
+          skipped.push(`${marketId}: already resolved by another run`);
+        } else {
+          errors.push(`${marketId}: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      } catch (verificationError) {
+        errors.push(`${marketId}: ${err instanceof Error ? err.message : String(err)}; verification failed: ${verificationError instanceof Error ? verificationError.message : String(verificationError)}`);
+      }
       await new Promise(r => setTimeout(r, 1000));
     }
   }
 
   return NextResponse.json({
     contractUsed: CONTRACT_ADDRESS,
+    timeframe: timeframe ?? 'all',
     marketCount,
     scanned: targetIds.length,
     resolved,

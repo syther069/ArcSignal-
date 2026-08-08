@@ -7,30 +7,9 @@ export default async function MarketsPage() {
   let markets: SerializableMarket[] = [];
   try {
     const chainMarkets = await getMarketsFromChain();
-    const now = Date.now() / 1000;
-
-    // The dashboard is for tradable/current markets. Resolved markets remain
-    // available on-chain and in portfolio history, but must not occupy cards
-    // once a fresh market exists for the same timeframe.
-    markets = chainMarkets
-      .filter((market) => !market.resolved)
-      .map(serializeMarket);
-    
-    // Page-load maintenance only resolves due markets. Generation is explicit and append-only.
-    const hasExpiredPending = chainMarkets.some(m => !m.resolved && m.resolutionTime <= now);
-    if (hasExpiredPending) {
-      const appUrl = process.env.VERCEL_URL 
-        ? `https://${process.env.VERCEL_URL}` 
-        : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
-      
-      await fetch(`${appUrl}/api/cron/resolve`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.CRON_SECRET}`
-        },
-        signal: AbortSignal.timeout(1_500),
-      }).catch(err => console.error('Failed to trigger market resolution:', err));
-    }
+    // Keep all on-chain markets visible, including resolved markets. Their
+    // explicit status is derived in getMarketsFromChain and rendered by the UI.
+    markets = chainMarkets.map(serializeMarket);
   } catch (error) {
     console.error("Error fetching markets from chain:", error);
     markets = [];
