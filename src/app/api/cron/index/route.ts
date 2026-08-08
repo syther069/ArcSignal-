@@ -138,26 +138,6 @@ async function sync(req: Request) {
         `;
         }
 
-        if (decoded.eventName === 'Refunded' && typeof args.marketId === 'string' && typeof args.user === 'string') {
-          await sql`
-          insert into refunds_index (market_id, wallet_address, amount, refunded_block)
-          values (${args.marketId}, ${args.user.toLowerCase()}, ${String(args.amount)}, ${log.blockNumber ?? cursor})
-          on conflict (market_id, wallet_address) do update set
-            amount = refunds_index.amount + excluded.amount,
-            refunded_block = excluded.refunded_block
-        `;
-        }
-
-        if (decoded.eventName === 'MarketVoided' && typeof args.marketId === 'string') {
-          await sql`
-            update markets_index
-            set status = 'VOIDED',
-                void_reason = ${typeof args.reason === 'string' ? args.reason : null},
-                updated_block = ${log.blockNumber ?? cursor},
-                updated_at = now()
-            where market_id = ${args.marketId}
-          `;
-        }
       }
 
       await sql`
@@ -173,19 +153,18 @@ async function sync(req: Request) {
       try {
         const market = await withRpcBackoff(`getMarket ${marketId}`, () => publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'getMarket', args: [marketId] })) as {
           marketId: string; category: string; question: string; analysisJson: string; resolutionTime: bigint;
-          followPool: bigint; fadePool: bigint; resolved: boolean; outcome: number; status: number;
-          openedAt: bigint; closedAt: bigint; resolvedAt: bigint;
+          followPool: bigint; fadePool: bigint; resolved: boolean; outcome: number;
         };
         const marketStatus = statusLabel(
-          Number(market.status),
+          0,
           market.resolved,
           Number(market.outcome),
           market.resolutionTime,
           BigInt(Math.floor(Date.now() / 1000)),
         );
         await sql`
-        insert into markets_index (market_id, category, question, analysis_json, resolution_time, follow_pool, fade_pool, resolved, outcome, status, opened_at, closed_at, resolved_at, updated_block)
-        values (${market.marketId}, ${market.category}, ${market.question}, ${market.analysisJson || null}, ${market.resolutionTime}, ${market.followPool}, ${market.fadePool}, ${market.resolved}, ${market.outcome}, ${marketStatus}, ${market.openedAt}, ${market.closedAt}, ${market.resolvedAt}, ${latestBlock})
+        insert into markets_index (market_id, category, question, analysis_json, resolution_time, follow_pool, fade_pool, resolved, outcome, status, updated_block)
+        values (${market.marketId}, ${market.category}, ${market.question}, ${market.analysisJson || null}, ${market.resolutionTime}, ${market.followPool}, ${market.fadePool}, ${market.resolved}, ${market.outcome}, ${marketStatus}, ${latestBlock})
         on conflict (market_id) do update set
           category = excluded.category,
           question = excluded.question,
@@ -196,9 +175,6 @@ async function sync(req: Request) {
           resolved = excluded.resolved,
           outcome = excluded.outcome,
           status = excluded.status,
-          opened_at = excluded.opened_at,
-          closed_at = excluded.closed_at,
-          resolved_at = excluded.resolved_at,
           updated_block = excluded.updated_block,
           updated_at = now()
       `;

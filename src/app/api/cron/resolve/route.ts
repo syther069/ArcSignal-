@@ -178,8 +178,6 @@ export async function POST(req: Request) {
       fadePool: bigint;
       resolved: boolean;
       outcome: number;
-      status: number;
-      resolvedAt: bigint;
     };
 
     try {
@@ -196,7 +194,7 @@ export async function POST(req: Request) {
       continue;
     }
 
-    if (market.resolved || market.status === 3 || market.status === 4) {
+    if (market.resolved) {
       skipped.push(`${marketId}: already resolved`);
       await recordOracleAttempt(marketId, 'SKIPPED');
       continue;

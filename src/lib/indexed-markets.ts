@@ -31,8 +31,7 @@ export async function getIndexedMarkets(limit: number, offset: number): Promise<
   const sql = getSql();
   const rows = await sql`
     select market_id, category, question, analysis_json, resolution_time,
-           follow_pool, fade_pool, resolved, outcome, status,
-           opened_at, closed_at, resolved_at
+           follow_pool, fade_pool, resolved, outcome, status
     from markets_index
     order by resolution_time desc
     limit ${limit} offset ${offset}
@@ -52,9 +51,6 @@ export async function getIndexedMarkets(limit: number, offset: number): Promise<
       resolved,
       outcome: mapOutcome(outcome, resolved),
       status: mapStatus(row, nowUnix),
-      openedAt: row.opened_at ? Number(row.opened_at) : undefined,
-      closedAt: row.closed_at ? Number(row.closed_at) : undefined,
-      resolvedAt: row.resolved_at ? Number(row.resolved_at) : undefined,
       analysis: parseAnalysis(row.analysis_json),
       resolutionReason: resolved
         ? outcome === 0 ? 'Market voided; eligible stakes may be refunded.' : 'Resolved on-chain.'
