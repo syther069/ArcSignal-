@@ -35,6 +35,6 @@ export function CountdownTimer({
     return () => clearInterval(interval);
   }, [resolutionTime, resolved]);
 
-  if (timeLeft === null) return <span className="opacity-0" suppressHydrationWarning>--:--:--</span>;
-  return <span suppressHydrationWarning>{timeLeft}</span>;
+  if (timeLeft === null) return <span className="opacity-0 tabular-nums" suppressHydrationWarning>--:--:--</span>;
+  return <span className="tabular-nums" suppressHydrationWarning>{timeLeft}</span>;
 }

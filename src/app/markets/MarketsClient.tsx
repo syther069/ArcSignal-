@@ -24,10 +24,28 @@ const TIMEFRAME_META: Record<string, { label: string; description: string; color
 };
 
 const TIMEFRAMES = ['5m', '15m', '1h', '4h', '24h'];
+type MarketView = 'live' | 'pending' | 'resolved' | 'all';
+type MarketSort = 'closingSoon' | 'liquidity' | 'newest';
+
+function getMarketView(market: SerializableMarket, nowUnix: number): Exclude<MarketView, 'all'> {
+  if (market.resolved) return 'resolved';
+  if (market.status === 'PENDING_RESOLUTION' || market.resolutionTime <= nowUnix) return 'pending';
+  return 'live';
+}
+
+function getTotalLiquidity(market: SerializableMarket) {
+  try {
+    return BigInt(market.followPool) + BigInt(market.fadePool);
+  } catch {
+    return 0n;
+  }
+}
 
 export default function MarketsClient({ markets }: MarketsClientProps) {
   const [selectedCategory, setSelectedCategory] = useState('All Markets');
   const [selectedTimeframe, setSelectedTimeframe] = useState<string | null>(null);
+  const [selectedView, setSelectedView] = useState<MarketView>('live');
+  const [sortBy, setSortBy] = useState<MarketSort>('closingSoon');
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [stakeModal, setStakeModal] = useState<{
@@ -43,16 +61,32 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
   };
 
   const filteredMarkets = useMemo(() => {
-    if (!searchQuery.trim()) return markets;
-    const q = searchQuery.toLowerCase();
-    return markets.filter(
-      (m) =>
-        (m.question?.toLowerCase() || '').includes(q) ||
-        m.marketId.toLowerCase().includes(q) ||
-        m.category.toLowerCase().includes(q)
-    );
+    const statusFiltered = selectedView === 'all'
+      ? markets
+      : markets.filter((market) => getMarketView(market, nowUnix) === selectedView);
 
-  }, [markets, searchQuery]);
+    const searched = !searchQuery.trim()
+      ? statusFiltered
+      : statusFiltered.filter(
+        (m) => {
+          const q = searchQuery.toLowerCase();
+          return (
+            (m.question?.toLowerCase() || '').includes(q) ||
+            m.marketId.toLowerCase().includes(q) ||
+            m.category.toLowerCase().includes(q)
+          );
+        }
+      );
+
+    return [...searched].sort((a, b) => {
+      if (sortBy === 'liquidity') {
+        const liquidityDifference = getTotalLiquidity(b) - getTotalLiquidity(a);
+        return liquidityDifference > 0n ? 1 : liquidityDifference < 0n ? -1 : 0;
+      }
+      if (sortBy === 'newest') return b.resolutionTime - a.resolutionTime;
+      return a.resolutionTime - b.resolutionTime;
+    });
+  }, [markets, searchQuery, selectedView, sortBy, nowUnix]);
 
   const cryptoMarkets = useMemo(
     () => filteredMarkets.filter((m) => m.category === 'CRYPTO'),
@@ -79,6 +113,12 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
     marketsByTimeframe[tf]?.filter((m) => !m.resolved && m.resolutionTime > nowUnix).length ?? 0;
 
   const categories = ['All Markets', 'Crypto', 'Football'];
+  const viewCounts = useMemo(() => ({
+    live: markets.filter((market) => getMarketView(market, nowUnix) === 'live').length,
+    pending: markets.filter((market) => getMarketView(market, nowUnix) === 'pending').length,
+    resolved: markets.filter((market) => getMarketView(market, nowUnix) === 'resolved').length,
+    all: markets.length,
+  }), [markets, nowUnix]);
 
   // What sections to render
   const showCrypto = selectedCategory === 'All Markets' || selectedCategory === 'Crypto';
@@ -125,6 +165,27 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                       }`}
                   >
                     {cat}
+                  </button>
+                ))}
+              </div>
+
+              {/* Lifecycle tabs */}
+              <div className="flex items-center gap-1 bg-[#1c1b1b] rounded-full p-1 border border-white/5 overflow-x-auto">
+                {([
+                  ['live', 'Live'],
+                  ['pending', 'Pending'],
+                  ['resolved', 'Resolved'],
+                  ['all', 'All'],
+                ] as const).map(([view, label]) => (
+                  <button
+                    key={view}
+                    onClick={() => setSelectedView(view)}
+                    className={`whitespace-nowrap px-3.5 py-2 rounded-full text-xs font-[family-name:var(--font-inter)] font-medium transition-all ${selectedView === view
+                        ? 'bg-[#353534] text-white shadow-sm'
+                        : 'text-[#94a3b8] hover:text-white'
+                      }`}
+                  >
+                    {label} <span className="text-[#94a3b8]">{viewCounts[view]}</span>
                   </button>
                 ))}
               </div>
@@ -192,6 +253,18 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                 >
                   <RotateCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#ddb7ff]' : ''}`} />
                 </button>
+
+                <label className="sr-only" htmlFor="market-sort">Sort markets</label>
+                <select
+                  id="market-sort"
+                  value={sortBy}
+                  onChange={(event) => setSortBy(event.target.value as MarketSort)}
+                  className="min-h-[42px] rounded-full border border-white/5 bg-[#1c1b1b] px-3 text-xs text-[#94a3b8] outline-none transition-colors focus:border-[#ddb7ff]/50 focus:text-white"
+                >
+                  <option value="closingSoon">Closing soon</option>
+                  <option value="liquidity">Most liquidity</option>
+                  <option value="newest">Newest</option>
+                </select>
               </div>
             </div>
           </div>
@@ -299,17 +372,30 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
           )}
 
           {/* All empty */}
-          {markets.length === 0 && (
+          {filteredMarkets.length === 0 && (
             <div className="flex flex-col items-center justify-center py-32 text-center">
               <div className="w-12 h-12 rounded-xl bg-[#0f172a] border border-[#1e293b] flex items-center justify-center mb-4">
                 <div className="w-2 h-2 rounded-full bg-[#ddb7ff] animate-pulse" />
               </div>
               <p className="font-[family-name:var(--font-hanken)] text-lg font-semibold text-[#94a3b8]">
-                AI agents are generating markets...
+                {markets.length === 0 ? 'AI agents are generating markets...' : 'No markets match this view'}
               </p>
               <p className="text-sm text-[#94a3b8]/60 mt-2">
-                Check back shortly or trigger market generation.
+                {markets.length === 0 ? 'Check back shortly or trigger market generation.' : 'Try another status, category, or search term.'}
               </p>
+              {markets.length > 0 && (
+                <button
+                  onClick={() => {
+                    setSelectedView('all');
+                    setSelectedCategory('All Markets');
+                    setSelectedTimeframe(null);
+                    setSearchQuery('');
+                  }}
+                  className="mt-3 min-h-[44px] rounded-full border border-[#ddb7ff]/30 px-4 text-xs font-semibold text-[#ddb7ff] transition-colors hover:bg-[#ddb7ff]/10"
+                >
+                  Clear market filters
+                </button>
+              )}
             </div>
           )}
 

@@ -206,12 +206,12 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
       </div>
 
       {/* ── Market question ── */}
-      <h2 className="font-[family-name:var(--font-hanken)] text-xl md:text-2xl font-bold text-white leading-tight">
+      <h2 className="font-[family-name:var(--font-hanken)] text-2xl md:text-[1.75rem] font-bold text-white leading-[1.15] tracking-tight text-balance">
         {market.question}
       </h2>
 
       {/* ── Market terms ── */}
-      <div className="rounded-xl border border-[#1e293b] bg-[#0f172a]/45 p-4 space-y-3">
+      <div className="rounded-xl border border-[#1e293b] bg-[#0f172a]/35 p-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#ddb7ff] uppercase tracking-widest">
             MARKET TERMS
@@ -261,7 +261,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#ddb7ff]" />
               <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#ddb7ff] uppercase tracking-widest">
-                MODEL SIGNAL
+                AI MODEL SIGNAL
               </span>
             </div>
             <div className="flex items-center gap-4">
@@ -278,7 +278,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-inter)] font-medium">Probability</p>
+                <p className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-inter)] font-medium">AI model probability</p>
                 <p className="text-xs font-[family-name:var(--font-jetbrains-mono)] font-bold text-white">
                   {probability}%
                 </p>
@@ -300,6 +300,10 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
               {summarySnippet}
             </p>
           )}
+
+          <p className="text-[10px] text-[#94a3b8]/80 leading-relaxed font-[family-name:var(--font-inter)]">
+            Model output is separate from the live market-implied pool share below.
+          </p>
 
           {/* Key factors — top 2 always visible */}
           {(market.analysis?.keyFactors?.length ?? 0) > 0 && (
@@ -367,14 +371,27 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
       </div>
 
       {/* Countdown */}
-      <div className="flex items-center justify-between text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8]">
-        <CountdownTimer resolutionTime={market.resolutionTime} resolved={isResolved} />
-        <span>{isResolved ? 'Settlement recorded on-chain' : `Time to close: ${timeframe ? timeframe : 'event deadline'}`}</span>
+      <div className="rounded-xl border border-[#ddb7ff]/20 bg-[#ddb7ff]/5 p-4 space-y-2">
+        <div className="flex items-center justify-between gap-3 text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest">
+          <span className="text-[#ddb7ff]">Market clock</span>
+          <span className="text-[#94a3b8]">{isResolved ? 'Settlement recorded' : 'No more staking after close'}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3 text-xs font-[family-name:var(--font-jetbrains-mono)] text-white">
+          <span className="tabular-nums" aria-live="polite">
+            <CountdownTimer resolutionTime={market.resolutionTime} resolved={isResolved} />
+          </span>
+          <span className="text-right text-[10px] text-[#94a3b8] font-[family-name:var(--font-inter)]">
+            {isResolved ? 'Final result available' : `Closes at ${formatMarketDate(market.resolutionTime)}`}
+          </span>
+        </div>
       </div>
 
       {/* ── Follow / Fade buttons OR resolution panel ── */}
       {isActive ? (
-        <div className="space-y-3">
+        <div className="space-y-3 rounded-xl border border-white/5 bg-[#1c1b1b] p-4">
+          <p className="text-[10px] text-[#ddb7ff] text-center font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest">
+            Make your call
+          </p>
           <p className="text-[11px] text-[#94a3b8] text-center font-[family-name:var(--font-inter)]">
             AI predicts{' '}
             <span className="text-[#4fdbc8] font-bold">
