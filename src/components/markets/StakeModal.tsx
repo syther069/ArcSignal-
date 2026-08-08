@@ -9,6 +9,41 @@ import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { clearMarketCache } from '@/lib/markets';
 import toast from 'react-hot-toast';
 
+function friendlyError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  const lower = raw.toLowerCase();
+
+  if (lower.includes('user rejected') || lower.includes('user denied') || lower.includes('rejected the request'))
+    return 'Transaction cancelled — you rejected the request in your wallet.';
+  if (lower.includes('insufficient funds') || lower.includes('exceeds the balance'))
+    return 'Insufficient ARC for gas fees. Please top up your wallet.';
+  if (lower.includes('insufficient usdc') || lower.includes('insufficient balance'))
+    return 'Insufficient USDC balance for this stake.';
+  if (lower.includes('allowance') || lower.includes('approve first'))
+    return 'USDC allowance too low. Please approve first.';
+  if (lower.includes('market expired') || lower.includes('market already resolved'))
+    return 'This market has closed and is no longer accepting stakes.';
+  if (lower.includes('market does not exist'))
+    return 'Market not found on-chain. It may have been removed.';
+  if (lower.includes('reverted') || lower.includes('execution reverted'))
+    return 'Transaction reverted on-chain. The market may be closed or conditions changed.';
+  if (lower.includes('nonce'))
+    return 'Transaction conflict — please wait a moment and try again.';
+  if (lower.includes('timeout') || lower.includes('timed out'))
+    return 'Network request timed out. Please check your connection and retry.';
+  if (lower.includes('network') || lower.includes('disconnected') || lower.includes('failed to fetch'))
+    return 'Network error — please check your connection and try again.';
+  if (lower.includes('429') || lower.includes('rate limit'))
+    return 'Too many requests. Please wait a few seconds and retry.';
+  if (lower.includes('chain mismatch') || lower.includes('wrong network'))
+    return 'Wrong network — please switch to ARC Testnet in your wallet.';
+
+  // Fallback: strip technical noise, keep first sentence only
+  const firstSentence = raw.split(/(?:Details:|Docs:|Contract Call:|Request Arguments:|Version:)/i)[0].trim();
+  if (firstSentence.length > 120) return firstSentence.slice(0, 117) + '…';
+  return firstSentence || 'Something went wrong. Please try again.';
+}
+
 export interface StakeModalProps {
   market: Market;
   side: StakeSide;
@@ -80,7 +115,8 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
       toast.success('USDC approved successfully!');
       setStep('idle');
     } catch (err: any) {
-      const message = err instanceof Error ? err.message : 'Approval failed. Please try again.';
+      console.error('[StakeModal] Approval error:', err);
+      const message = friendlyError(err);
       toast.error(message);
       setError(message);
       setStep('idle');
@@ -151,7 +187,8 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
       toast.success(`Successfully placed ${side === 0 ? 'FOLLOW' : 'FADE'} position for ${amountStr} USDC!`);
       setStep('success');
     } catch (err: any) {
-      const message = err instanceof Error ? err.message : 'Transaction failed. Please try again.';
+      console.error('[StakeModal] Stake error:', err);
+      const message = friendlyError(err);
       toast.error(message);
       setError(message);
       setStep('idle');
