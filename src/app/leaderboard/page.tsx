@@ -2,6 +2,7 @@ import LeaderboardClient from './LeaderboardClient';
 import { getMarketsFromChain, serializeMarket } from '@/lib/markets';
 import { publicClient, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { parseAbiItem } from 'viem';
+import { getIndexedLeaderboard } from '@/lib/indexed-leaderboard';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +10,7 @@ export default async function LeaderboardPage() {
   let markets: any[] = [];
   let leaderboard: Array<{
     address: string;
-    totalStaked: bigint;
+    totalStaked: bigint | string;
     correctPredictions: number;
     totalPredictions: number;
     winRate: number;
@@ -74,5 +75,22 @@ export default async function LeaderboardPage() {
     leaderboard = [];
   }
 
-  return <LeaderboardClient leaderboard={leaderboard} markets={markets} />;
+  // Prefer the database read model for ranking. It aggregates one row per
+  // wallet/market, so repeated top-ups do not inflate prediction counts.
+  try {
+    const indexedLeaderboard = await getIndexedLeaderboard(100);
+    if (indexedLeaderboard.length > 0) leaderboard = indexedLeaderboard;
+  } catch (error) {
+    console.warn('Indexed leaderboard unavailable; using chain fallback.', error);
+  }
+
+  const serializableLeaderboard = leaderboard.map((entry) => ({
+    address: entry.address,
+    totalStaked: String(entry.totalStaked),
+    correctPredictions: entry.correctPredictions,
+    totalPredictions: entry.totalPredictions,
+    winRate: entry.winRate,
+  }));
+
+  return <LeaderboardClient leaderboard={serializableLeaderboard} markets={markets} />;
 }

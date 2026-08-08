@@ -6,6 +6,32 @@ import { getIndexedAnalytics } from '@/lib/indexed-analytics';
 
 export const dynamic = 'force-dynamic';
 
+function withAccuracySeries(markets: any[]) {
+  let cryptoResolved = 0;
+  let cryptoCorrect = 0;
+  let footballResolved = 0;
+  let footballCorrect = 0;
+
+  return markets.map((market) => {
+    const isCrypto = String(market.category).toUpperCase() === 'CRYPTO';
+    const isFootball = String(market.category).toUpperCase() === 'FOOTBALL';
+    if (isCrypto) {
+      cryptoResolved++;
+      if (market.outcome === 'FOLLOW' || market.outcome === 1) cryptoCorrect++;
+    }
+    if (isFootball) {
+      footballResolved++;
+      if (market.outcome === 'FOLLOW' || market.outcome === 1) footballCorrect++;
+    }
+    return {
+      ...market,
+      resolutionDate: new Date(Number(market.resolutionTime) * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      cryptoAccuracy: isCrypto && cryptoResolved ? Math.round((cryptoCorrect / cryptoResolved) * 100) : null,
+      footballAccuracy: isFootball && footballResolved ? Math.round((footballCorrect / footballResolved) * 100) : null,
+    };
+  });
+}
+
 export default async function AnalyticsPage() {
   try {
     const indexed = await getIndexedAnalytics();
@@ -20,7 +46,11 @@ export default async function AnalyticsPage() {
 
   try {
     const chainMarkets = await getMarketsFromChain();
-    markets = chainMarkets.map(serializeMarket).map(toUiMarket);
+    markets = chainMarkets.map(serializeMarket).map(toUiMarket).map((market: any) => ({
+      ...market,
+      followPool: Number(market.followPool) / 1e6,
+      fadePool: Number(market.fadePool) / 1e6,
+    }));
   } catch {
     markets = [];
   }
@@ -76,8 +106,8 @@ export default async function AnalyticsPage() {
   let totalFollow = 0;
   let totalFade = 0;
   markets.forEach((m: any) => {
-    totalFollow += Number(m.followPool) / 1e6;
-    totalFade += Number(m.fadePool) / 1e6;
+    totalFollow += Number(m.followPool);
+    totalFade += Number(m.fadePool);
   });
 
   const ratioData = [
@@ -91,7 +121,7 @@ export default async function AnalyticsPage() {
     .slice(0, 5)
     .map((m: any) => ({
       name: m.title?.length > 20 ? m.title.substring(0, 20) + '...' : (m.title || m.question?.substring(0, 20) + '...' || 'Market'),
-      volume: (Number(m.followPool) + Number(m.fadePool)) / 1e6,
+      volume: Number(m.followPool) + Number(m.fadePool),
     }));
 
   // ─── Aggregate Stats ───────────────────────────────────────────────────────
@@ -105,7 +135,7 @@ export default async function AnalyticsPage() {
     : 0;
 
   // ─── AI Win Rates from resolved markets ───────────────────────────────────
-  const resolvedMarkets = markets.filter((m: any) => m.resolved);
+  const resolvedMarkets = withAccuracySeries(markets.filter((m: any) => m.resolved));
   const footballMarkets = resolvedMarkets.filter((m: any) => m.category === 'football' || m.category === 'FOOTBALL');
   const cryptoMarkets   = resolvedMarkets.filter((m: any) => m.category === 'crypto'   || m.category === 'CRYPTO');
 

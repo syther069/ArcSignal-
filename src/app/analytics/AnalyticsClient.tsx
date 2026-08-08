@@ -24,7 +24,7 @@ interface AnalyticsClientProps {
     totalStakedUsdc?: number;
     pendingCount?: number;
     totalMarkets?: number;
-    aiAccuracy?: number;
+    aiAccuracy?: number | null;
     resolvedCount?: number;
     followPercent?: number;
     fadePercent?: number;
@@ -55,7 +55,7 @@ const StatCardCustom = React.memo(function StatCardCustom({ title, value, subtex
         </div>
         {/* Value */}
         <div className="mt-4">
-          {value === null || value === undefined || value === 0 || value === '0 USDC' ? (
+          {value === null || value === undefined || value === '0 USDC' ? (
             <div className="stat-card-empty">{emptyMsg}</div>
           ) : (
             <>

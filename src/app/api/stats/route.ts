@@ -36,14 +36,10 @@ export async function GET() {
 
 function computeAccuracy(markets: any[]) {
   const resolved = markets.filter(m => m.resolved && (m.outcome === 'FOLLOW' || m.outcome === 'FADE'));
-  if (resolved.length === 0) return 94.2; // fallback
+  if (resolved.length === 0) return null;
 
   const correct = resolved.filter(m => m.outcome === 'FOLLOW').length;
   
-  const baseline = 94.2;
-  const weight = Math.min(resolved.length / 50, 1);
-  
   const realAccuracy = (correct / resolved.length) * 100;
-  
-  return (realAccuracy * weight) + (baseline * (1 - weight));
+  return Math.round(realAccuracy * 10) / 10;
 }

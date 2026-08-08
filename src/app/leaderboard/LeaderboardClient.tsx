@@ -9,7 +9,7 @@ import { Trophy } from 'lucide-react';
 
 interface LeaderboardEntry {
   address: string;
-  totalStaked: bigint;
+  totalStaked: string;
   correctPredictions: number;
   totalPredictions: number;
   winRate: number;

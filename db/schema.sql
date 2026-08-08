@@ -45,6 +45,12 @@ create table if not exists positions_index (
 create index if not exists positions_index_wallet_idx
   on positions_index (lower(wallet_address));
 
+create index if not exists positions_index_market_wallet_idx
+  on positions_index (market_id, lower(wallet_address));
+
+create index if not exists markets_index_resolution_outcome_idx
+  on markets_index (resolved, outcome);
+
 create table if not exists claims_index (
   market_id text not null,
   wallet_address text not null,
