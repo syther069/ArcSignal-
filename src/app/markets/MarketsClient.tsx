@@ -212,9 +212,14 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                 </div>
 
                 {showCrypto && (
-                  <div className="inline-flex items-center gap-1 bg-[#1c1b1b] rounded-full p-1 border border-white/5">
+                  <div className="flex items-center gap-2 w-full lg:w-auto">
+                    <span className="hidden xl:inline text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest text-[#64748b]">
+                      Timeframe
+                    </span>
+                  <div className="inline-flex items-center gap-1 bg-[#1c1b1b] rounded-full p-1 border border-white/5 overflow-x-auto max-w-full">
                     <button
                       onClick={() => setSelectedTimeframe(null)}
+                      aria-pressed={selectedTimeframe === null}
                       className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-[family-name:var(--font-inter)] font-medium transition-all ${selectedTimeframe === null
                           ? 'bg-[#353534] text-white shadow-sm'
                           : 'text-[#94a3b8] hover:text-white'
@@ -228,6 +233,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                         <button
                           key={tf}
                           onClick={() => setSelectedTimeframe(selectedTimeframe === tf ? null : tf)}
+                          aria-pressed={selectedTimeframe === tf}
                           className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-[family-name:var(--font-inter)] font-medium transition-all flex items-center gap-1.5 ${selectedTimeframe === tf
                               ? 'bg-[#353534] text-white shadow-sm'
                               : 'text-[#94a3b8] hover:text-white'
@@ -242,6 +248,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                         </button>
                       );
                     })}
+                  </div>
                   </div>
                 )}
 

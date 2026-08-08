@@ -418,17 +418,21 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
         </div>
       ) : isResolved ? (
         /* ── FEATURE 1: Resolution Transparency Panel ── */
-        <div className={`rounded-lg border p-4 space-y-2.5 ${market.outcome === 'FOLLOW'
+        <div className={`rounded-xl border p-4 space-y-3 ${market.outcome === 'FOLLOW'
             ? 'bg-[#4fdbc8]/5 border-[#4fdbc8]/25'
             : 'bg-[#ffb4ab]/5 border-[#ffb4ab]/25'
           }`}>
-          {/* Shield + headline */}
-          <div className="flex items-center gap-2">
-            <ShieldCheck className={`w-4 h-4 shrink-0 ${market.outcome === 'FOLLOW' ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'}`} />
-            <p className={`text-[11px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wide ${market.outcome === 'FOLLOW' ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className={`w-4 h-4 shrink-0 ${market.outcome === 'FOLLOW' ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'}`} />
+              <p className={`text-[11px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wide ${market.outcome === 'FOLLOW' ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'
               }`}>
-              {resolution?.headline}
-            </p>
+                Resolution details
+              </p>
+            </div>
+            <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-widest text-white">
+              {market.outcome === 'CANCELLED' ? 'CANCELLED' : `${market.outcome} WON`}
+            </span>
           </div>
 
           {/* Detail explanation */}
@@ -436,13 +440,25 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
             {resolution?.detail}
           </p>
 
-          {/* Resolution time */}
+          <div className="grid grid-cols-2 gap-3 border-y border-white/5 py-3 text-[10px] font-[family-name:var(--font-inter)]">
+            <div>
+              <p className="text-[#94a3b8]">Resolution source</p>
+              <p className="mt-0.5 text-white">{getResolutionSource(market)}</p>
+            </div>
+            <div>
+              <p className="text-[#94a3b8]">Final outcome</p>
+              <p className="mt-0.5 text-white">{market.outcome === 'CANCELLED' ? 'No valid result' : market.outcome}</p>
+            </div>
+          </div>
+
           <p className="text-[10px] text-[#94a3b8]/60 font-[family-name:var(--font-jetbrains-mono)]">
-            Resolved at: {new Date(market.resolutionTime * 1000).toUTCString()}
+            Resolution deadline: {new Date(market.resolutionTime * 1000).toUTCString()}
           </p>
 
           <p className="text-[10px] text-[#94a3b8] leading-relaxed font-[family-name:var(--font-inter)]">
-            Claim instructions: connect the wallet that staked on the winning side, then claim winnings from your portfolio.
+            {market.outcome === 'CANCELLED'
+              ? 'This market did not produce a valid result.'
+              : 'Claim instructions: connect the wallet that staked on the winning side, then claim winnings from your portfolio.'}
           </p>
 
           {/* Verify link for crypto */}

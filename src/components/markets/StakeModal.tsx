@@ -7,6 +7,7 @@ import { Market, StakeSide } from '@/types';
 import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { clearMarketCache } from '@/lib/markets';
+import { useWallet } from '@/hooks/useWallet';
 import toast from 'react-hot-toast';
 
 function friendlyError(err: unknown): string {
@@ -53,7 +54,7 @@ export interface StakeModalProps {
 
 export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const [amount, setAmount] = useState('50');
-  const [step, setStep] = useState<'idle' | 'approving' | 'staking' | 'confirming' | 'success'>('idle');
+  const [step, setStep] = useState<'idle' | 'review' | 'approving' | 'staking' | 'confirming' | 'success'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [estimatedGas, setEstimatedGas] = useState<string | null>(null);
@@ -61,6 +62,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
+  const { isWrongNetwork, switchChain } = useWallet();
 
   const { data: usdcRaw } = useReadContract({
     address: USDC_ADDRESS,
@@ -97,6 +99,10 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const payout        = winningPool > 0 ? (parsedAmount / winningPool) * totalPool : 0;
 
   const handleApprove = async () => {
+    if (isWrongNetwork) {
+      toast.error('Switch to Arc Testnet before approving USDC.');
+      return;
+    }
     if (!walletClient || !address || !publicClient) return;
     try {
       setError(null);
@@ -124,6 +130,10 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   };
 
   const handleStake = async () => {
+    if (isWrongNetwork) {
+      toast.error('Switch to Arc Testnet before placing a position.');
+      return;
+    }
     if (!walletClient || !address || !publicClient) return;
     try {
       setError(null);
@@ -275,6 +285,55 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
               Done
             </button>
           </div>
+        ) : step === 'review' ? (
+          <div className="p-6 space-y-5">
+            <div>
+              <p className="text-[10px] text-[#ddb7ff] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest mb-2">Review position</p>
+              <h3 className="text-xl font-[family-name:var(--font-hanken)] font-bold text-white leading-tight">
+                Confirm before signing
+              </h3>
+              <p className="text-xs text-[#94a3b8] mt-2 leading-relaxed">
+                Check the market, side, and amount. Your wallet will ask for final approval in the next step.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-[#1e293b] bg-[#131313] p-4 space-y-3 text-xs">
+              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Market</span><span className="text-white text-right max-w-[230px]">{(market as any).question || (market as any).title || 'Prediction Market'}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Position</span><span className={isFollow ? 'text-[#4fdbc8] font-semibold' : 'text-[#ffb4ab] font-semibold'}>{isFollow ? 'FOLLOW AI' : 'FADE AI'}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Stake</span><span className="text-white font-[family-name:var(--font-jetbrains-mono)]">{amountStr} USDC</span></div>
+              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Estimated pool share</span><span className="text-white font-[family-name:var(--font-jetbrains-mono)]">{poolShare.toFixed(2)}%</span></div>
+              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Estimated payout</span><span className="text-[#4fdbc8] font-[family-name:var(--font-jetbrains-mono)]">~{payout.toFixed(2)} USDC</span></div>
+            </div>
+
+            <p className="text-[10px] text-[#94a3b8] leading-relaxed">
+              Payouts are estimates and can change as other users enter the pool. The transaction is final once confirmed on-chain.
+            </p>
+
+            {isWrongNetwork && (
+              <button
+                onClick={() => switchChain({ chainId: 5042002 })}
+                className="w-full min-h-[44px] rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-400 text-xs font-semibold"
+              >
+                Switch to Arc Testnet
+              </button>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setStep('idle')}
+                className="min-h-[48px] rounded-lg border border-[#3a3939] text-[#94a3b8] text-xs font-semibold hover:text-white hover:border-[#ddb7ff]/40 transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onClick={handleStake}
+                disabled={isWrongNetwork || parsedAmount <= 0}
+                className="min-h-[48px] rounded-lg bg-[#ddb7ff] text-[#0f172a] text-xs font-bold hover:brightness-105 transition-all disabled:opacity-50"
+              >
+                Confirm & sign
+              </button>
+            </div>
+          </div>
         ) : (
           /* INPUT STATE */
           <>
@@ -304,6 +363,20 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                 </div>
               </div>
             </div>
+
+            {isWrongNetwork && (
+              <div className="mx-6 mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-300" role="alert">
+                <div className="flex items-center justify-between gap-3">
+                  <span>Switch to Arc Testnet to approve or stake.</span>
+                  <button
+                    onClick={() => switchChain({ chainId: 5042002 })}
+                    className="min-h-[36px] shrink-0 rounded-md bg-amber-400 px-3 text-[10px] font-bold uppercase tracking-wide text-[#1a0a00]"
+                  >
+                    Switch
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="mx-6 mt-4 rounded-lg border border-[#1e293b] bg-[#131313] p-3 space-y-2 text-[10px] font-[family-name:var(--font-jetbrains-mono)]">
               <div className="flex justify-between gap-3"><span className="text-[#94a3b8]">Action</span><span className="text-white">{isFollow ? 'Follow AI prediction' : 'Fade AI prediction'}</span></div>
@@ -381,7 +454,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
               {currentAllowance < amountBigInt ? (
                 <button
                   onClick={handleApprove}
-                  disabled={step !== 'idle' || parsedAmount <= 0}
+                  disabled={step !== 'idle' || parsedAmount <= 0 || isWrongNetwork}
                   className="w-full bg-[#34d399] text-[#0f172a] font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold py-4 tracking-widest hover:brightness-110 rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase"
                 >
                   {step === 'approving' ? (
@@ -395,8 +468,8 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                 </button>
               ) : (
                 <button
-                  onClick={handleStake}
-                  disabled={step !== 'idle' || parsedAmount <= 0}
+                  onClick={() => setStep('review')}
+                  disabled={step !== 'idle' || parsedAmount <= 0 || isWrongNetwork}
                   className="w-full bg-[#ddb7ff] text-[#0f172a] font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold py-4 tracking-widest hover:brightness-110 rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase"
                 >
                   {step === 'staking' || step === 'confirming' ? (
@@ -405,7 +478,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                       {step === 'confirming' ? 'Confirming on-chain...' : 'Placing your position...'}
                     </>
                   ) : (
-                    'Create position'
+                    'Review position'
                   )}
                 </button>
               )}
