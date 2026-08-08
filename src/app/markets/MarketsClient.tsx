@@ -3,13 +3,13 @@
 import React, { useMemo, useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 
-import { MarketCard } from '@/components/markets/MarketCard';
+import { ProfessionalMarketCard } from '@/components/markets/ProfessionalMarketCard';
 import { MarketCardSkeleton } from '@/components/markets/MarketCardSkeleton';
 import { StakeModal } from '@/components/markets/StakeModal';
 import { Market, StakeSide } from '@/types';
 import type { SerializableMarket } from '@/lib/markets';
 import { toUiMarket } from '@/lib/ui-market';
-import { Plus, Filter, Clock, RotateCw, Search } from 'lucide-react';
+import { Clock, RotateCw, TrendingUp } from 'lucide-react';
 
 interface MarketsClientProps {
   markets: SerializableMarket[];
@@ -138,13 +138,18 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
           <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <h1 className="font-[family-name:var(--font-hanken)] text-4xl font-bold text-white tracking-tight mb-2">
-                Markets Explorer
+                Markets
               </h1>
               <p className="text-sm text-[#94a3b8] max-w-2xl">
-                AI-generated prediction markets across multiple timeframes.{' '}
-                Stake your conviction, earn from accuracy.
-              </p>
+                Discover live AI prediction markets, compare market-implied conviction, and make your call.
+            </p>
+            <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] text-[#94a3b8]">
+              <span className="rounded-full border border-white/[0.08] bg-[#1c1b1b] px-3 py-1.5"><span className="text-[#ddb7ff]">{viewCounts.live}</span> live markets</span>
+              <span className="rounded-full border border-white/[0.08] bg-[#1c1b1b] px-3 py-1.5"><span className="text-[#4fdbc8]">{viewCounts.pending}</span> pending</span>
+              <span className="rounded-full border border-white/[0.08] bg-[#1c1b1b] px-3 py-1.5">Updated live</span>
             </div>
+          </div>
+          <div className="hidden items-center gap-2 rounded-xl border border-[#ddb7ff]/15 bg-[#ddb7ff]/5 px-4 py-3 text-right md:flex"><TrendingUp size={18} className="text-[#ddb7ff]" /><div><p className="text-[10px] uppercase tracking-[0.12em] text-[#94a3b8]">Trading signal</p><p className="text-sm font-semibold text-white">Follow or fade the AI</p></div></div>
           </header>
 
           {selectedView === 'resolved' && (
@@ -317,7 +322,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                     {/* Market grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {tfMarkets.map((market) => (
-                        <MarketCard
+                        <ProfessionalMarketCard
                           key={market.marketId}
                           market={market}
                           onFollow={() => setStakeModal({ market: toUiMarket(market), side: 0 })}
@@ -366,7 +371,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
               {footballMarkets.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {footballMarkets.map((market) => (
-                    <MarketCard
+                    <ProfessionalMarketCard
                       key={market.marketId}
                       market={market}
                       onFollow={() => setStakeModal({ market: toUiMarket(market), side: 0 })}
