@@ -8,7 +8,7 @@ import type { Market } from '@/lib/types';
 import { formatUnits, parseAbiItem } from 'viem';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { TrendingUp, TrendingDown, Clock, Trophy, Coins, BarChart3, AlertCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock, Trophy, Coins, BarChart3, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Position {
@@ -23,6 +23,7 @@ interface Position {
   userWon: boolean | null;
   payout: number;         // what they get back if they won (stake + profit)
   netPnl: number;         // +profit or -stake
+  isCancelled: boolean;
 }
 
 type Tab = 'open' | 'resolved' | 'all';
@@ -89,6 +90,7 @@ export default function PortfolioClient() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>('open');
   const [claiming, setClaiming] = useState<Record<string, boolean>>({});
+  const [claimTxHashes, setClaimTxHashes] = useState<Record<string, string>>({});
   const hasLoadedRef = useRef(false);
 
   // ─── Fetch this wallet's positions with a cache and authoritative reads ────
@@ -118,8 +120,9 @@ export default function PortfolioClient() {
               followPool: BigInt(position.market.followPool),
               fadePool: BigInt(position.market.fadePool),
               outcome: position.market.outcome === 1 ? 'FOLLOW' : position.market.outcome === 2 ? 'FADE' : 'PENDING',
-              status: position.market.resolved ? 'RESOLVED' : 'OPEN',
-            },
+            status: position.market.resolved ? (position.market.outcome === 0 ? 'CANCELLED' : 'RESOLVED') : 'OPEN',
+          },
+          isCancelled: position.isResolved && position.outcome === 0,
           } as Position)));
           hasLoadedRef.current = true;
           setLoading(false);
@@ -166,7 +169,7 @@ export default function PortfolioClient() {
           fadePool: data.fadePool,
           resolved: data.resolved,
           outcome: data.outcome === 1 ? 'FOLLOW' : data.outcome === 2 ? 'FADE' : 'PENDING',
-          status: data.resolved ? 'RESOLVED' : 'OPEN',
+          status: data.resolved ? (data.outcome === 0 ? 'CANCELLED' : 'RESOLVED') : 'OPEN',
         } as Market;
 
         const winningSide = data.outcome === 1 ? 0 : data.outcome === 2 ? 1 : -1;
@@ -186,7 +189,7 @@ export default function PortfolioClient() {
             netPnl = -stakeUsdc;
           }
 
-          newPositions.push({ market, side, stakeRaw, stakeUsdc, claimed, isResolved: data.resolved, outcome: data.outcome, userWon, payout, netPnl });
+          newPositions.push({ market, side, stakeRaw, stakeUsdc, claimed, isResolved: data.resolved, outcome: data.outcome, userWon, payout, netPnl, isCancelled: data.resolved && data.outcome === 0 });
         }
       }
       return newPositions;
@@ -266,6 +269,7 @@ export default function PortfolioClient() {
       toast.loading('Transaction submitted, confirming…', { id: toastId });
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status === 'reverted') throw new Error('The transaction reverted on-chain. No funds were claimed.');
+      setClaimTxHashes(prev => ({ ...prev, [marketId]: hash }));
 
       // Optimistically mark position as claimed so UI updates instantly
       setPositions(prev => prev.map(p =>
@@ -308,7 +312,7 @@ export default function PortfolioClient() {
 
     positions.forEach(p => {
       totalStaked += p.stakeUsdc;
-      if (p.isResolved && p.userWon !== null) {
+      if (p.isResolved && !p.isCancelled && p.userWon !== null) {
         resolved++;
         totalPnl += p.netPnl;
         if (p.userWon) {
@@ -414,7 +418,8 @@ export default function PortfolioClient() {
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-5 py-2.5 font-[family-name:var(--font-jetbrains-mono)] text-xs uppercase tracking-widest transition-all ${
+                  aria-pressed={activeTab === tab}
+                  className={`min-h-[44px] px-5 py-2.5 font-[family-name:var(--font-jetbrains-mono)] text-xs uppercase tracking-widest transition-all ${
                     activeTab === tab
                       ? 'bg-[#ddb7ff] text-[#0f172a] font-bold'
                       : 'bg-transparent text-[#94a3b8] hover:text-white hover:bg-white/5'
@@ -427,17 +432,21 @@ export default function PortfolioClient() {
 
             {/* ── Positions List ────────────────────────────────────────────── */}
             {displayed.length === 0 ? (
-              <EmptyState tab={activeTab} />
+              <EmptyState tab={activeTab} onRetry={fetchPortfolio} />
             ) : (
-              <div className="flex flex-col gap-3">
-                {displayed.map(pos => (
-                  <PositionCard
-                    key={`${pos.market.marketId}-${pos.side}`}
-                    pos={pos}
-                    onClaim={handleClaim}
-                    claiming={!!claiming[pos.market.marketId]}
-                  />
-                ))}
+              <div className="flex flex-col gap-6">
+                {(['action', 'open', 'history'] as const).map((group) => {
+                  const groupPositions = displayed.filter((pos) => group === 'action'
+                    ? pos.isResolved && pos.userWon === true && !pos.claimed
+                    : group === 'open' ? !pos.isResolved
+                    : pos.isResolved && !(pos.userWon === true && !pos.claimed));
+                  if (groupPositions.length === 0) return null;
+                  const title = group === 'action' ? 'Needs action' : group === 'open' ? 'Awaiting resolution' : 'Settlement history';
+                  return <section key={group} className="space-y-3">
+                    <div className="flex items-center gap-3"><h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] uppercase tracking-[0.18em] text-[#94a3b8]">{title}</h2><span className="text-[10px] text-[#64748b]">{groupPositions.length}</span></div>
+                    {groupPositions.map(pos => <PositionCard key={`${pos.market.marketId}-${pos.side}`} pos={pos} onClaim={handleClaim} claiming={!!claiming[pos.market.marketId]} claimTxHash={claimTxHashes[pos.market.marketId]} />)}
+                  </section>;
+                })}
               </div>
             )}
           </>
@@ -484,7 +493,7 @@ const StatCardCustom = React.memo(function StatCardCustom({
   );
 });
 
-const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }: { pos: Position; onClaim: (id: string, isRefund?: boolean) => void; claiming: boolean }) {
+const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming, claimTxHash }: { pos: Position; onClaim: (id: string) => void; claiming: boolean; claimTxHash?: string }) {
   const isFollow = pos.side === 0;
   const marketTitle = pos.market.question || pos.market.marketId;
   const shortTitle = marketTitle.length > 70 ? marketTitle.slice(0, 70) + '…' : marketTitle;
@@ -496,6 +505,9 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }
   const odds      = sidePool > 0 && totalPool > 0 ? (totalPool / sidePool).toFixed(2) : '—';
 
   const canClaim = pos.isResolved && pos.userWon === true && !pos.claimed;
+  const awaitingResolution = !pos.isResolved && Math.floor(Date.now() / 1000) >= pos.market.resolutionTime;
+  const stageLabel = pos.isCancelled ? 'Cancelled' : pos.isResolved ? 'Settled' : awaitingResolution ? 'Awaiting resolution' : 'Open for staking';
+  const stageProgress = pos.isResolved || pos.isCancelled ? 100 : awaitingResolution ? 75 : 35;
 
   return (
     <div className={`rounded-xl border p-5 transition-all ${
@@ -533,7 +545,10 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }
                 CLAIMED
               </span>
             )}
-            {pos.isResolved && pos.userWon === false && (
+            {pos.isCancelled && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#fbbf24]/30 text-[#fbbf24] bg-[#fbbf24]/10">CANCELLED</span>
+            )}
+            {pos.isResolved && !pos.isCancelled && pos.userWon === false && (
               <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#f87171]/30 text-[#f87171] bg-[#f87171]/10">
                 LOST
               </span>
@@ -547,12 +562,20 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }
           </div>
         </div>
 
+        <div className="space-y-2">
+          <div className="flex items-center justify-between font-[family-name:var(--font-jetbrains-mono)] text-[10px] uppercase tracking-widest text-[#64748b]"><span>Position progress</span><span className="text-[#ddb7ff]">{stageLabel}</span></div>
+          <div className="h-1.5 rounded-full bg-[#2a2929] overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-[#a855f7] to-[#ddb7ff]" style={{ width: `${stageProgress}%` }} /></div>
+          <p className="text-[11px] text-[#64748b]">{pos.isCancelled ? 'This market was cancelled. No outcome was recorded.' : pos.isResolved ? 'Settlement is complete.' : `Resolution target: ${new Date(pos.market.resolutionTime * 1000).toLocaleString()}`}</p>
+        </div>
+
         {/* Stats grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <MiniStat label="Position" value={isFollow ? 'FOLLOW AI' : 'FADE AI'} color={isFollow ? '#34d399' : '#f87171'} />
           <MiniStat label="Staked" value={`${pos.stakeUsdc.toFixed(2)} USDC`} />
           <MiniStat label="Pool Odds" value={`${odds}×`} />
-          {pos.isResolved ? (
+          {pos.isCancelled ? (
+            <MiniStat label="Settlement" value="Cancelled" color="#fbbf24" />
+          ) : pos.isResolved ? (
             pos.userWon === true ? (
               <MiniStat label="Payout" value={`+${pos.payout.toFixed(2)} USDC`} color="#34d399" />
             ) : (
@@ -568,7 +591,7 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }
           <button
             onClick={() => onClaim(pos.market.marketId)}
             disabled={claiming}
-            className="w-full py-3 rounded-lg font-[family-name:var(--font-jetbrains-mono)] text-sm font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full min-h-[48px] py-3 rounded-lg font-[family-name:var(--font-jetbrains-mono)] text-sm font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             style={{
               background: claiming ? '#1c1b1b' : 'linear-gradient(135deg, #a855f7, #34d399)',
               color: 'white',
@@ -585,6 +608,7 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }
             )}
           </button>
         )}
+        {claimTxHash && <a href={`https://testnet.arcscan.app/tx/${claimTxHash}`} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center justify-center gap-2 text-xs text-[#c4b5fd] hover:text-white transition-colors"><ExternalLink size={13} /> View claim transaction</a>}
       </div>
     </div>
   );
@@ -599,7 +623,7 @@ const MiniStat = React.memo(function MiniStat({ label, value, color }: { label: 
   );
 });
 
-const EmptyState = React.memo(function EmptyState({ tab }: { tab: Tab }) {
+const EmptyState = React.memo(function EmptyState({ tab, onRetry }: { tab: Tab; onRetry: () => void }) {
   const msgs: Record<Tab, { title: string; sub: string }> = {
     open:     { title: 'No open positions', sub: 'Browse live markets and stake on an AI prediction to get started.' },
     resolved: { title: 'No resolved positions', sub: 'Your past positions will appear here once markets close.' },
@@ -611,9 +635,10 @@ const EmptyState = React.memo(function EmptyState({ tab }: { tab: Tab }) {
       <Clock size={36} className="text-[#3a3939]" />
       <p className="font-[family-name:var(--font-hanken)] text-lg text-white">{title}</p>
       <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#8e8e8e] max-w-xs">{sub}</p>
-      <Link href="/markets" className="mt-2 px-5 py-2.5 rounded-lg bg-[#a855f7] text-white font-[family-name:var(--font-jetbrains-mono)] text-xs font-bold tracking-widest uppercase hover:opacity-90 transition-opacity">
-        Browse Markets
-      </Link>
+      <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
+        <Link href="/markets" className="min-h-[44px] inline-flex items-center px-5 py-2.5 rounded-lg bg-[#a855f7] text-white font-[family-name:var(--font-jetbrains-mono)] text-xs font-bold tracking-widest uppercase hover:opacity-90 transition-opacity">Browse Markets</Link>
+        <button onClick={onRetry} className="min-h-[44px] inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-[#3a3939] text-[#c4b5fd] font-[family-name:var(--font-jetbrains-mono)] text-xs font-bold tracking-widest uppercase hover:border-[#a855f7]/50 transition-colors"><RefreshCw size={13} /> Refresh</button>
+      </div>
     </div>
   );
 });

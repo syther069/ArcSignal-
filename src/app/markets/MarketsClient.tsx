@@ -147,6 +147,18 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
             </div>
           </header>
 
+          {selectedView === 'resolved' && (
+            <section className="mb-6 rounded-xl border border-[#ddb7ff]/20 bg-[#ddb7ff]/5 px-4 py-4 md:px-5">
+              <div className="flex items-start gap-3">
+                <Clock size={18} className="mt-0.5 shrink-0 text-[#ddb7ff]" />
+                <div>
+                  <h2 className="font-[family-name:var(--font-hanken)] text-base font-semibold text-white">Resolution history</h2>
+                  <p className="mt-1 text-xs leading-relaxed text-[#94a3b8]">Review settled markets, final outcomes, and historical pool activity. Historical values are shown for reference and cannot be staked.</p>
+                </div>
+              </div>
+            </section>
+          )}
+
           {/* Filters + Sort + Search */}
           <div className="flex flex-col mb-8 gap-4">
             <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
