@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWatchContractEvent } from 'wagmi';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import Sidebar from '@/components/layout/Sidebar';
+import Link from 'next/link';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line
@@ -28,6 +29,10 @@ interface AnalyticsClientProps {
     resolvedCount?: number;
     followPercent?: number;
     fadePercent?: number;
+    cancelledCount?: number;
+    averageLiquidity?: number;
+    dataAsOf?: string;
+    dataSource?: string;
   };
   resolvedMarkets?: any[];
   markets?: any[];
@@ -79,6 +84,7 @@ export default function AnalyticsClient({
   markets
 }: AnalyticsClientProps) {
   const router = useRouter();
+  const [range, setRange] = useState<'7d' | '30d' | 'all'>('all');
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -128,10 +134,38 @@ export default function AnalyticsClient({
     };
   }, [stats, agentWinRates, ratioData]);
 
+  const rangeStart = useMemo(() => {
+    if (range === 'all') return 0;
+    const days = range === '7d' ? 7 : 30;
+    return Math.floor(Date.now() / 1000) - days * 86_400;
+  }, [range]);
+
+  const filteredMarkets = useMemo(
+    () => (markets ?? []).filter((market) => rangeStart === 0 || Number(market.resolutionTime ?? 0) >= rangeStart),
+    [markets, rangeStart]
+  );
+  const filteredResolvedMarkets = useMemo(
+    () => (resolvedMarkets ?? []).filter((market) => rangeStart === 0 || Number(market.resolutionTime ?? 0) >= rangeStart),
+    [resolvedMarkets, rangeStart]
+  );
+  const rangeStats = useMemo(() => {
+    const totalVolume = filteredMarkets.reduce((sum, market) => sum + Number(market.followPool ?? 0) + Number(market.fadePool ?? 0), 0);
+    const validResolved = filteredResolvedMarkets.filter((market) => market.outcome === 'FOLLOW' || market.outcome === 'FADE');
+    const correct = validResolved.filter((market) => market.outcome === 'FOLLOW').length;
+    return {
+      totalVolume,
+      activeMarkets: filteredMarkets.filter((market) => !market.resolved).length,
+      resolvedMarkets: filteredResolvedMarkets.length,
+      cancelledMarkets: filteredResolvedMarkets.filter((market) => market.outcome === 'PENDING' || market.outcome === 'CANCELLED').length,
+      averageLiquidity: filteredMarkets.length ? totalVolume / filteredMarkets.length : 0,
+      accuracy: validResolved.length ? Math.round((correct / validResolved.length) * 100) : null,
+    };
+  }, [filteredMarkets, filteredResolvedMarkets]);
+
   const topMarketsByVolume = useMemo(() => {
-    if (!markets) return [];
-    return [...markets].sort((a, b) => (b.followPool + b.fadePool) - (a.followPool + a.fadePool));
-  }, [markets]);
+    if (!filteredMarkets) return [];
+    return [...filteredMarkets].sort((a, b) => (Number(b.followPool) + Number(b.fadePool)) - (Number(a.followPool) + Number(a.fadePool)));
+  }, [filteredMarkets]);
 
   return (
     <div className="flex min-h-screen bg-[#131313]">
@@ -203,37 +237,63 @@ export default function AnalyticsClient({
 
       <main className="flex-1 lg:ml-[264px] pt-24 pb-16 overflow-y-auto min-h-screen">
         <div className="max-w-[1440px] mx-auto w-full px-4 lg:px-8">
+
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="font-label-caps text-text-muted">Analytics overview</p>
+            <p className="mt-1 text-xs text-text-muted">Metrics are based on indexed on-chain activity.</p>
+          </div>
+          <div className="flex items-center gap-1 rounded-full border border-border-subtle bg-surface-charcoal p-1" aria-label="Analytics time range">
+            {([['7d', '7D'], ['30d', '30D'], ['all', 'All time']] as const).map(([value, label]) => (
+              <button key={value} onClick={() => setRange(value)} aria-pressed={range === value} className={`min-h-[40px] rounded-full px-4 text-xs font-medium transition-colors ${range === value ? 'bg-[#ddb7ff] text-[#131313]' : 'text-text-muted hover:text-white'}`}>{label}</button>
+            ))}
+          </div>
+        </div>
         
         {/* Section 1: Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 h-[160px]">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8 min-h-[160px]">
           <StatCardCustom
             title="Total Volume Staked"
-            value={totalStakedUsdc ? `${totalStakedUsdc} USDC` : null}
+            value={rangeStats.totalVolume ? `${rangeStats.totalVolume.toFixed(2)} USDC` : null}
             emptyMsg="—"
             icon="monitoring"
             accent={{ color: '#c4b5fd', bg: 'rgba(196,181,253,0.09)' }}
           />
           <StatCardCustom
             title="Active Markets"
-            value={pendingCount}
-            subtext={`of ${totalMarkets} total`}
+            value={rangeStats.activeMarkets}
+            subtext={`of ${filteredMarkets.length} in range`}
             icon="query_stats"
             emptyMsg="—"
             accent={{ color: '#4fdbc8', bg: 'rgba(79,219,200,0.09)' }}
           />
           <StatCardCustom
             title="AI Win Rate"
-            value={aiAccuracy !== null ? `${aiAccuracy}%` : null}
+            value={rangeStats.accuracy !== null ? `${rangeStats.accuracy}%` : null}
             emptyMsg="—"
             icon="psychology"
             accent={{ color: '#fbbf24', bg: 'rgba(251,191,36,0.09)' }}
           />
           <StatCardCustom
             title="Markets Resolved"
-            value={resolvedCount}
+            value={rangeStats.resolvedMarkets}
             emptyMsg="—"
             icon="done_all"
             accent={{ color: '#86efac', bg: 'rgba(134,239,172,0.09)' }}
+          />
+          <StatCardCustom
+            title="Cancelled"
+            value={rangeStats.cancelledMarkets}
+            emptyMsg="0"
+            icon="block"
+            accent={{ color: '#fbbf24', bg: 'rgba(251,191,36,0.09)' }}
+          />
+          <StatCardCustom
+            title="Avg Liquidity"
+            value={`${rangeStats.averageLiquidity.toFixed(2)} USDC`}
+            emptyMsg="0 USDC"
+            icon="waterfall_chart"
+            accent={{ color: '#7dd3fc', bg: 'rgba(125,211,252,0.09)' }}
           />
         </div>
 
@@ -242,16 +302,16 @@ export default function AnalyticsClient({
           <div className="col-span-12 lg:col-span-8 bg-surface-charcoal border border-border-subtle p-6 rounded relative overflow-hidden chart-grid min-h-[360px] flex flex-col">
             <h3 className="font-headline-lg text-primary mb-6">AI Performance Accuracy</h3>
             <div className="flex-1 w-full">
-              {(!resolvedMarkets || resolvedMarkets.length === 0) ? (
+              {filteredResolvedMarkets.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-text-muted font-code-sm">
-                  Resolving first markets — check back soon
+                  No resolved markets in this range
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={resolvedMarkets} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <XAxis dataKey="resolutionDate" stroke="#94a3b8" tick={{ fontSize: 12 }} />
-                    <YAxis stroke="#94a3b8" tick={{ fontSize: 12 }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#1c1b1b', borderColor: '#1e293b' }} />
+                  <LineChart data={filteredResolvedMarkets} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="resolutionDate" stroke="#94a3b8" tick={{ fontSize: 12 }} label={{ value: 'Resolution date', position: 'insideBottom', offset: -4, fill: '#64748b', fontSize: 10 }} />
+                    <YAxis domain={[0, 100]} stroke="#94a3b8" tick={{ fontSize: 12 }} unit="%" />
+                    <Tooltip contentStyle={{ backgroundColor: '#1c1b1b', borderColor: '#1e293b' }} formatter={(value, name) => [`${value ?? '—'}%`, name === 'cryptoAccuracy' ? 'Crypto accuracy' : 'Football accuracy']} />
                     <Line type="monotone" dataKey="cryptoAccuracy" stroke="#ddb7ff" strokeWidth={2} dot={false} />
                     <Line type="monotone" dataKey="footballAccuracy" stroke="#4fdbc8" strokeWidth={2} strokeDasharray="5 5" dot={false} />
                   </LineChart>
@@ -306,7 +366,7 @@ export default function AnalyticsClient({
           <div className="col-span-12 lg:col-span-8 bg-surface-charcoal border border-border-subtle p-6 rounded min-h-[320px] flex flex-col">
             <h3 className="font-headline-lg text-primary mb-6">Top Markets by Volume</h3>
             <div className="flex-1 w-full">
-              {(!markets || markets.length === 0 || markets.every(m => (m.followPool + m.fadePool) === 0)) ? (
+              {(filteredMarkets.length === 0 || filteredMarkets.every(m => (Number(m.followPool) + Number(m.fadePool)) === 0)) ? (
                 <div className="h-full flex items-center justify-center text-text-muted font-code-sm">
                   No stakes placed yet
                 </div>
@@ -326,16 +386,16 @@ export default function AnalyticsClient({
           <div className="col-span-12 lg:col-span-4 bg-surface-charcoal border border-border-subtle p-6 rounded min-h-[320px] flex flex-col">
             <h3 className="font-headline-lg text-primary mb-6">Recent Resolved</h3>
             <div className="flex flex-col gap-4 flex-1">
-              {(!resolvedMarkets || resolvedMarkets.length === 0) ? (
+              {filteredResolvedMarkets.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center text-text-muted font-code-sm">
                   No resolved markets yet
                 </div>
               ) : (
-                resolvedMarkets.slice(0, 5).map((rm, i) => (
+                filteredResolvedMarkets.slice(0, 5).map((rm, i) => (
                   <div key={i} className="flex justify-between items-center border-b border-border-subtle pb-3 last:border-0">
                     <div className="flex items-center gap-3">
                       <span className="font-code-sm text-text-muted">#{i + 1}</span>
-                      <span className="text-sm truncate w-[140px]" title={rm.title}>{rm.title?.length > 40 ? rm.title.substring(0, 40) + '...' : rm.title}</span>
+                      <Link href={`/market/${rm.marketId}`} className="text-sm truncate w-[140px] hover:text-primary transition-colors" title={rm.title}>{rm.title?.length > 40 ? rm.title.substring(0, 40) + '...' : rm.title}</Link>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`font-label-caps px-2 py-1 rounded ${rm.outcome === 'FOLLOW' ? 'bg-[#ddb7ff]/10 text-primary' : 'bg-[#4fdbc8]/10 text-tertiary'}`}>
@@ -353,7 +413,7 @@ export default function AnalyticsClient({
         {/* Section 4: Market Activity */}
         <div className="col-span-12 bg-surface-charcoal border border-border-subtle p-6 rounded mt-6">
           <h3 className="font-headline-lg text-primary mb-6">Market Activity</h3>
-          {(!markets || markets.length === 0) ? (
+          {(filteredMarkets.length === 0) ? (
             <div className="w-full py-12 flex items-center justify-center text-text-muted font-code-sm">
               No market activity found
             </div>
@@ -371,9 +431,9 @@ export default function AnalyticsClient({
                   </tr>
                 </thead>
                 <tbody>
-                  {markets.map((m, i) => (
+                  {filteredMarkets.map((m, i) => (
                     <tr key={i} className="border-b border-border-subtle/50 last:border-0 text-sm hover:bg-white/[0.02] transition-colors">
-                      <td className="py-4 font-medium pr-4">{m.title}</td>
+                      <td className="py-4 font-medium pr-4"><Link href={`/market/${m.marketId}`} className="hover:text-primary transition-colors">{m.title}</Link></td>
                       <td className="py-4"><span className="bg-[#1e293b] text-text-muted px-2 py-1 rounded text-xs uppercase tracking-wider">{m.category}</span></td>
                       <td className="py-4 font-code-sm text-primary">{m.aiSignal || 'PENDING'}</td>
                       <td className="py-4 font-code-sm">{(m.followPool + m.fadePool).toLocaleString()} USDC</td>
@@ -385,6 +445,11 @@ export default function AnalyticsClient({
               </table>
             </div>
           )}
+        </div>
+
+        <div className="mt-6 flex flex-col gap-2 border border-border-subtle bg-surface-charcoal px-4 py-3 text-[10px] font-label-caps text-text-muted md:flex-row md:items-center md:justify-between">
+          <span>DATA SOURCE: {stats.dataSource ?? 'ON-CHAIN INDEX'}</span>
+          <span>{stats.dataAsOf ? `UPDATED ${new Date(stats.dataAsOf).toLocaleString()}` : 'LIVE DATA'}</span>
         </div>
 
         {/* Footer */}

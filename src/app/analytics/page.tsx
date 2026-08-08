@@ -150,6 +150,8 @@ export default async function AnalyticsPage() {
 
   const pendingCount   = markets.filter((m: any) => !m.resolved).length;
   const resolvedCount  = resolvedMarkets.length;
+  const cancelledCount = resolvedMarkets.filter((m: any) => m.outcome === 'CANCELLED' || m.outcome === 0).length;
+  const averageLiquidity = markets.length ? totalVolume / markets.length : 0;
   const followPercent  = totalVolume > 0 ? Math.round((totalFollow / totalVolume) * 100) : 0;
   const fadePercent    = totalVolume > 0 ? Math.round((totalFade   / totalVolume) * 100) : 0;
 
@@ -170,7 +172,13 @@ export default async function AnalyticsPage() {
         resolvedCount,
         followPercent,
         fadePercent,
-        aiAccuracy: agentWinRates[1]?.rate ?? 0,
+        aiAccuracy: resolvedCount > cancelledCount
+          ? Math.round((resolvedMarkets.filter((m: any) => m.outcome === 'FOLLOW' || m.outcome === 1).length / (resolvedCount - cancelledCount)) * 100)
+          : null,
+        cancelledCount,
+        averageLiquidity,
+        dataAsOf: new Date().toISOString(),
+        dataSource: 'ARC RPC FALLBACK',
       }}
       resolvedMarkets={resolvedMarkets}
       markets={markets}

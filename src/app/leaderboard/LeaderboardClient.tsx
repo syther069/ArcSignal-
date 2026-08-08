@@ -6,6 +6,7 @@ import { useWatchContractEvent } from 'wagmi';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import Sidebar from '@/components/layout/Sidebar';
 import { Trophy } from 'lucide-react';
+import Link from 'next/link';
 
 interface LeaderboardEntry {
   address: string;
@@ -171,9 +172,9 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
                             )}
                           </td>
                           <td className="px-6 py-5">
-                            <span className="font-code-sm text-primary">
+                            <Link href={`/profile/${entry.address}`} className="font-code-sm text-primary hover:text-white transition-colors">
                               {formatAddress(entry.address)}
-                            </span>
+                            </Link>
                           </td>
                           <td className="px-6 py-5">
                             <div className="w-32">
@@ -186,14 +187,16 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
                             </div>
                           </td>
                           <td className="px-6 py-5 font-code-sm">
-                            {stakedUsdc.toLocaleString()} USDC
+                            {stakedUsdc.toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC
                           </td>
                           <td className="px-6 py-5 font-code-sm">
                             {entry.correctPredictions} / {entry.totalPredictions}
                           </td>
                           <td className="px-6 py-5 text-right font-label-caps">
-                            {entry.totalPredictions > 0 ? (
+                            {entry.totalPredictions >= 5 ? (
                               <span className="bg-[#4fdbc8]/10 text-tertiary px-2 py-1 rounded text-[10px]">ACTIVE</span>
+                            ) : entry.totalPredictions > 0 ? (
+                              <span className="bg-[#fbbf24]/10 text-[#fbbf24] px-2 py-1 rounded text-[10px]">PROVISIONAL</span>
                             ) : (
                               <span className="bg-[#1e293b] text-text-muted px-2 py-1 rounded text-[10px]">OBSERVER</span>
                             )}

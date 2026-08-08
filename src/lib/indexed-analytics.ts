@@ -35,6 +35,7 @@ export async function getIndexedAnalytics() {
   const totalFollow = markets.reduce((sum, market) => sum + market.followPool, 0);
   const totalFade = markets.reduce((sum, market) => sum + market.fadePool, 0);
   const resolved = markets.filter((market) => market.resolved);
+  const cancelled = resolved.filter((market) => market.outcome === 'PENDING');
   const cryptoResolved = resolved.filter((market) => market.category === 'CRYPTO');
   const footballResolved = resolved.filter((market) => market.category === 'FOOTBALL');
   const cryptoCorrect = cryptoResolved.filter((market) => market.outcome === 'FOLLOW').length;
@@ -81,6 +82,10 @@ export async function getIndexedAnalytics() {
       totalMarkets: markets.length,
       pendingCount: markets.filter((market) => !market.resolved).length,
       resolvedCount: resolved.length,
+      cancelledCount: cancelled.length,
+      averageLiquidity: markets.length ? totalVolume / markets.length : 0,
+      dataAsOf: new Date().toISOString(),
+      dataSource: 'NEON INDEX',
       followPercent: totalVolume ? Math.round((totalFollow / totalVolume) * 100) : 0,
       fadePercent: totalVolume ? Math.round((totalFade / totalVolume) * 100) : 0,
       aiAccuracy: resolved.length ? Math.round(((cryptoCorrect + footballCorrect) / resolved.length) * 100) : null,
