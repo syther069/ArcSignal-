@@ -1,6 +1,6 @@
 export type MarketCategory = 'CRYPTO' | 'FOOTBALL';
 export type MarketOutcome = 'FOLLOW' | 'FADE' | 'PENDING' | 'CANCELLED';
-export type MarketStatus = 'ACTIVE' | 'PENDING_RESOLUTION' | 'RESOLVED' | 'CANCELLED';
+export type MarketStatus = 'DRAFT' | 'OPEN' | 'CLOSED' | 'PENDING_RESOLUTION' | 'RESOLVED' | 'VOIDED';
 
 export interface AIAnalysis {
   probability: number;
@@ -25,6 +25,8 @@ export interface Market {
   outcome: MarketOutcome;
   status: MarketStatus;
   resolvedAt?: number;
+  openedAt?: number;
+  closedAt?: number;
   resolutionReason?: string;
   // AI analysis stored in memory cache, not on-chain
   analysis?: AIAnalysis;

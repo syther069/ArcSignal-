@@ -1,12 +1,20 @@
 import MarketsClient from './MarketsClient';
 import { getMarketsFromChain, serializeMarket, type SerializableMarket } from '@/lib/markets';
+import { getIndexedMarkets } from '@/lib/indexed-markets';
 
 export const dynamic = 'force-dynamic';
 
 export default async function MarketsPage() {
   let markets: SerializableMarket[] = [];
   try {
-    const chainMarkets = await getMarketsFromChain();
+    let chainMarkets;
+    try {
+      const indexedMarkets = await getIndexedMarkets(160, 0);
+      chainMarkets = indexedMarkets.length > 0 ? indexedMarkets : await getMarketsFromChain();
+    } catch (indexError) {
+      console.warn('Markets index unavailable; falling back to chain:', indexError);
+      chainMarkets = await getMarketsFromChain();
+    }
     // Keep all on-chain markets visible, including resolved markets. Their
     // explicit status is derived in getMarketsFromChain and rendered by the UI.
     markets = chainMarkets.map(serializeMarket);

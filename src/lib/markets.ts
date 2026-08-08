@@ -63,7 +63,19 @@ type ChainMarket = {
   fadePool: bigint;
   resolved: boolean;
   outcome: number;
+  status?: number;
+  openedAt?: bigint;
+  closedAt?: bigint;
+  resolvedAt?: bigint;
 };
+
+function mapMarketStatus(data: ChainMarket, nowUnix: number): Market['status'] {
+  if (data.status === 4 || (data.resolved && data.outcome === 0)) return 'VOIDED';
+  if (data.status === 3 || data.resolved) return 'RESOLVED';
+  if (data.status === 2) return 'PENDING_RESOLUTION';
+  if (data.status === 1) return 'CLOSED';
+  return Number(data.resolutionTime) <= nowUnix ? 'PENDING_RESOLUTION' : 'OPEN';
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -211,12 +223,16 @@ export async function getMarketsFromChain(
           fadePool: data.fadePool,
           resolved: data.resolved,
           outcome: mapOutcome(data.resolved, data.outcome),
-          status: data.resolved
-            ? 'RESOLVED'
-            : Number(data.resolutionTime) <= nowUnix
-              ? 'PENDING_RESOLUTION'
-              : 'ACTIVE',
-          resolvedAt: data.resolved ? Number(data.resolutionTime) : undefined,
+          status: mapMarketStatus(data, nowUnix),
+          resolvedAt: data.resolvedAt && data.resolvedAt > 0n
+            ? Number(data.resolvedAt)
+            : undefined,
+          openedAt: data.openedAt && data.openedAt > 0n
+            ? Number(data.openedAt)
+            : undefined,
+          closedAt: data.closedAt && data.closedAt > 0n
+            ? Number(data.closedAt)
+            : undefined,
           resolutionReason: data.resolved
             ? `Resolved on-chain with ${mapOutcome(data.resolved, data.outcome)} outcome.`
             : undefined,

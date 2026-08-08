@@ -4,6 +4,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, ARCSIGNAL_ABI } from '@/lib/contracts';
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchCompletedFixtures } from '@/lib/apifootball';
+import { getSql } from '@/lib/db';
 import type { Address } from 'viem';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,24 @@ const resolvePublicClient = createPublicClient({
 
 const RESOLUTION_SCAN_LIMIT = Number(process.env.RESOLUTION_SCAN_LIMIT ?? 40);
 const VALID_TIMEFRAMES = new Set(['5m', '15m', '1h', '4h', '24h']);
+
+async function recordOracleAttempt(
+  marketId: string,
+  status: 'SUBMITTED' | 'CONFIRMED' | 'SKIPPED' | 'FAILED',
+  outcome?: number,
+  transactionHash?: string,
+  errorMessage?: string,
+) {
+  try {
+    const sql = getSql();
+    await sql`
+      insert into oracle_attempts (market_id, outcome, status, transaction_hash, error_message)
+      values (${marketId}, ${outcome ?? null}, ${status}, ${transactionHash ?? null}, ${errorMessage ?? null})
+    `;
+  } catch (error) {
+    console.warn(`Unable to record oracle attempt for ${marketId}:`, error);
+  }
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -159,6 +178,8 @@ export async function POST(req: Request) {
       fadePool: bigint;
       resolved: boolean;
       outcome: number;
+      status: number;
+      resolvedAt: bigint;
     };
 
     try {
@@ -175,8 +196,9 @@ export async function POST(req: Request) {
       continue;
     }
 
-    if (market.resolved) {
+    if (market.resolved || market.status === 3 || market.status === 4) {
       skipped.push(`${marketId}: already resolved`);
+      await recordOracleAttempt(marketId, 'SKIPPED');
       continue;
     }
 
@@ -253,6 +275,7 @@ export async function POST(req: Request) {
 
       if (!shouldResolveNow) {
         skipped.push(`${marketId}: not yet due or oracle data missing`);
+        await recordOracleAttempt(marketId, 'SKIPPED');
         continue;
       }
 
@@ -280,7 +303,10 @@ export async function POST(req: Request) {
         args: [marketId, outcome],
       });
 
+      await recordOracleAttempt(marketId, 'SUBMITTED', outcome, hash);
+
       await resolvePublicClient.waitForTransactionReceipt({ hash });
+      await recordOracleAttempt(marketId, 'CONFIRMED', outcome, hash);
       resolved.push(`${marketId}: outcome=${outcome} (${outcomeReason}) tx=${hash}`);
       await new Promise(r => setTimeout(r, 500));
 
@@ -298,11 +324,16 @@ export async function POST(req: Request) {
 
         if (currentMarket.resolved) {
           skipped.push(`${marketId}: already resolved by another run`);
+          await recordOracleAttempt(marketId, 'SKIPPED');
         } else {
-          errors.push(`${marketId}: ${err instanceof Error ? err.message : String(err)}`);
+          const message = err instanceof Error ? err.message : String(err);
+          errors.push(`${marketId}: ${message}`);
+          await recordOracleAttempt(marketId, 'FAILED', undefined, undefined, message);
         }
       } catch (verificationError) {
-        errors.push(`${marketId}: ${err instanceof Error ? err.message : String(err)}; verification failed: ${verificationError instanceof Error ? verificationError.message : String(verificationError)}`);
+        const message = `${err instanceof Error ? err.message : String(err)}; verification failed: ${verificationError instanceof Error ? verificationError.message : String(verificationError)}`;
+        errors.push(`${marketId}: ${message}`);
+        await recordOracleAttempt(marketId, 'FAILED', undefined, undefined, message);
       }
       await new Promise(r => setTimeout(r, 1000));
     }

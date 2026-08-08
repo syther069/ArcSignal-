@@ -19,6 +19,7 @@ interface Position {
   claimed: boolean;
   // derived
   isResolved: boolean;
+  isVoided: boolean;
   outcome: number;        // 0=unresolved, 1=follow wins, 2=fade wins
   userWon: boolean | null;
   payout: number;         // what they get back if they won (stake + profit)
@@ -36,6 +37,7 @@ type ChainMarket = {
   fadePool: bigint;
   resolved: boolean;
   outcome: number;
+  status: number;
 };
 
 const STAKED_EVENT = parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)');
@@ -105,8 +107,8 @@ export default function PortfolioClient() {
       if (indexedResponse.ok) {
         const indexed = await indexedResponse.json() as { positions: Array<{
           marketId: string; side: 0 | 1; stakeRaw: string; stakeUsdc: number; claimed: boolean;
-          isResolved: boolean; outcome: number; userWon: boolean | null; payout: number; netPnl: number;
-          market: { marketId: string; category: string; question: string; resolutionTime: number; followPool: string; fadePool: string; resolved: boolean; outcome: number };
+          isResolved: boolean; isVoided: boolean; outcome: number; userWon: boolean | null; payout: number; netPnl: number;
+          market: { marketId: string; category: string; question: string; resolutionTime: number; followPool: string; fadePool: string; resolved: boolean; outcome: number; status?: string };
         }> };
         if (indexed.positions.length > 0) {
           setPositions(indexed.positions.map((position) => ({
@@ -118,7 +120,7 @@ export default function PortfolioClient() {
               followPool: BigInt(position.market.followPool),
               fadePool: BigInt(position.market.fadePool),
               outcome: position.market.outcome === 1 ? 'FOLLOW' : position.market.outcome === 2 ? 'FADE' : 'PENDING',
-              status: position.market.resolved ? 'RESOLVED' : 'ACTIVE',
+              status: position.market.status === 'VOIDED' ? 'VOIDED' : position.market.resolved ? 'RESOLVED' : 'OPEN',
             },
           } as Position)));
           hasLoadedRef.current = true;
@@ -142,7 +144,8 @@ export default function PortfolioClient() {
           publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'followStakes', args: [marketId, address] }) as Promise<bigint>,
           publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'fadeStakes', args: [marketId, address] }) as Promise<bigint>,
         ]);
-        const claimed = data.resolved && (data.outcome === 1 ? followRaw : fadeRaw) > 0n
+        const isVoided = data.status === 4 || (data.resolved && data.outcome === 0);
+        const claimed = data.resolved && (isVoided ? followRaw + fadeRaw : (data.outcome === 1 ? followRaw : fadeRaw)) > 0n
           ? await publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'claimed', args: [marketId, address] }) as boolean
           : false;
         return { data, followRaw, fadeRaw, claimed };
@@ -157,6 +160,7 @@ export default function PortfolioClient() {
       for (const result of results) {
         if (result.status !== 'fulfilled') continue;
         const { data, followRaw, fadeRaw, claimed } = result.value;
+        const isVoided = data.status === 4 || (data.resolved && data.outcome === 0);
         const market = {
           marketId: data.marketId,
           category: data.category === 'FOOTBALL' ? 'FOOTBALL' : 'CRYPTO',
@@ -166,14 +170,14 @@ export default function PortfolioClient() {
           fadePool: data.fadePool,
           resolved: data.resolved,
           outcome: data.outcome === 1 ? 'FOLLOW' : data.outcome === 2 ? 'FADE' : 'PENDING',
-          status: data.resolved ? 'RESOLVED' : 'ACTIVE',
+          status: data.status === 4 || (data.resolved && data.outcome === 0) ? 'VOIDED' : data.resolved ? 'RESOLVED' : data.status === 1 ? 'CLOSED' : data.status === 2 ? 'PENDING_RESOLUTION' : 'OPEN',
         } as Market;
 
         const winningSide = data.outcome === 1 ? 0 : data.outcome === 2 ? 1 : -1;
         for (const [side, stakeRaw] of [[0, followRaw], [1, fadeRaw]] as Array<[0 | 1, bigint]>) {
           if (stakeRaw === 0n) continue;
           const stakeUsdc = Number(formatUnits(stakeRaw, 6));
-          const userWon = data.resolved && winningSide >= 0 ? side === winningSide : null;
+          const userWon = data.resolved && !isVoided && winningSide >= 0 ? side === winningSide : null;
           let payout = 0;
           let netPnl = 0;
 
@@ -182,11 +186,11 @@ export default function PortfolioClient() {
             const losePool = winningSide === 0 ? data.fadePool : data.followPool;
             payout = stakeUsdc + (stakeUsdc * Number(losePool)) / Number(winPool || 1n);
             netPnl = payout - stakeUsdc;
-          } else if (data.resolved && userWon === false) {
+          } else if (data.resolved && !isVoided && userWon === false) {
             netPnl = -stakeUsdc;
           }
 
-          newPositions.push({ market, side, stakeRaw, stakeUsdc, claimed, isResolved: data.resolved, outcome: data.outcome, userWon, payout, netPnl });
+          newPositions.push({ market, side, stakeRaw, stakeUsdc, claimed, isResolved: data.resolved, isVoided, outcome: data.outcome, userWon, payout, netPnl });
         }
       }
       return newPositions;
@@ -250,7 +254,7 @@ export default function PortfolioClient() {
   }, [fetchPortfolio]);
 
   // ─── Claim Handler ──────────────────────────────────────────────────────────
-  const handleClaim = useCallback(async (marketId: string) => {
+  const handleClaim = useCallback(async (marketId: string, isRefund = false) => {
     if (!walletClient || !publicClient || !address) return;
     const toastId = toast.loading('Waiting for wallet confirmation…');
     try {
@@ -259,13 +263,14 @@ export default function PortfolioClient() {
         account: address,
         address: ARCSIGNAL_ADDRESS,
         abi: ARCSIGNAL_ABI,
-        functionName: 'claimWinnings',
+        functionName: isRefund ? 'claimRefund' : 'claimWinnings',
         args: [marketId],
       });
       const hash = await walletClient.writeContract(request);
       toast.loading('Transaction submitted, confirming…', { id: toastId });
-      await publicClient.waitForTransactionReceipt({ hash });
-      toast.success('Winnings claimed!', { id: toastId });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status === 'reverted') throw new Error('The transaction reverted on-chain. No funds were claimed.');
+      toast.success(isRefund ? 'Refund claimed!' : 'Winnings claimed!', { id: toastId });
       await fetchPortfolio();
     } catch (err: any) {
       console.error('Claim failed:', err);
@@ -296,12 +301,12 @@ export default function PortfolioClient() {
     });
 
     const winRate = resolved > 0 ? (wins / resolved) * 100 : 0;
-    return { totalStaked, totalPnl, winRate, unclaimed, wins, resolved, openCount: positions.filter(p => !p.isResolved || (p.isResolved && p.userWon && !p.claimed)).length };
+    return { totalStaked, totalPnl, winRate, unclaimed, wins, resolved, openCount: positions.filter(p => !p.isResolved || (p.isVoided && !p.claimed) || (p.isResolved && p.userWon && !p.claimed)).length };
   }, [positions]);
 
   // ─── Filtered Positions ─────────────────────────────────────────────────────
   const displayed = useMemo(() => {
-    if (activeTab === 'open')     return positions.filter(p => !p.isResolved || (p.isResolved && p.userWon && !p.claimed));
+    if (activeTab === 'open')     return positions.filter(p => !p.isResolved || (p.isVoided && !p.claimed) || (p.isResolved && p.userWon && !p.claimed));
     if (activeTab === 'resolved') return positions.filter(p => p.isResolved);
     return positions;
   }, [positions, activeTab]);
@@ -461,7 +466,7 @@ const StatCardCustom = React.memo(function StatCardCustom({
   );
 });
 
-const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }: { pos: Position; onClaim: (id: string) => void; claiming: boolean }) {
+const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }: { pos: Position; onClaim: (id: string, isRefund?: boolean) => void; claiming: boolean }) {
   const isFollow = pos.side === 0;
   const marketTitle = pos.market.question || pos.market.marketId;
   const shortTitle = marketTitle.length > 70 ? marketTitle.slice(0, 70) + '…' : marketTitle;
@@ -473,7 +478,7 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }
   const odds      = sidePool > 0 && totalPool > 0 ? (totalPool / sidePool).toFixed(2) : '—';
 
   const canClaim = pos.isResolved && pos.userWon === true && !pos.claimed;
-  const alreadyClaimed = pos.isResolved && pos.userWon === true && pos.claimed;
+  const canRefund = pos.isVoided && !pos.claimed;
 
   return (
     <div className={`rounded-xl border p-5 transition-all ${
@@ -496,6 +501,11 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }
             }`}>{pos.market.category}</span>
 
             {/* Status */}
+            {pos.isVoided && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#fbbf24]/30 text-[#fbbf24] bg-[#fbbf24]/10">
+                VOIDED
+              </span>
+            )}
             {!pos.isResolved && (
               <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#8e8e8e]/30 text-[#8e8e8e]">
                 PENDING
@@ -542,9 +552,9 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }
         </div>
 
         {/* Claim button */}
-        {canClaim && (
+        {(canClaim || canRefund) && (
           <button
-            onClick={() => onClaim(pos.market.marketId)}
+            onClick={() => onClaim(pos.market.marketId, canRefund)}
             disabled={claiming}
             className="w-full py-3 rounded-lg font-[family-name:var(--font-jetbrains-mono)] text-sm font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             style={{
@@ -559,7 +569,7 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming }
                 Claiming…
               </>
             ) : (
-              `Claim Winnings (${pos.payout.toFixed(2)} USDC)`
+              canRefund ? `Claim Refund (${pos.stakeUsdc.toFixed(2)} USDC)` : `Claim Winnings (${pos.payout.toFixed(2)} USDC)`
             )}
           </button>
         )}

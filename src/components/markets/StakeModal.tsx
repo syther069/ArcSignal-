@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAccount, useWalletClient, usePublicClient, useReadContract } from 'wagmi';
-import { parseUnits, formatUnits } from 'viem';
+import { parseUnits, formatUnits, formatEther } from 'viem';
 import { Market, StakeSide } from '@/types';
 import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
@@ -18,9 +18,10 @@ export interface StakeModalProps {
 
 export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const [amount, setAmount] = useState('50');
-  const [step, setStep] = useState<'idle' | 'approving' | 'staking' | 'success'>('idle');
+  const [step, setStep] = useState<'idle' | 'approving' | 'staking' | 'confirming' | 'success'>('idle');
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [estimatedGas, setEstimatedGas] = useState<string | null>(null);
 
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -107,12 +108,26 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
       }
 
       setStep('staking');
-      const stakeHash = await walletClient.writeContract({
+      const { request } = await publicClient.simulateContract({
+        account: address,
         address: ARCSIGNAL_ADDRESS,
         abi: ARCSIGNAL_ABI,
         functionName: 'stake',
         args: [market.marketId, side, amountBigInt],
       });
+
+      const gas = await publicClient.estimateContractGas({
+        account: address,
+        address: ARCSIGNAL_ADDRESS,
+        abi: ARCSIGNAL_ABI,
+        functionName: 'stake',
+        args: [market.marketId, side, amountBigInt],
+      });
+      const gasPrice = await publicClient.getGasPrice();
+      setEstimatedGas(formatEther(gas * gasPrice));
+
+      const stakeHash = await walletClient.writeContract(request);
+      setStep('confirming');
 
       const stakeReceipt = await publicClient.waitForTransactionReceipt({ hash: stakeHash });
       if (stakeReceipt.status === 'reverted') {
@@ -132,6 +147,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
 
       clearMarketCache();
       setTxHash(stakeHash);
+      setEstimatedGas(null);
       toast.success(`Successfully placed ${side === 0 ? 'FOLLOW' : 'FADE'} position for ${amountStr} USDC!`);
       setStep('success');
     } catch (err: any) {
@@ -143,11 +159,12 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   };
 
   const handleClose = () => {
-    if (step === 'approving' || step === 'staking') return;
+    if (step === 'approving' || step === 'staking' || step === 'confirming') return;
     setTimeout(() => {
       setAmount('50');
       setError(null);
       setTxHash(null);
+      setEstimatedGas(null);
       setStep('idle');
     }, 300);
     onClose();
@@ -171,7 +188,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
           </div>
           <button
             onClick={handleClose}
-            disabled={step === 'approving' || step === 'staking'}
+            disabled={step === 'approving' || step === 'staking' || step === 'confirming'}
             className="text-[#94a3b8] hover:text-white transition-colors disabled:opacity-50"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -197,7 +214,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
               <strong className={isFollow ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'}>
                 {isFollow ? 'FOLLOW' : 'FADE'}
               </strong>{' '}
-              position has been successfully recorded on Arc Testnet.
+              position has been confirmed on-chain.
             </p>
 
             <div className="bg-[#131313] w-full p-4 rounded-lg mt-2 border border-[#1e293b] flex flex-col gap-2">
@@ -249,6 +266,13 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                   {isFollow ? 'Follow AI' : 'Fade AI'}
                 </div>
               </div>
+            </div>
+
+            <div className="mx-6 mt-4 rounded-lg border border-[#1e293b] bg-[#131313] p-3 space-y-2 text-[10px] font-[family-name:var(--font-jetbrains-mono)]">
+              <div className="flex justify-between gap-3"><span className="text-[#94a3b8]">Action</span><span className="text-white">{isFollow ? 'Follow AI prediction' : 'Fade AI prediction'}</span></div>
+              <div className="flex justify-between gap-3"><span className="text-[#94a3b8]">Amount</span><span className="text-white">{amountStr} USDC</span></div>
+              <div className="flex justify-between gap-3"><span className="text-[#94a3b8]">Contract</span><span className="text-white truncate max-w-[190px]">{ARCSIGNAL_ADDRESS}</span></div>
+              {estimatedGas && <div className="flex justify-between gap-3"><span className="text-[#94a3b8]">Estimated gas</span><span className="text-white">~{Number(estimatedGas).toFixed(6)} ARC</span></div>}
             </div>
 
             {/* Error */}
@@ -338,10 +362,10 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                   disabled={step !== 'idle' || parsedAmount <= 0}
                   className="w-full bg-[#ddb7ff] text-[#0f172a] font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold py-4 tracking-widest hover:brightness-110 rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase"
                 >
-                  {step === 'staking' ? (
+                  {step === 'staking' || step === 'confirming' ? (
                     <>
                       <span className="animate-spin text-lg leading-none">↻</span>
-                      Placing your position...
+                      {step === 'confirming' ? 'Confirming on-chain...' : 'Placing your position...'}
                     </>
                   ) : (
                     'Create position'

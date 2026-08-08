@@ -161,8 +161,9 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
   const probability = market.analysis?.probability ?? market.analysis?.confidence ?? 50;
   const confidence = market.analysis?.confidence ?? 50;
   const isResolved = market.resolved;
-  const isPendingResolution = !market.resolved && market.resolutionTime <= Math.floor(Date.now() / 1000);
-  const isActive = !isResolved && !isPendingResolution;
+  const isVoided = market.status === 'VOIDED' || (isResolved && market.outcome === 'CANCELLED');
+  const isPendingResolution = !isResolved && (market.status === 'PENDING_RESOLUTION' || market.resolutionTime <= Math.floor(Date.now() / 1000));
+  const isActive = !isResolved && market.status !== 'CLOSED' && !isPendingResolution;
   const hasAnalysis = !!market.analysis;
   const timeframe = getTimeframe(market.marketId);
   const timeframeSeconds = getTimeframeSeconds(timeframe);
@@ -201,7 +202,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
             ? 'bg-[#94a3b8]/10 border-[#94a3b8]/20 text-[#94a3b8]'
             : 'bg-[#4fdbc8]/10 border-[#4fdbc8]/20 text-[#4fdbc8]'
           }`}>
-          {isResolved ? 'RESOLVED' : isPendingResolution ? 'PENDING' : 'LIVE'}
+          {isVoided ? 'VOIDED' : isResolved ? 'RESOLVED' : market.status === 'CLOSED' ? 'CLOSED' : isPendingResolution ? 'PENDING' : 'LIVE'}
         </span>
       </div>
 
@@ -398,6 +399,23 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
               Fade AI
             </button>
           </div>
+        </div>
+      ) : isVoided ? (
+        <div className="rounded-lg border border-[#fbbf24]/25 bg-[#fbbf24]/5 p-4 space-y-2.5">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 shrink-0 text-[#fbbf24]" />
+            <p className="text-[11px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wide text-[#fbbf24]">
+              Market Voided
+            </p>
+          </div>
+          <p className="text-[11px] text-[#94a3b8] leading-relaxed font-[family-name:var(--font-jetbrains-mono)]">
+            This market did not meet its settlement conditions. Stakeholders can claim a full refund from their portfolio.
+          </p>
+          {market.resolvedAt && (
+            <p className="text-[10px] text-[#94a3b8]/60 font-[family-name:var(--font-jetbrains-mono)]">
+              Voided at: {new Date(market.resolvedAt * 1000).toUTCString()}
+            </p>
+          )}
         </div>
       ) : isResolved ? (
         /* ── FEATURE 1: Resolution Transparency Panel ── */

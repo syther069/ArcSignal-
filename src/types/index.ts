@@ -23,7 +23,7 @@ export interface Market {
   fadePool: number;
   resolutionTime: number;
   resolved: boolean;
-  status?: 'ACTIVE' | 'PENDING_RESOLUTION' | 'RESOLVED' | 'CANCELLED';
+  status?: 'DRAFT' | 'OPEN' | 'CLOSED' | 'PENDING_RESOLUTION' | 'RESOLVED' | 'VOIDED';
   outcome?: string;
   resolution_source?: string;
   resolution_price?: number;

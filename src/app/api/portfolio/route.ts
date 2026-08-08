@@ -26,11 +26,14 @@ export async function GET(req: Request) {
         m.fade_pool,
         m.resolved,
         m.outcome,
-        case when c.market_id is null then false else true end as claimed
+        m.status,
+        case when c.market_id is null and r.market_id is null then false else true end as claimed
       from positions_index p
       join markets_index m on m.market_id = p.market_id
       left join claims_index c
         on c.market_id = p.market_id and lower(c.wallet_address) = lower(${address})
+      left join refunds_index r
+        on r.market_id = p.market_id and lower(r.wallet_address) = lower(${address})
       where lower(p.wallet_address) = lower(${address}) and p.amount > 0
       order by p.last_staked_block desc nulls last
     `;
@@ -59,13 +62,14 @@ export async function GET(req: Request) {
         const stakeRaw = BigInt(String(row.amount));
         const resolved = Boolean(row.resolved);
         const outcome = Number(row.outcome);
+        const isVoided = String(row.status ?? '') === 'VOIDED' || (resolved && outcome === 0);
         const winningSide = outcome === 1 ? 0 : outcome === 2 ? 1 : -1;
-        const userWon = resolved && winningSide >= 0 ? side === winningSide : null;
+        const userWon = resolved && !isVoided && winningSide >= 0 ? side === winningSide : null;
         const winPool = winningSide === 0 ? BigInt(String(row.follow_pool)) : BigInt(String(row.fade_pool));
         const losePool = winningSide === 0 ? BigInt(String(row.fade_pool)) : BigInt(String(row.follow_pool));
         const stakeUsdc = Number(stakeRaw) / 1e6;
         const payout = resolved && userWon ? stakeUsdc + Number((stakeRaw * losePool) / (winPool || 1n)) / 1e6 : 0;
-        const netPnl = resolved && userWon === true ? payout - stakeUsdc : resolved ? -stakeUsdc : 0;
+        const netPnl = resolved && !isVoided && userWon === true ? payout - stakeUsdc : resolved && !isVoided ? -stakeUsdc : 0;
 
         return {
           marketId: row.market_id,
@@ -74,7 +78,9 @@ export async function GET(req: Request) {
           stakeUsdc,
           claimed: Boolean(row.claimed),
           isResolved: resolved,
+          isVoided,
           outcome,
+          status: row.status,
           userWon,
           payout,
           netPnl,
@@ -87,6 +93,7 @@ export async function GET(req: Request) {
           fadePool: String(row.fade_pool),
           resolved,
           outcome,
+          status: row.status,
         },
         };
       }),

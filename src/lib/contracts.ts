@@ -38,10 +38,13 @@ export const USDC_ADDRESS = '0x3600000000000000000000000000000000000000' as `0x$
 export const ARCSIGNAL_ABI = parseAbi([
   'function createMarket(string marketId, string category, string question, string analysisJson, uint256 resolutionTime) external',
   'function stake(string marketId, uint8 side, uint256 amount) external',
+  'function closeMarket(string marketId) external',
   'function resolveMarket(string marketId, uint8 outcome) external',
   'function cancelMarket(string marketId) external',
+  'function voidMarket(string marketId, string reason) external',
   'function claimWinnings(string marketId) external',
-  'function getMarket(string marketId) external view returns ((string marketId, string category, string question, string analysisJson, uint256 resolutionTime, uint256 followPool, uint256 fadePool, bool resolved, uint8 outcome))',
+  'function claimRefund(string marketId) external',
+  'function getMarket(string marketId) external view returns ((string marketId, string category, string question, string analysisJson, uint256 resolutionTime, uint256 followPool, uint256 fadePool, bool resolved, uint8 outcome, uint8 status, uint256 openedAt, uint256 closedAt, uint256 resolvedAt))',
   'function getMarketCount() external view returns (uint256)',
   'function getMarketIdByIndex(uint256 index) external view returns (string)',
   'function getAllMarketIds() external view returns (string[])',
@@ -54,7 +57,9 @@ export const ARCSIGNAL_ABI = parseAbi([
   'event MarketCreated(string marketId, string category, string question, uint256 resolutionTime)',
   'event Staked(string marketId, address user, uint8 side, uint256 amount)',
   'event MarketResolved(string marketId, uint8 outcome)',
+  'event MarketVoided(string marketId, string reason, uint256 voidedAt)',
   'event Claimed(string marketId, address user, uint256 amount)',
+  'event Refunded(string marketId, address user, uint256 amount)',
   'event ProfileUpdated(address indexed user, string username, string bio, string avatarUrl)',
 ]);
 
