@@ -12,8 +12,8 @@ export function ConfidenceBar({ confidence, label, className = '' }: ConfidenceB
   let fillClass = '';
   let textClass = '';
   if (safeConfidence > 70) {
-    fillClass = 'bg-[#34d399]'; // Green
-    textClass = 'text-[#34d399]';
+    fillClass = 'bg-[#ddb7ff]'; // Violet
+    textClass = 'text-[#ddb7ff]';
   } else if (safeConfidence >= 50) {
     fillClass = 'bg-[#fbbf24]'; // Yellow
     textClass = 'text-[#fbbf24]';

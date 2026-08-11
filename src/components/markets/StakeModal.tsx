@@ -455,7 +455,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                 <button
                   onClick={handleApprove}
                   disabled={step !== 'idle' || parsedAmount <= 0 || isWrongNetwork}
-                  className="w-full bg-[#34d399] text-[#0f172a] font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold py-4 tracking-widest hover:brightness-110 rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase"
+                  className="w-full bg-[#ddb7ff] text-[#0f172a] font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold py-4 tracking-widest hover:brightness-110 rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2 uppercase"
                 >
                   {step === 'approving' ? (
                     <>

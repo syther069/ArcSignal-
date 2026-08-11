@@ -61,7 +61,7 @@ export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
 
   // Status mapping per prompt specification
   let statusLabel = 'OPEN';
-  let statusColorClass = 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400';
+  let statusColorClass = 'border-[#c0c1ff]/30 bg-[#c0c1ff]/10 text-[#c0c1ff]';
   let statusExplanation = '';
 
   if (isResolved) {
@@ -104,7 +104,7 @@ export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
           )}
 
           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold uppercase ${statusColorClass}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${isOpen ? 'bg-emerald-400 animate-pulse' : isPending ? 'bg-amber-300' : 'bg-current'}`} />
+            <span className={`w-1.5 h-1.5 rounded-full ${isOpen ? 'bg-[#c0c1ff] animate-pulse' : isPending ? 'bg-amber-300' : 'bg-current'}`} />
             {statusLabel}
           </span>
 
@@ -125,7 +125,7 @@ export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
         {/* Primary Question Text */}
         <Link
           href={`/market/${market.marketId}`}
-          className="group/link flex items-center gap-1.5 text-white font-display text-[15px] sm:text-[16px] font-semibold tracking-[-0.015em] hover:text-[#ead7ff] transition-colors leading-[1.35] line-clamp-2"
+          className="group/link flex items-center gap-1.5 text-white font-display text-[15px] sm:text-[16px] font-bold tracking-[-0.015em] hover:text-[#ead7ff] transition-colors leading-[1.35] line-clamp-2"
         >
           <span>{market.question || market.marketId}</span>
           <ArrowUpRight size={14} className="opacity-0 -translate-x-1 group-hover/link:opacity-100 group-hover/link:translate-x-0 transition-all text-[#ddb7ff] shrink-0" />
@@ -251,7 +251,7 @@ export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
 
         {/* Micro-copy intent line for open markets */}
         {isOpen && (
-          <div className="flex items-center justify-between font-mono text-[9px] tracking-wide text-[#64748b] px-0.5 uppercase">
+          <div className="flex items-center justify-between font-mono text-[10px] tracking-wide text-[#64748b] px-0.5 uppercase">
             <span>Follow: Support AI</span>
             <span>Fade: Oppose AI</span>
           </div>

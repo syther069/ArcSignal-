@@ -224,14 +224,14 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                 <span className="inline-flex items-center gap-1 rounded-md bg-[#ddb7ff]/10 px-2 py-0.5 font-bold text-[#ddb7ff] border border-[#ddb7ff]/20">
                   <ShieldCheck size={12} /> ON-CHAIN VERIFIED
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 font-bold text-emerald-400 border border-emerald-500/20">
+                <span className="inline-flex items-center gap-1 rounded-md bg-[#c0c1ff]/10 px-2 py-0.5 font-bold text-[#c0c1ff] border border-[#c0c1ff]/20">
                   <Zap size={12} /> LIVE ODDS
                 </span>
               </div>
               <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-white tracking-[-0.025em] leading-tight">
                 Markets
               </h1>
-              <p className="font-sans text-xs sm:text-sm text-[#94a3b8] mt-1 max-w-2xl leading-relaxed">
+              <p className="font-sans text-sm sm:text-base text-[#94a3b8] mt-1 max-w-2xl leading-relaxed">
                 Discover live AI prediction markets, compare market-implied conviction, and make your call.
               </p>
             </div>
