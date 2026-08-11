@@ -4,25 +4,31 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import { StakeModal } from '@/components/markets/StakeModal';
+import { MarketProbabilityChart } from '@/components/markets/MarketProbabilityChart';
+import { MarketTimeline } from '@/components/markets/MarketTimeline';
+import { CountdownTimer } from '@/components/markets/CountdownTimer';
 import { Market, StakeSide } from '@/types';
-import { useReadContract, useReadContracts, useAccount, usePublicClient, useWalletClient } from 'wagmi';
+import { useReadContract, useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { formatUnits } from 'viem';
-import { ArcSignal_ADDRESS } from '@/lib/usdc';
 import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
 import toast from 'react-hot-toast';
 import {
   ChevronRight,
-  Trophy,
-  Bitcoin,
   Brain,
   FileText,
   TrendingUp,
   TrendingDown,
   Gavel,
-  Activity,
   CheckCircle2,
   XCircle,
-  BarChart3
+  Clock,
+  ShieldCheck,
+  ExternalLink,
+  HelpCircle,
+  Sparkles,
+  Zap,
+  Lock,
+  DollarSign,
 } from 'lucide-react';
 
 const ArcSignal_ABI = [
@@ -47,9 +53,15 @@ interface MarketDetailClientProps {
   market: Market;
 }
 
+function getTimeframe(marketId: string) {
+  return marketId.match(/-PRICE-(5m|15m|1h|4h|24h)-/)?.[1] ?? null;
+}
+
 export default function MarketDetailClient({ market }: MarketDetailClientProps) {
   const [stakeModalSide, setStakeModalSide] = useState<StakeSide | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
+  const [activeTab, setActiveTab] = useState<'analysis' | 'rules' | 'timeline'>('analysis');
+
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient();
@@ -70,7 +82,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
     args: address ? [market.marketId, address] : undefined,
     query: { enabled: !!address, staleTime: 10_000, refetchInterval: 12_000 },
   });
-  
+
   const { data: fadeRaw, refetch: refetchFade } = useReadContract({
     address: ARCSIGNAL_ADDRESS,
     abi: ARCSIGNAL_ABI,
@@ -78,7 +90,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
     args: address ? [market.marketId, address] : undefined,
     query: { enabled: !!address, staleTime: 10_000, refetchInterval: 12_000 },
   });
-  
+
   const { data: claimedRaw, refetch: refetchClaimed } = useReadContract({
     address: ARCSIGNAL_ADDRESS,
     abi: ARCSIGNAL_ABI,
@@ -91,29 +103,37 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
   const fadePool = chainMarket ? parseFloat(formatUnits(chainMarket[4] as bigint, 6)) : market.fadePool;
 
   const totalPool = followPool + fadePool;
-  const followPercent = totalPool > 0 ? (followPool / totalPool) * 100 : 0;
-  const fadePercent = totalPool > 0 ? (fadePool / totalPool) * 100 : 0;
-  const rewardMulti = totalPool > 0 && followPool > 0 ? (totalPool / followPool).toFixed(2) : '—';
+  const followPercent = totalPool > 0 ? (followPool / totalPool) * 100 : 50;
+  const fadePercent = totalPool > 0 ? (fadePool / totalPool) * 100 : 50;
+  const followMultiplier = totalPool > 0 && followPool > 0 ? (totalPool / followPool).toFixed(2) : '2.00';
+  const fadeMultiplier = totalPool > 0 && fadePool > 0 ? (totalPool / fadePool).toFixed(2) : '2.00';
 
-  const categoryLabels: string[] = market.category === 'football'
-    ? ['TACTICAL ANALYSIS', 'FORM & FITNESS', 'HISTORICAL DATA', 'ODDS MOVEMENT']
-    : ['ON-CHAIN METRICS', 'ORDER BOOK FLOW', 'SENTIMENT ANALYSIS', 'MACRO FACTORS'];
+  const categoryLabels: string[] =
+    market.category === 'football'
+      ? ['TACTICAL ANALYSIS', 'FORM & FITNESS', 'HISTORICAL DATA', 'ODDS MOVEMENT']
+      : ['ON-CHAIN METRICS', 'ORDER BOOK FLOW', 'SENTIMENT ANALYSIS', 'MACRO FACTORS'];
 
   const followStakeRaw = (followRaw as bigint) || 0n;
   const fadeStakeRaw = (fadeRaw as bigint) || 0n;
   const isClaimed = (claimedRaw as boolean) || false;
   const resolved = chainMarket ? chainMarket[5] : market.resolved;
   const outcome = chainMarket ? chainMarket[6] : (market.outcome === 'FOLLOW' ? 1 : market.outcome === 'FADE' ? 2 : 0);
-  
+
+  const now = Math.floor(Date.now() / 1000);
+  const isPending = !resolved && (market.status === 'PENDING_RESOLUTION' || market.resolutionTime <= now);
+  const isClosed = !resolved && !isPending && market.status === 'CLOSED';
+  const isOpen = !resolved && !isPending && !isClosed;
+  const timeframe = getTimeframe(market.marketId);
+
   let userWon = false;
   let payout = 0;
   if (resolved) {
     if (outcome === 1 && followStakeRaw > 0n) {
       userWon = true;
-      payout = Number(formatUnits(followStakeRaw, 6)) + (Number(formatUnits(followStakeRaw, 6)) * fadePool) / followPool;
+      payout = Number(formatUnits(followStakeRaw, 6)) + (Number(formatUnits(followStakeRaw, 6)) * fadePool) / (followPool || 1);
     } else if (outcome === 2 && fadeStakeRaw > 0n) {
       userWon = true;
-      payout = Number(formatUnits(fadeStakeRaw, 6)) + (Number(formatUnits(fadeStakeRaw, 6)) * followPool) / fadePool;
+      payout = Number(formatUnits(fadeStakeRaw, 6)) + (Number(formatUnits(fadeStakeRaw, 6)) * followPool) / (fadePool || 1);
     }
   }
 
@@ -142,296 +162,566 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
     }
   };
 
+  // Status mapping
+  let statusLabel = 'OPEN';
+  let statusBadgeClass = 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400';
+  let statusAlertMessage = '';
+
+  if (resolved) {
+    if (outcome === 0) {
+      statusLabel = 'CANCELLED';
+      statusBadgeClass = 'border-slate-500/30 bg-slate-500/10 text-slate-400';
+      statusAlertMessage = 'This market has been cancelled or voided. All original stakes are refundable.';
+    } else {
+      statusLabel = 'RESOLVED';
+      statusBadgeClass = 'border-[#ddb7ff]/30 bg-[#ddb7ff]/10 text-[#ddb7ff]';
+      statusAlertMessage = `Market settlement verified on-chain. Outcome: ${outcome === 1 ? 'FOLLOW WON' : 'FADE WON'}.`;
+    }
+  } else if (isPending) {
+    statusLabel = 'PENDING RESOLUTION';
+    statusBadgeClass = 'border-amber-400/30 bg-amber-400/10 text-amber-300';
+    statusAlertMessage = 'Closed — awaiting oracle resolution. Trading is disabled until settlement is recorded.';
+  } else if (isClosed) {
+    statusLabel = 'CLOSED';
+    statusBadgeClass = 'border-amber-400/30 bg-amber-400/10 text-amber-300';
+    statusAlertMessage = 'Market closed for trading — awaiting resolution.';
+  }
+
+  const aiPickUpper = (market.agentPick || 'YES').toUpperCase();
+  const isFollowAi = aiPickUpper === 'YES' || aiPickUpper === 'FOLLOW';
+
   return (
-    <div className="flex min-h-screen bg-background text-on-background font-body-md selection:bg-primary selection:text-on-primary">
+    <div className="flex min-h-screen bg-[#121212] text-[#e5e2e1]">
       <Sidebar />
 
       {/* Main Content Shell */}
-      <main className="lg:ml-[264px] min-h-screen pt-24 pb-16 flex flex-col flex-1">
-        <div className="flex flex-col lg:flex-row flex-1 px-4 lg:px-8 gap-6 w-full mx-auto">
-          
-          {/* Center Content */}
-          <div className="flex-1 space-y-margin-desktop min-w-0">
-            {/* Market Header */}
-            <header className="space-y-4 pt-8 lg:pt-0">
-              <nav className="flex flex-wrap items-center gap-2 font-label-caps text-text-muted">
-                <Link href="/markets" className="hover:text-vibrant transition-colors">MARKETS</Link>
-                <ChevronRight size={14} />
-                <span className="uppercase">{market.category}</span>
-                {market.league && (
-                  <>
-                    <ChevronRight size={14} />
-                    <span className="uppercase">{market.league}</span>
-                  </>
+      <main className="lg:ml-[264px] min-h-screen pt-20 pb-20 md:pb-12 flex-1 min-w-0">
+        <div className="max-w-[1400px] mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-6">
+
+          {/* ── 1. BREADCRUMBS & TOP NAV ── */}
+          <nav className="flex flex-wrap items-center gap-2 text-xs font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8] pt-2">
+            <Link href="/markets" className="hover:text-[#ddb7ff] transition-colors">
+              MARKETS
+            </Link>
+            <ChevronRight size={13} />
+            <span className="uppercase text-[#cbd5e1]">{market.category}</span>
+            {timeframe && (
+              <>
+                <ChevronRight size={13} />
+                <span className="uppercase text-[#94a3b8]">{timeframe}</span>
+              </>
+            )}
+            <ChevronRight size={13} />
+            <span className="text-[#ddb7ff] truncate max-w-[200px] sm:max-w-md">
+              {market.title}
+            </span>
+          </nav>
+
+          {/* ── 2. CLOSED / PENDING / RESOLUTION ALERT ── */}
+          {statusAlertMessage && (
+            <div className={`p-4 rounded-xl border flex items-start gap-3 ${
+              resolved
+                ? 'bg-[#ddb7ff]/5 border-[#ddb7ff]/20 text-[#e5e2e1]'
+                : isPending
+                ? 'bg-amber-400/5 border-amber-400/20 text-amber-200'
+                : 'bg-white/[0.04] border-white/[0.08] text-[#cbd5e1]'
+            }`}>
+              <ShieldCheck size={18} className="mt-0.5 shrink-0 text-[#ddb7ff]" />
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-white">
+                  Market Status: {statusLabel}
+                </p>
+                <p className="text-xs text-[#94a3b8] mt-0.5 leading-relaxed">
+                  {statusAlertMessage}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── 3. MARKET HEADER & PRIMARY DECISION HERO ── */}
+          <header className="rounded-2xl border border-white/[0.08] bg-[#161616] p-6 lg:p-8 space-y-6 shadow-lg">
+            
+            {/* Meta Row */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-[#ddb7ff] bg-[#ddb7ff]/10 border border-[#ddb7ff]/20">
+                  {market.category}
+                </span>
+                {timeframe && (
+                  <span className="rounded px-2 py-1 text-xs font-medium uppercase tracking-wider text-[#94a3b8] bg-white/[0.04] border border-white/[0.08]">
+                    {timeframe} Timeframe
+                  </span>
                 )}
-                <ChevronRight size={14} />
-                <span className="text-primary truncate max-w-[200px] sm:max-w-none">{market.title}</span>
-              </nav>
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${statusBadgeClass}`}>
+                  <span className={`w-2 h-2 rounded-full ${isOpen ? 'bg-emerald-400 animate-pulse' : 'bg-current'}`} />
+                  {statusLabel}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-[#94a3b8]">
+                <Clock size={14} className="text-[#94a3b8]" />
+                <span>
+                  {resolved ? (
+                    'Settlement Complete'
+                  ) : isPending ? (
+                    'Oracle Awaiting Resolution'
+                  ) : (
+                    <>Closes in <CountdownTimer resolutionTime={market.resolutionTime} resolved={false} /></>
+                  )}
+                </span>
+              </div>
+            </div>
+
+            {/* Question Text */}
+            <h1 className="font-[family-name:var(--font-hanken)] text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight leading-tight">
+              {market.title}
+            </h1>
+
+            {/* Key Metrics Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-white/[0.06]">
+              {/* AI Prediction */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider text-[#94a3b8]">
+                  AI Prediction
+                </span>
+                <p className="text-lg sm:text-xl font-bold text-[#ddb7ff] flex items-center gap-1.5">
+                  <Sparkles size={16} />
+                  <span>{isFollowAi ? 'FOLLOW AI' : 'FADE AI'}</span>
+                </p>
+              </div>
+
+              {/* AI Confidence */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider text-[#94a3b8]">
+                  AI Confidence
+                </span>
+                <p className="text-lg sm:text-xl font-bold font-[family-name:var(--font-jetbrains-mono)] text-white">
+                  {market.confidence}%
+                </p>
+              </div>
+
+              {/* Market Odds Split */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider text-[#94a3b8]">
+                  Market Split
+                </span>
+                <p className="text-lg sm:text-xl font-bold font-[family-name:var(--font-jetbrains-mono)] text-white">
+                  <span className="text-[#4fdbc8]">{followPercent.toFixed(0)}%</span> / <span className="text-[#f87171]">{fadePercent.toFixed(0)}%</span>
+                </p>
+              </div>
+
+              {/* Liquidity Pool */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider text-[#94a3b8]">
+                  Total Liquidity
+                </span>
+                <p className="text-lg sm:text-xl font-bold font-[family-name:var(--font-jetbrains-mono)] text-white">
+                  {totalPool.toFixed(2)} <span className="text-xs text-[#94a3b8] font-normal">USDC</span>
+                </p>
+              </div>
+            </div>
+
+          </header>
+
+          {/* ── 4. TWO-COLUMN RESEARCH & TRADING WORKSPACE ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            {/* Left Column: Research, Probability Chart, Rules & Timeline (8 cols) */}
+            <div className="lg:col-span-8 space-y-6">
               
-              <div className="space-y-6">
-                <h2 className="font-headline-xl text-headline-xl text-vibrant max-w-4xl">
-                  {market.title}
-                </h2>
+              {/* Interactive Probability Chart */}
+              <MarketProbabilityChart
+                followPercent={followPercent}
+                fadePercent={fadePercent}
+                aiConfidence={market.confidence}
+                aiPrediction={aiPickUpper}
+                openedAt={market.resolution_timestamp ? market.resolution_timestamp - 86400 : undefined}
+                resolutionTime={market.resolutionTime}
+                marketId={market.marketId}
+              />
+
+              {/* Lifecycle Progression Timeline */}
+              <MarketTimeline
+                resolutionTime={market.resolutionTime}
+                resolved={resolved}
+                outcome={market.outcome}
+                status={market.status}
+                openedAt={market.resolution_timestamp ? market.resolution_timestamp - 86400 : undefined}
+              />
+
+              {/* Deep Research Section */}
+              <div className="rounded-2xl border border-white/[0.08] bg-[#141414] p-5 lg:p-6 space-y-5">
                 
-                <div className="flex flex-wrap items-center gap-8 md:gap-12">
-                  <div className="space-y-1">
-                    <p className="font-label-caps text-text-muted">AI PREDICTION</p>
-                    <p className="font-headline-md text-tertiary flex items-center gap-2">
-                      {market.agentPick.toUpperCase()} 
-                      <span className="text-[10px] font-label-caps bg-tertiary/10 px-2 py-0.5 rounded border border-tertiary/20">
-                        {market.agentPick.toLowerCase().includes('yes') || market.agentPick.toLowerCase().includes('follow') ? 'BULLISH' : 'BEARISH'}
-                      </span>
+                {/* Section Navigation Tabs */}
+                <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
+                  <button
+                    onClick={() => setActiveTab('analysis')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      activeTab === 'analysis'
+                        ? 'bg-[#ddb7ff] text-[#131313]'
+                        : 'text-[#94a3b8] hover:text-white'
+                    }`}
+                  >
+                    <Brain size={14} /> AI Analysis
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('rules')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      activeTab === 'rules'
+                        ? 'bg-[#ddb7ff] text-[#131313]'
+                        : 'text-[#94a3b8] hover:text-white'
+                    }`}
+                  >
+                    <Gavel size={14} /> Settlement Rules
+                  </button>
+                </div>
+
+                {/* Tab Content: AI Analysis */}
+                {activeTab === 'analysis' && (
+                  <div className="space-y-6">
+                    {/* Executive Summary */}
+                    {market.summary && (
+                      <div className="space-y-2">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-[#ddb7ff] flex items-center gap-1.5">
+                          <FileText size={14} /> Executive Summary
+                        </h3>
+                        <p className="text-xs sm:text-sm text-[#cbd5e1] leading-relaxed bg-[#1a1a1a] p-4 rounded-xl border border-white/[0.04]">
+                          {market.summary}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Bull / Bear Arguments */}
+                    {(market.bull_case || market.bear_case) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {market.bull_case && (
+                          <div className="p-4 rounded-xl border border-[#4fdbc8]/20 bg-[#4fdbc8]/5 space-y-2">
+                            <h4 className="text-xs font-bold text-[#4fdbc8] uppercase tracking-wider flex items-center gap-1.5">
+                              <TrendingUp size={14} /> Bull Case (Follow)
+                            </h4>
+                            <p className="text-xs text-[#cbd5e1] leading-relaxed">
+                              {market.bull_case}
+                            </p>
+                          </div>
+                        )}
+                        {market.bear_case && (
+                          <div className="p-4 rounded-xl border border-[#f87171]/20 bg-[#f87171]/5 space-y-2">
+                            <h4 className="text-xs font-bold text-[#f87171] uppercase tracking-wider flex items-center gap-1.5">
+                              <TrendingDown size={14} /> Bear Case (Fade)
+                            </h4>
+                            <p className="text-xs text-[#cbd5e1] leading-relaxed">
+                              {market.bear_case}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Psychology & Key Factors */}
+                    {market.keyFactors && market.keyFactors.length > 0 && (
+                      <div className="space-y-2">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
+                          Psychological & Market Conviction Factors
+                        </h3>
+                        <div className="space-y-2">
+                          {market.keyFactors.map((factor, i) => (
+                            <div
+                              key={i}
+                              className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-[#1a1a1a] border border-white/[0.04] gap-2"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-[9px] font-bold font-[family-name:var(--font-jetbrains-mono)] uppercase px-2 py-0.5 rounded bg-white/[0.06] text-[#ddb7ff]">
+                                  {categoryLabels[i] || `FACTOR ${i + 1}`}
+                                </span>
+                                <span className="text-xs text-white">{factor}</span>
+                              </div>
+                              <span className="text-[10px] font-bold text-[#4fdbc8] font-[family-name:var(--font-jetbrains-mono)] shrink-0 self-end sm:self-auto">
+                                STRENGTH: HIGH
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Data Sources */}
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
+                        Data Ingestion Feeds & Oracles
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {market.data_sources && market.data_sources.length > 0 ? (
+                          market.data_sources.map((src, i) => (
+                            <span
+                              key={i}
+                              className="px-3 py-1.5 rounded-lg bg-[#1a1a1a] border border-white/[0.06] text-xs font-[family-name:var(--font-jetbrains-mono)] text-[#cbd5e1]"
+                            >
+                              {src}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="px-3 py-1.5 rounded-lg bg-[#1a1a1a] border border-white/[0.06] text-xs font-[family-name:var(--font-jetbrains-mono)] text-[#cbd5e1]">
+                            {market.category === 'football' ? 'API-Football Live Oracle' : 'CoinGecko Live Price Feed'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab Content: Settlement Rules & Transparency */}
+                {activeTab === 'rules' && (
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#ddb7ff] flex items-center gap-1.5">
+                        <Gavel size={14} /> Official Resolution Clause
+                      </h3>
+                      <div className="bg-[#1a1a1a] p-4 rounded-xl border border-white/[0.06] text-xs text-[#cbd5e1] leading-relaxed italic space-y-2">
+                        <p>
+                          {market.category === 'crypto'
+                            ? `This market resolves deterministically based on the verified volume-weighted index price from primary oracle feeds (CoinGecko / Chainlink). If the condition stated in the market title is met at the timestamp cutoff, FOLLOW is recorded as winning. If the condition is not met, FADE is recorded as winning.`
+                            : `This market resolves based on the official 90-minute + stoppage time match score verified via sports oracle data feeds. Extra time and penalty shootouts are excluded unless explicitly specified in the market parameters.`}
+                        </p>
+                        <p className="text-[11px] text-[#94a3b8] not-italic border-t border-white/[0.06] pt-2">
+                          Resolution Source: <strong className="text-white">{market.resolution_source || (market.category === 'football' ? 'API-Football' : 'CoinGecko')}</strong>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* On-chain Explorer Transparency */}
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
+                        Blockchain Contract Transparency
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div className="p-3 rounded-xl bg-[#1a1a1a] border border-white/[0.04] space-y-1">
+                          <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider block">
+                            Contract Address
+                          </span>
+                          <div className="flex items-center justify-between">
+                            <span className="font-[family-name:var(--font-jetbrains-mono)] text-white truncate max-w-[180px]">
+                              {ARCSIGNAL_ADDRESS}
+                            </span>
+                            <a
+                              href={`https://arbiscan.io/address/${ARCSIGNAL_ADDRESS}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-[#ddb7ff] hover:underline"
+                            >
+                              <ExternalLink size={12} />
+                            </a>
+                          </div>
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-[#1a1a1a] border border-white/[0.04] space-y-1">
+                          <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider block">
+                            Protocol Trading Fee
+                          </span>
+                          <span className="font-[family-name:var(--font-jetbrains-mono)] text-white font-bold">
+                            0.5% (Non-custodial pool)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+
+            </div>
+
+            {/* Right Column: Execution & Trading Terminal (4 cols) */}
+            <aside className="lg:col-span-4 space-y-6 shrink-0">
+              
+              {/* Trading Terminal Box */}
+              <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-6 space-y-6 shadow-xl sticky top-24">
+                
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+                  <div>
+                    <h2 className="font-[family-name:var(--font-hanken)] text-base font-bold text-white">
+                      {resolved ? 'Settlement Terminal' : 'Trading Action'}
+                    </h2>
+                    <p className="text-[11px] text-[#94a3b8] mt-0.5">
+                      {resolved ? 'View results & claim winnings' : 'Take a position on this prediction'}
                     </p>
                   </div>
-                  <div className="space-y-1">
-                    <p className="font-label-caps text-text-muted">PROBABILITY</p>
-                    <p className="font-headline-md font-code-sm text-vibrant">{market.probability ?? '—'}%</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="font-label-caps text-text-muted">AI CONFIDENCE</p>
-                    <p className="font-headline-md font-code-sm text-primary">{market.confidence}%</p>
-                  </div>
+                  <Zap size={18} className="text-[#ddb7ff]" />
                 </div>
-              </div>
-            </header>
 
-            {/* Bento Grid Content */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-gutter">
-              {/* AI Summary */}
-              {market.summary && (
-                <div className="col-span-1 md:col-span-12 bg-surface-charcoal border border-border-subtle p-6 rounded-lg relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <Brain className="w-24 h-24" />
-                  </div>
-                  <h3 className="font-label-caps text-primary mb-4 flex items-center gap-2">
-                    <FileText size={16} /> SUMMARIZE
-                  </h3>
-                  <p className="font-body-lg text-on-surface-variant leading-relaxed max-w-3xl relative z-10">
-                    {market.summary}
-                  </p>
-                </div>
-              )}
-
-              {/* Bull/Bear Cases */}
-              {(market.bull_case || market.bear_case) && (
-                <>
-                  {market.bull_case && (
-                    <div className="col-span-1 md:col-span-6 bg-surface-charcoal border border-border-subtle p-6 rounded-lg">
-                      <h3 className="font-label-caps text-tertiary mb-4 flex items-center gap-2">
-                        <TrendingUp size={16} /> BULL CASE
-                      </h3>
-                      <p className="text-on-surface-variant font-body-md">
-                        {market.bull_case}
-                      </p>
-                    </div>
-                  )}
-                  {market.bear_case && (
-                    <div className="col-span-1 md:col-span-6 bg-surface-charcoal border border-border-subtle p-6 rounded-lg">
-                      <h3 className="font-label-caps text-error mb-4 flex items-center gap-2">
-                        <TrendingDown size={16} /> BEAR CASE
-                      </h3>
-                      <p className="text-on-surface-variant font-body-md">
-                        {market.bear_case}
-                      </p>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Key Factors */}
-              {market.keyFactors && market.keyFactors.length > 0 && (
-                <div className="col-span-1 md:col-span-12 space-y-4">
-                  <h3 className="font-label-caps text-text-muted flex items-center gap-2">
-                    PSYCHOLOGY: KEY FACTORS
-                  </h3>
-                  <div className="space-y-base">
-                    {market.keyFactors.map((factor, i) => (
-                      <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-background border border-border-subtle rounded hover:border-primary transition-colors gap-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                          <span className="font-label-caps text-[10px] bg-secondary-container/20 text-secondary px-2 py-1 rounded w-fit">
-                            {categoryLabels[i] || `FACTOR ${i + 1}`}
-                          </span>
-                          <span className="text-on-surface">{factor}</span>
-                        </div>
-                        <span className="font-code-sm text-tertiary shrink-0">STRENGTH: HIGH</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Data Sources & Rules */}
-              <div className="col-span-1 md:col-span-4 space-y-4">
-                <h3 className="font-label-caps text-text-muted">DATA SOURCES</h3>
-                <div className="flex flex-wrap gap-2">
-                  {market.data_sources && market.data_sources.length > 0 ? (
-                    market.data_sources.map((src, i) => (
-                      <span key={i} className="bg-surface-container-high px-3 py-1.5 rounded font-label-caps text-[11px] border border-outline-variant">
-                        {src}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="bg-surface-container-high px-3 py-1.5 rounded font-label-caps text-[11px] border border-outline-variant">
-                      ON-CHAIN ORACLES
+                {/* Pool Status Visualizer */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <span className="text-[#4fdbc8]">
+                      FOLLOW {followPercent.toFixed(0)}%
                     </span>
-                  )}
+                    <span className="text-[#f87171]">
+                      FADE {fadePercent.toFixed(0)}%
+                    </span>
+                  </div>
+
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-[#262626] flex">
+                    <div
+                      className="bg-[#4fdbc8] transition-all duration-500 rounded-l-full"
+                      style={{ width: `${followPercent}%` }}
+                    />
+                    <div
+                      className="bg-[#f87171] transition-all duration-500 rounded-r-full"
+                      style={{ width: `${fadePercent}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-[#94a3b8] font-[family-name:var(--font-jetbrains-mono)]">
+                    <span>{followPool.toFixed(2)} USDC</span>
+                    <span>{fadePool.toFixed(2)} USDC</span>
+                  </div>
                 </div>
-              </div>
-              <div className="col-span-1 md:col-span-8 space-y-4">
-                <h3 className="font-label-caps text-text-muted flex items-center gap-2">
-                  GAVEL: RESOLUTION RULES
-                </h3>
-                <div className="bg-background-deep p-4 border border-outline-variant rounded italic text-text-muted text-sm leading-relaxed">
-                  &quot;{market.category === 'crypto'
-                    ? `This market resolves based on the verified price from CoinGecko at the resolution timestamp. If the AI prediction is correct, FOLLOW wins. If incorrect, FADE wins. Settlement occurs T+1 hour after timestamp.`
-                    : `This market resolves based on the official match result. If the AI prediction (${market.agentPick}) is correct, FOLLOW wins. If incorrect, FADE wins.`}&quot;
+
+                {/* Reward Multipliers Cards */}
+                <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="p-3 rounded-xl bg-[#1c1b1b] border border-white/[0.04]">
+                    <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider block mb-1">
+                      Follow Payout
+                    </span>
+                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-base font-bold text-[#4fdbc8]">
+                      {followMultiplier}x
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-[#1c1b1b] border border-white/[0.04]">
+                    <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider block mb-1">
+                      Fade Payout
+                    </span>
+                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-base font-bold text-[#f87171]">
+                      {fadeMultiplier}x
+                    </span>
+                  </div>
                 </div>
+
+                {/* Active Trading Controls */}
+                {isOpen ? (
+                  <div className="space-y-3 pt-2">
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => setStakeModalSide(0)}
+                        className="w-full flex items-center justify-between py-3.5 px-4 rounded-xl border border-[#4fdbc8]/40 bg-[#4fdbc8]/10 hover:bg-[#4fdbc8] text-[#4fdbc8] hover:text-[#0b1716] font-bold text-xs transition-all duration-150 active:scale-[0.98] shadow-md group"
+                      >
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 size={16} />
+                          <span>Follow AI Prediction</span>
+                        </div>
+                        <span className="font-[family-name:var(--font-jetbrains-mono)] text-xs">
+                          {followPercent.toFixed(0)}%
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setStakeModalSide(1)}
+                        className="w-full flex items-center justify-between py-3.5 px-4 rounded-xl border border-[#f87171]/40 bg-[#f87171]/10 hover:bg-[#f87171] text-[#f87171] hover:text-[#180a0a] font-bold text-xs transition-all duration-150 active:scale-[0.98] shadow-md group"
+                      >
+                        <div className="flex items-center gap-2">
+                          <XCircle size={16} />
+                          <span>Fade AI Prediction</span>
+                        </div>
+                        <span className="font-[family-name:var(--font-jetbrains-mono)] text-xs">
+                          {fadePercent.toFixed(0)}%
+                        </span>
+                      </button>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] text-[11px] text-[#94a3b8] leading-relaxed space-y-1">
+                      <p>
+                        <strong className="text-white">Follow</strong> = support AI conviction ({aiPickUpper}).
+                      </p>
+                      <p>
+                        <strong className="text-white">Fade</strong> = oppose AI conviction.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  /* Resolved / Claim Section */
+                  <div className="space-y-4 pt-2">
+                    <div className="p-4 rounded-xl bg-[#1c1b1b] border border-white/[0.06] space-y-2 text-center">
+                      <Gavel size={24} className="mx-auto text-[#ddb7ff]" />
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                        Official Outcome Recorded
+                      </h4>
+                      <p className={`font-[family-name:var(--font-jetbrains-mono)] text-base font-bold ${
+                        outcome === 1 ? 'text-[#4fdbc8]' : outcome === 2 ? 'text-[#f87171]' : 'text-white'
+                      }`}>
+                        {outcome === 1 ? 'FOLLOW WON' : outcome === 2 ? 'FADE WON' : 'CANCELLED / REFUND'}
+                      </p>
+                    </div>
+
+                    {userWon && !isClaimed && (
+                      <button
+                        onClick={handleClaim}
+                        disabled={isClaiming}
+                        className="w-full py-4 rounded-xl font-bold text-xs font-[family-name:var(--font-jetbrains-mono)] tracking-wider transition-all disabled:opacity-50 shadow-lg"
+                        style={{
+                          background: isClaiming
+                            ? '#1c1b1b'
+                            : 'linear-gradient(135deg, #a855f7, #34d399)',
+                          color: 'white',
+                          boxShadow: isClaiming ? 'none' : '0 0 20px rgba(168,85,247,0.35)',
+                        }}
+                      >
+                        {isClaiming ? 'Claiming Winnings…' : `Claim Winnings (${payout.toFixed(2)} USDC)`}
+                      </button>
+                    )}
+
+                    {userWon && isClaimed && (
+                      <div className="w-full py-3.5 rounded-xl bg-[#4fdbc8]/10 border border-[#4fdbc8]/30 text-[#4fdbc8] text-center font-bold text-xs">
+                        ✓ Winnings Claimed Successfully
+                      </div>
+                    )}
+
+                    {!userWon && (followStakeRaw > 0n || fadeStakeRaw > 0n) && (
+                      <div className="w-full py-3.5 rounded-xl bg-[#f87171]/10 border border-[#f87171]/30 text-[#f87171] text-center font-semibold text-xs">
+                        Position Closed (No Winnings)
+                      </div>
+                    )}
+
+                    {followStakeRaw === 0n && fadeStakeRaw === 0n && (
+                      <div className="w-full py-3 rounded-xl bg-[#1c1b1b] border border-white/[0.04] text-[#64748b] text-center text-xs">
+                        No active wallet position in this pool
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* User's Current Position */}
+                {address && (followStakeRaw > 0n || fadeStakeRaw > 0n) && (
+                  <div className="p-3.5 rounded-xl bg-[#1a1a1a] border border-[#ddb7ff]/20 space-y-1.5">
+                    <span className="text-[10px] font-bold text-[#ddb7ff] uppercase tracking-wider block">
+                      Your Position
+                    </span>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-[#94a3b8]">Staked Side:</span>
+                      <strong className={followStakeRaw > 0n ? 'text-[#4fdbc8]' : 'text-[#f87171]'}>
+                        {followStakeRaw > 0n ? 'FOLLOW' : 'FADE'}
+                      </strong>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-[#94a3b8]">Amount:</span>
+                      <span className="font-[family-name:var(--font-jetbrains-mono)] text-white">
+                        {formatUnits(followStakeRaw > 0n ? followStakeRaw : fadeStakeRaw, 6)} USDC
+                      </span>
+                    </div>
+                  </div>
+                )}
+
               </div>
-            </div>
+
+            </aside>
+
           </div>
 
-          {/* Right Sidebar: Trading Panel */}
-          <aside className="w-full lg:w-[380px] space-y-gutter shrink-0">
-            {/* Confidence Meter */}
-            <div className="bg-surface-charcoal border border-border-subtle p-6 rounded-lg space-y-6">
-              <div className="flex justify-between items-end">
-                <div>
-                  <h3 className="font-label-caps text-text-muted">AI CONFIDENCE</h3>
-                  <p className="text-headline-md font-code-sm text-tertiary">{market.confidence}%</p>
-                </div>
-                <p className="font-label-caps text-[10px] text-text-muted mb-1">SIGNAL STRENGTH</p>
-              </div>
-              <div className="h-1 bg-background-deep rounded-full overflow-hidden">
-                <div className="h-full bg-tertiary shadow-[0_0_10px_rgba(79,219,200,0.5)] transition-all duration-1000" style={{ width: `${market.confidence}%` }}></div>
-              </div>
-              <p className="text-[11px] text-text-muted font-body-md">Independent of pool liquidity. Calculated via transformer-based predictive neural model.</p>
-            </div>
-
-            {/* Live Pool */}
-            <div className="bg-surface-charcoal border border-border-subtle p-6 rounded-lg space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="font-label-caps text-text-muted">LIVE POOL</h3>
-                <div className="flex gap-4 font-code-sm text-[11px]">
-                  <span className="text-tertiary">FOLLOW {followPercent.toFixed(0)}%</span>
-                  <span className="text-error">FADE {fadePercent.toFixed(0)}%</span>
-                </div>
-              </div>
-              
-              {totalPool === 0 ? (
-                <div className="flex h-3 rounded-full overflow-hidden bg-background-deep items-center justify-center">
-                  <span className="text-[8px] font-label-caps text-text-muted">NO LIQUIDITY</span>
-                </div>
-              ) : (
-                <div className="flex h-3 rounded-full overflow-hidden">
-                  <div className="h-full bg-tertiary transition-all duration-1000" style={{ width: `${followPercent}%` }}></div>
-                  <div className="h-full bg-error transition-all duration-1000" style={{ width: `${fadePercent}%` }}></div>
-                </div>
-              )}
-              
-              <div className="grid grid-cols-2 gap-base">
-                <div className="bg-background p-4 border border-border-subtle rounded text-center">
-                  <p className="font-label-caps text-[10px] text-text-muted mb-1">PARTICIPANTS</p>
-                  <p className="font-headline-md font-code-sm text-vibrant">{market.participants ?? '—'}</p>
-                </div>
-                <div className="bg-background p-4 border border-border-subtle rounded text-center">
-                  <p className="font-label-caps text-[10px] text-text-muted mb-1">REWARD MULTI</p>
-                  <p className="font-headline-md font-code-sm text-secondary">{rewardMulti}x</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Execute Trade / Claim */}
-            <div className="bg-surface-charcoal border border-border-subtle p-6 rounded-lg space-y-6">
-              <h3 className="font-label-caps text-text-muted">{resolved ? 'MARKET RESOLVED' : 'EXECUTE TRADE'}</h3>
-              
-              {!resolved ? (
-                <>
-                  <p className="text-xs text-text-muted">
-                    AI predicts <span className="text-tertiary font-bold">{market.agentPick.toUpperCase()}</span>. Agree? FOLLOW. Disagree? FADE.
-                  </p>
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => setStakeModalSide(0)}
-                      className="w-full group relative flex items-center justify-center gap-3 py-4 bg-transparent border-2 border-tertiary text-tertiary font-bold font-label-caps rounded-lg overflow-hidden transition-all hover:bg-tertiary hover:text-background active:scale-[0.98]"
-                    >
-                      <CheckCircle2 size={20} className="group-hover:scale-110 transition-transform" />
-                      FOLLOW AI
-                      <div className="absolute inset-0 bg-tertiary opacity-0 group-hover:opacity-10 pointer-events-none"></div>
-                    </button>
-                    <button
-                      onClick={() => setStakeModalSide(1)}
-                      className="w-full group relative flex items-center justify-center gap-3 py-4 bg-transparent border-2 border-error text-error font-bold font-label-caps rounded-lg overflow-hidden transition-all hover:bg-error hover:text-background active:scale-[0.98]"
-                    >
-                      <XCircle size={20} className="group-hover:scale-110 transition-transform" />
-                      FADE AI
-                      <div className="absolute inset-0 bg-error opacity-0 group-hover:opacity-10 pointer-events-none"></div>
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 bg-background-deep p-4 rounded border border-border-subtle">
-                     <Gavel size={20} className="text-secondary" />
-                     <div>
-                       <p className="text-xs text-text-muted font-label-caps">Outcome</p>
-                       <p className={`font-bold ${outcome === 1 ? 'text-tertiary' : outcome === 2 ? 'text-error' : 'text-on-surface'}`}>
-                         {outcome === 1 ? 'FOLLOW WON' : outcome === 2 ? 'FADE WON' : 'CANCELLED/DRAW'}
-                       </p>
-                     </div>
-                  </div>
-                  
-                  {userWon && !isClaimed && (
-                    <button
-                      onClick={handleClaim}
-                      disabled={isClaiming}
-                      className="w-full py-4 rounded-lg font-bold font-label-caps tracking-widest transition-all disabled:opacity-50"
-                      style={{
-                        background: isClaiming ? '#1c1b1b' : 'linear-gradient(135deg, #a855f7, #34d399)',
-                        color: 'white',
-                        boxShadow: isClaiming ? 'none' : '0 0 20px rgba(168,85,247,0.3)',
-                      }}
-                    >
-                      {isClaiming ? 'Claiming...' : `Claim Winnings (${payout.toFixed(2)} USDC)`}
-                    </button>
-                  )}
-                  {userWon && isClaimed && (
-                    <div className="w-full py-4 rounded-lg bg-tertiary/10 border border-tertiary/30 text-tertiary text-center font-bold font-label-caps">
-                      Winnings Claimed
-                    </div>
-                  )}
-                  {!userWon && (followStakeRaw > 0n || fadeStakeRaw > 0n) && (
-                    <div className="w-full py-4 rounded-lg bg-error/10 border border-error/30 text-error text-center font-bold font-label-caps">
-                      Position Lost
-                    </div>
-                  )}
-                  {followStakeRaw === 0n && fadeStakeRaw === 0n && (
-                    <div className="w-full py-4 rounded-lg bg-background border border-border-subtle text-text-muted text-center font-bold font-label-caps text-xs">
-                      No Position
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              <div className="pt-4 border-t border-border-subtle">
-                <div className="flex justify-between font-label-caps text-[10px] text-text-muted">
-                  <span>PLATFORM FEE</span>
-                  <span>0.5%</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Mini Chart / Visualizer Placeholder */}
-            <div className="h-48 rounded-lg border border-border-subtle bg-background-deep relative overflow-hidden flex items-center justify-center group">
-              <BarChart3 className="w-12 h-12 text-primary/10 group-hover:text-primary/20 transition-colors" />
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <span className="font-label-caps text-[10px] text-primary/50">REAL-TIME SIGNAL STREAM</span>
-              </div>
-            </div>
-            
-          </aside>
         </div>
       </main>
 
+      {/* Stake Modal */}
       {stakeModalSide !== null && (
         <StakeModal
           market={market}

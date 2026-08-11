@@ -9,6 +9,7 @@
     "lint": "next lint",
     "trigger": "npx tsx scripts/trigger-markets.ts",
     "generate": "npx tsx scripts/trigger-markets.ts",
+    "resolve": "npx tsx scripts/run-resolve.ts",
     "db:migrate": "npx tsx scripts/migrate-db.ts"
   },
   "dependencies": {

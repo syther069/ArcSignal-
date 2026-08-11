@@ -2,43 +2,46 @@
 
 import React, { useMemo, useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
-
-import { ProfessionalMarketCard } from '@/components/markets/ProfessionalMarketCard';
-import { MarketCardSkeleton } from '@/components/markets/MarketCardSkeleton';
+import { MarketRow } from '@/components/markets/MarketRow';
+import { MarketRowSkeleton } from '@/components/markets/MarketRowSkeleton';
+import { MarketFiltersDrawer, type MarketView, type MarketSort } from '@/components/markets/MarketFiltersDrawer';
 import { StakeModal } from '@/components/markets/StakeModal';
 import { Market, StakeSide } from '@/types';
 import type { SerializableMarket } from '@/lib/markets';
 import { toUiMarket } from '@/lib/ui-market';
-import { Clock, RotateCw, TrendingUp } from 'lucide-react';
+import {
+  RotateCw,
+  Search,
+  SlidersHorizontal,
+  TrendingUp,
+  Flame,
+  Clock,
+  ArrowRight,
+  ShieldCheck,
+  Zap,
+} from 'lucide-react';
+import Link from 'next/link';
 
 interface MarketsClientProps {
   markets: SerializableMarket[];
 }
 
-const TIMEFRAME_META: Record<string, { label: string; description: string; color: string; border: string; bg: string }> = {
-  '5m': { label: '5 Minutes', description: 'Ultra-short price momentum', color: 'text-[#4fdbc8]', border: 'border-[#4fdbc8]/40', bg: 'bg-[#4fdbc8]/10' },
-  '15m': { label: '15 Minutes', description: 'Short-term price action', color: 'text-[#7dd3fc]', border: 'border-[#7dd3fc]/40', bg: 'bg-[#7dd3fc]/10' },
-  '1h': { label: '1 Hour', description: 'Hourly trend prediction', color: 'text-[#ddb7ff]', border: 'border-[#ddb7ff]/40', bg: 'bg-[#ddb7ff]/10' },
-  '4h': { label: '4 Hours', description: 'Mid-session momentum', color: 'text-[#fbbf24]', border: 'border-[#fbbf24]/40', bg: 'bg-[#fbbf24]/10' },
-  '24h': { label: '24 Hours', description: 'Daily close prediction', color: 'text-[#fb923c]', border: 'border-[#fb923c]/40', bg: 'bg-[#fb923c]/10' },
-};
-
 const TIMEFRAMES = ['5m', '15m', '1h', '4h', '24h'];
-type MarketView = 'live' | 'pending' | 'resolved' | 'all';
-type MarketSort = 'closingSoon' | 'liquidity' | 'newest';
 
-function getMarketView(market: SerializableMarket, nowUnix: number): Exclude<MarketView, 'all'> {
-  if (market.resolved) return 'resolved';
-  if (market.status === 'PENDING_RESOLUTION' || market.resolutionTime <= nowUnix) return 'pending';
-  return 'live';
-}
-
-function getTotalLiquidity(market: SerializableMarket) {
+function getTotalLiquidity(market: SerializableMarket): bigint {
   try {
     return BigInt(market.followPool) + BigInt(market.fadePool);
   } catch {
     return 0n;
   }
+}
+
+function getFollowShare(market: SerializableMarket): number {
+  const follow = BigInt(market.followPool || '0');
+  const fade = BigInt(market.fadePool || '0');
+  const total = follow + fade;
+  if (total === 0n) return 50;
+  return Number((follow * 1000n) / total) / 10;
 }
 
 export default function MarketsClient({ markets }: MarketsClientProps) {
@@ -48,6 +51,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
   const [sortBy, setSortBy] = useState<MarketSort>('closingSoon');
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [stakeModal, setStakeModal] = useState<{
     market: Market;
     side: StakeSide;
@@ -60,375 +64,477 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
     window.location.reload();
   };
 
+  const handleResetFilters = () => {
+    setSelectedCategory('All Markets');
+    setSelectedTimeframe(null);
+    setSelectedView('live');
+    setSortBy('closingSoon');
+    setSearchQuery('');
+  };
+
+  // Counts for tabs & drawers
+  const counts = useMemo(() => {
+    const live = markets.filter(
+      (m) => !m.resolved && m.status !== 'RESOLVED' && m.status !== 'CLOSED' && m.resolutionTime > nowUnix
+    ).length;
+    const closingSoon = markets.filter(
+      (m) => !m.resolved && m.resolutionTime > nowUnix && m.resolutionTime - nowUnix <= 3600
+    ).length;
+    const resolved = markets.filter((m) => m.resolved || m.status === 'RESOLVED').length;
+    return {
+      live,
+      closingSoon,
+      resolved,
+      all: markets.length,
+    };
+  }, [markets, nowUnix]);
+
+  // Primary filtering logic
   const filteredMarkets = useMemo(() => {
-    const statusFiltered = selectedView === 'all'
-      ? markets
-      : markets.filter((market) => getMarketView(market, nowUnix) === selectedView);
+    return markets.filter((m) => {
+      const isResolved = m.resolved || m.status === 'RESOLVED';
+      const isPending = !isResolved && (m.status === 'PENDING_RESOLUTION' || m.resolutionTime <= nowUnix);
+      const isOpen = !isResolved && !isPending && m.status !== 'CLOSED';
+      const isClosingSoon = isOpen && m.resolutionTime - nowUnix <= 3600;
 
-    const searched = !searchQuery.trim()
-      ? statusFiltered
-      : statusFiltered.filter(
-        (m) => {
-          const q = searchQuery.toLowerCase();
-          return (
-            (m.question?.toLowerCase() || '').includes(q) ||
-            m.marketId.toLowerCase().includes(q) ||
-            m.category.toLowerCase().includes(q)
-          );
-        }
-      );
+      // 1. View / Status Filter
+      if (selectedView === 'live' && !isOpen) return false;
+      if (selectedView === 'closingSoon' && !isClosingSoon) return false;
+      if (selectedView === 'resolved' && !isResolved) return false;
 
-    return [...searched].sort((a, b) => {
-      if (sortBy === 'liquidity') {
-        const liquidityDifference = getTotalLiquidity(b) - getTotalLiquidity(a);
-        return liquidityDifference > 0n ? 1 : liquidityDifference < 0n ? -1 : 0;
+      // 2. Category Filter
+      if (selectedCategory === 'Crypto' && m.category !== 'CRYPTO') return false;
+      if (selectedCategory === 'Football' && m.category !== 'FOOTBALL') return false;
+
+      // 3. Timeframe Filter
+      if (selectedTimeframe && !m.marketId.includes(`-PRICE-${selectedTimeframe}-`)) return false;
+
+      // 4. Search Filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchesQuestion = (m.question || '').toLowerCase().includes(q);
+        const matchesId = m.marketId.toLowerCase().includes(q);
+        const matchesCat = m.category.toLowerCase().includes(q);
+        if (!matchesQuestion && !matchesId && !matchesCat) return false;
       }
-      if (sortBy === 'newest') return b.resolutionTime - a.resolutionTime;
+
+      return true;
+    });
+  }, [markets, selectedView, selectedCategory, selectedTimeframe, searchQuery, nowUnix]);
+
+  // Sorting logic implementing all 7 financial sort modes
+  const sortedMarkets = useMemo(() => {
+    return [...filteredMarkets].sort((a, b) => {
+      if (sortBy === 'liquidity') {
+        const diff = getTotalLiquidity(b) - getTotalLiquidity(a);
+        return diff > 0n ? 1 : diff < 0n ? -1 : 0;
+      }
+
+      if (sortBy === 'active') {
+        // Sort by liquidity + AI activity
+        const diff = getTotalLiquidity(b) - getTotalLiquidity(a);
+        if (diff !== 0n) return diff > 0n ? 1 : -1;
+        return (b.analysis?.confidence ?? 0) - (a.analysis?.confidence ?? 0);
+      }
+
+      if (sortBy === 'newest') {
+        return (b.openedAt || b.resolutionTime) - (a.openedAt || a.resolutionTime);
+      }
+
+      if (sortBy === 'confidence') {
+        return (b.analysis?.confidence ?? 0) - (a.analysis?.confidence ?? 0);
+      }
+
+      if (sortBy === 'disagreement') {
+        const followA = getFollowShare(a);
+        const followB = getFollowShare(b);
+        const aiConfA = a.analysis?.confidence ?? 50;
+        const aiConfB = b.analysis?.confidence ?? 50;
+        const disA = Math.abs(aiConfA - followA);
+        const disB = Math.abs(aiConfB - followB);
+        return disB - disA;
+      }
+
+      if (sortBy === 'imbalance') {
+        const followA = getFollowShare(a);
+        const followB = getFollowShare(b);
+        const imbA = Math.abs(followA - (100 - followA));
+        const imbB = Math.abs(followB - (100 - followB));
+        return imbB - imbA;
+      }
+
+      // Default: 'closingSoon'
       return a.resolutionTime - b.resolutionTime;
     });
-  }, [markets, searchQuery, selectedView, sortBy, nowUnix]);
+  }, [filteredMarkets, sortBy]);
 
-  const cryptoMarkets = useMemo(
-    () => filteredMarkets.filter((m) => m.category === 'CRYPTO'),
-    [filteredMarkets]
-  );
-  const footballMarkets = useMemo(
-    () => filteredMarkets.filter((m) => m.category === 'FOOTBALL'),
-    [filteredMarkets]
-  );
+  // Featured / Trending markets (Top 2 high conviction or active markets)
+  const trendingMarkets = useMemo(() => {
+    return markets
+      .filter((m) => !m.resolved && m.resolutionTime > nowUnix)
+      .sort((a, b) => {
+        const diff = getTotalLiquidity(b) - getTotalLiquidity(a);
+        if (diff !== 0n) return diff > 0n ? 1 : -1;
+        return (b.analysis?.confidence ?? 0) - (a.analysis?.confidence ?? 0);
+      })
+      .slice(0, 2);
+  }, [markets, nowUnix]);
 
-
-  // Group crypto markets by timeframe
-  const marketsByTimeframe = useMemo(() => {
-    const map: Record<string, SerializableMarket[]> = {};
-    for (const tf of TIMEFRAMES) {
-      map[tf] = cryptoMarkets.filter((m) =>
-        m.marketId.includes(`-PRICE-${tf}-`)
-      );
+  // Contextual empty state message
+  const emptyStateContent = useMemo(() => {
+    if (searchQuery.trim() || selectedTimeframe || selectedCategory !== 'All Markets') {
+      return {
+        title: 'No markets found',
+        message: 'No markets match your active filters or search query — try changing your filters.',
+      };
     }
-    return map;
-  }, [cryptoMarkets]);
-
-  const getTimeframeCount = (tf: string) =>
-    marketsByTimeframe[tf]?.filter((m) => !m.resolved && m.resolutionTime > nowUnix).length ?? 0;
-
-  const categories = ['All Markets', 'Crypto', 'Football'];
-  const viewCounts = useMemo(() => ({
-    live: markets.filter((market) => getMarketView(market, nowUnix) === 'live').length,
-    pending: markets.filter((market) => getMarketView(market, nowUnix) === 'pending').length,
-    resolved: markets.filter((market) => getMarketView(market, nowUnix) === 'resolved').length,
-    all: markets.length,
-  }), [markets, nowUnix]);
-
-  // What sections to render
-  const showCrypto = selectedCategory === 'All Markets' || selectedCategory === 'Crypto';
-  const showFootball = selectedCategory === 'All Markets' || selectedCategory === 'Football';
-
-  // Timeframes to render: if a specific timeframe is selected, only that one
-  const activeTimeframes = selectedTimeframe ? [selectedTimeframe] : TIMEFRAMES;
+    if (selectedView === 'closingSoon') {
+      return {
+        title: 'No markets closing soon',
+        message: 'No prediction markets are expiring in the next hour — check all active markets.',
+      };
+    }
+    if (selectedView === 'live') {
+      return {
+        title: 'No active markets',
+        message: 'No open prediction markets right now — new markets will appear here soon.',
+      };
+    }
+    if (selectedView === 'resolved') {
+      return {
+        title: 'No resolved markets yet',
+        message: 'Settled prediction markets and outcome claims will be archived here.',
+      };
+    }
+    return {
+      title: 'No markets available',
+      message: 'AI agents are generating markets. Check back shortly.',
+    };
+  }, [searchQuery, selectedTimeframe, selectedCategory, selectedView]);
 
   return (
-    <div className="flex min-h-screen bg-[#131313]">
+    <div className="flex min-h-screen bg-[#121212] text-[#e5e2e1]">
       <Sidebar />
 
-      <main className="lg:ml-[264px] pt-24 pb-24 md:pb-8 flex-1 min-w-0 min-h-screen">
-        <div className="max-w-[1440px] mx-auto w-full p-6 lg:p-8">
+      <main className="lg:ml-[264px] pt-20 pb-20 md:pb-12 flex-1 min-w-0 min-h-screen">
+        <div className="max-w-[1400px] mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-6">
 
-          {/* Page header */}
-          <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          {/* ── 1. PAGE HEADER & BENCHMARK TAGLINE ── */}
+          <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 pt-4 border-b border-white/[0.06] pb-6">
             <div>
-              <h1 className="font-[family-name:var(--font-hanken)] text-4xl font-bold text-white tracking-tight mb-2">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="inline-flex items-center gap-1 rounded-md bg-[#ddb7ff]/10 px-2 py-0.5 text-[11px] font-bold text-[#ddb7ff] border border-[#ddb7ff]/20">
+                  <ShieldCheck size={12} /> ON-CHAIN VERIFIED
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-400 border border-emerald-500/20">
+                  <Zap size={12} /> LIVE ODDA
+                </span>
+              </div>
+              <h1 className="font-[family-name:var(--font-hanken)] text-3xl sm:text-4xl font-bold text-white tracking-tight">
                 Markets
               </h1>
-              <p className="text-sm text-[#94a3b8] max-w-2xl">
+              <p className="text-xs sm:text-sm text-[#94a3b8] mt-1 max-w-2xl">
                 Discover live AI prediction markets, compare market-implied conviction, and make your call.
-            </p>
-            <div className="mt-5 flex flex-wrap items-center gap-2 text-[11px] text-[#94a3b8]">
-              <span className="rounded-full border border-white/[0.08] bg-[#1c1b1b] px-3 py-1.5"><span className="text-[#ddb7ff]">{viewCounts.live}</span> live markets</span>
-              <span className="rounded-full border border-white/[0.08] bg-[#1c1b1b] px-3 py-1.5"><span className="text-[#4fdbc8]">{viewCounts.pending}</span> pending</span>
-              <span className="rounded-full border border-white/[0.08] bg-[#1c1b1b] px-3 py-1.5">Updated live</span>
+              </p>
             </div>
-          </div>
-          <div className="hidden items-center gap-2 rounded-xl border border-[#ddb7ff]/15 bg-[#ddb7ff]/5 px-4 py-3 text-right md:flex"><TrendingUp size={18} className="text-[#ddb7ff]" /><div><p className="text-[10px] uppercase tracking-[0.12em] text-[#94a3b8]">Trading signal</p><p className="text-sm font-semibold text-white">Follow or fade the AI</p></div></div>
+
+            {/* Live Stats Pill Group */}
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#94a3b8]">
+              <span className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-3 py-1.5 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#4fdbc8] animate-pulse" />
+                <strong className="text-white font-[family-name:var(--font-jetbrains-mono)]">{counts.live}</strong> Open
+              </span>
+              <span className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-3 py-1.5 flex items-center gap-1.5">
+                <Clock size={12} className="text-[#fbbf24]" />
+                <strong className="text-[#fbbf24] font-[family-name:var(--font-jetbrains-mono)]">{counts.closingSoon}</strong> Closing Soon
+              </span>
+              <span className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-3 py-1.5">
+                <strong className="text-[#ddb7ff] font-[family-name:var(--font-jetbrains-mono)]">{counts.resolved}</strong> Settled
+              </span>
+            </div>
           </header>
 
-          {selectedView === 'resolved' && (
-            <section className="mb-6 rounded-xl border border-[#ddb7ff]/20 bg-[#ddb7ff]/5 px-4 py-4 md:px-5">
-              <div className="flex items-start gap-3">
-                <Clock size={18} className="mt-0.5 shrink-0 text-[#ddb7ff]" />
-                <div>
-                  <h2 className="font-[family-name:var(--font-hanken)] text-base font-semibold text-white">Resolution history</h2>
-                  <p className="mt-1 text-xs leading-relaxed text-[#94a3b8]">Review settled markets, final outcomes, and historical pool activity. Historical values are shown for reference and cannot be staked.</p>
+          {/* ── 2. TRENDING / SPOTLIGHT STRIP (Compact 2-card ticker) ── */}
+          {trendingMarkets.length > 0 && selectedView !== 'resolved' && !searchQuery && (
+            <section className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#ddb7ff]">
+                  <Flame size={14} className="text-[#fb7185]" />
+                  <span>Trending & High Conviction</span>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {trendingMarkets.map((m) => {
+                  const follow = getFollowShare(m);
+                  const fade = 100 - follow;
+                  const total = getTotalLiquidity(m);
+                  const totalFormatted = (Number(total) / 1_000_000).toFixed(2);
+                  return (
+                    <Link
+                      key={m.marketId}
+                      href={`/market/${m.marketId}`}
+                      className="group flex items-center justify-between p-3.5 rounded-xl border border-white/[0.08] bg-[#171717] hover:border-[#ddb7ff]/40 hover:bg-[#1c1b1c] transition-all duration-150 gap-3 shadow-sm"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="rounded px-1.5 py-0.5 text-[9px] font-bold text-[#ddb7ff] bg-[#ddb7ff]/10">
+                            {m.category}
+                          </span>
+                          <span className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-jetbrains-mono)]">
+                            {totalFormatted} USDC Pool
+                          </span>
+                        </div>
+                        <h3 className="text-xs sm:text-sm font-semibold text-white truncate group-hover:text-[#ead7ff] transition-colors">
+                          {m.question || m.marketId}
+                        </h3>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right">
+                          <div className="text-[11px] font-bold font-[family-name:var(--font-jetbrains-mono)] text-[#4fdbc8]">
+                            {follow.toFixed(0)}% Follow
+                          </div>
+                          <div className="text-[10px] text-[#94a3b8]">
+                            AI {m.analysis?.prediction || 'YES'} · {m.analysis?.confidence ?? 0}%
+                          </div>
+                        </div>
+                        <ArrowRight size={14} className="text-[#94a3b8] group-hover:text-[#ddb7ff] group-hover:translate-x-0.5 transition-all" />
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </section>
           )}
 
-          {/* Filters + Sort + Search */}
-          <div className="flex flex-col mb-8 gap-4">
-            <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
-              {/* Category tabs */}
-              <div className="inline-flex items-center gap-1 bg-[#1c1b1b] rounded-full p-1 border border-white/5 shrink-0">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => {
-                      setSelectedCategory(cat);
-                      setSelectedTimeframe(null);
-                    }}
-                    className={`whitespace-nowrap px-5 py-2 rounded-full text-sm font-[family-name:var(--font-inter)] font-medium transition-all ${selectedCategory === cat
-                        ? 'bg-[#353534] text-white shadow-sm'
-                        : 'text-[#94a3b8] hover:text-white'
-                      }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-
-              {/* Lifecycle tabs */}
-              <div className="flex items-center gap-1 bg-[#1c1b1b] rounded-full p-1 border border-white/5 overflow-x-auto">
-                {([
-                  ['live', 'Live'],
-                  ['pending', 'Pending'],
-                  ['resolved', 'Resolved'],
-                  ['all', 'All'],
-                ] as const).map(([view, label]) => (
+          {/* ── 3. UNIFIED TOP NAVIGATION & CONTROLS ROW ── */}
+          <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-3 sm:p-4 space-y-3 shadow-md">
+            
+            {/* Top Control Bar: Views + Search + Sort + Refresh */}
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+              
+              {/* Primary View / Lifecycle Tabs */}
+              <div className="flex items-center gap-1 bg-[#101010] rounded-xl p-1 border border-white/[0.06] overflow-x-auto shrink-0 scrollbar-none">
+                {(
+                  [
+                    ['live', 'Active Markets'],
+                    ['closingSoon', 'Closing Soon'],
+                    ['resolved', 'Resolved'],
+                    ['all', 'All'],
+                  ] as const
+                ).map(([view, label]) => (
                   <button
                     key={view}
                     onClick={() => setSelectedView(view)}
-                    className={`whitespace-nowrap px-3.5 py-2 rounded-full text-xs font-[family-name:var(--font-inter)] font-medium transition-all ${selectedView === view
-                        ? 'bg-[#353534] text-white shadow-sm'
+                    className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      selectedView === view
+                        ? 'bg-[#2f2f2f] text-white shadow-sm border border-white/[0.08]'
                         : 'text-[#94a3b8] hover:text-white'
-                      }`}
+                    }`}
                   >
-                    {label} <span className="text-[#94a3b8]">{viewCounts[view]}</span>
+                    {label}{' '}
+                    <span className="text-[10px] opacity-70 font-[family-name:var(--font-jetbrains-mono)]">
+                      ({counts[view]})
+                    </span>
                   </button>
                 ))}
               </div>
 
-              {/* Search + Timeframe selector + Refresh button */}
-              <div className="flex items-center gap-2.5 flex-wrap w-full lg:w-auto justify-between lg:justify-end">
-                {/* Search bar */}
-                <div className="relative flex-1 min-w-[180px] max-w-xs">
+              {/* Search Bar + Controls */}
+              <div className="flex items-center gap-2 flex-1 lg:max-w-md justify-end">
+                {/* Search Input */}
+                <div className="relative flex-1">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748b]" />
                   <input
                     type="text"
-                    placeholder="Search asset or question..."
+                    placeholder="Search markets, assets, questions..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[#1c1b1b] text-white text-xs px-4 py-2.5 rounded-full border border-white/5 focus:outline-none focus:border-[#ddb7ff]/50 transition-colors placeholder:text-[#94a3b8]/60 font-[family-name:var(--font-inter)]"
+                    className="w-full bg-[#101010] text-white text-xs pl-8 pr-7 py-2 rounded-xl border border-white/[0.08] focus:outline-none focus:border-[#ddb7ff]/60 transition-colors placeholder:text-[#64748b]"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#94a3b8] hover:text-white"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[#94a3b8] hover:text-white"
                     >
                       ✕
                     </button>
                   )}
                 </div>
 
-                {showCrypto && (
-                  <div className="flex items-center gap-2 w-full lg:w-auto">
-                    <span className="hidden xl:inline text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest text-[#64748b]">
-                      Timeframe
-                    </span>
-                  <div className="inline-flex items-center gap-1 bg-[#1c1b1b] rounded-full p-1 border border-white/5 overflow-x-auto max-w-full">
-                    <button
-                      onClick={() => setSelectedTimeframe(null)}
-                      aria-pressed={selectedTimeframe === null}
-                      className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-[family-name:var(--font-inter)] font-medium transition-all ${selectedTimeframe === null
-                          ? 'bg-[#353534] text-white shadow-sm'
-                          : 'text-[#94a3b8] hover:text-white'
-                        }`}
-                    >
-                      All
-                    </button>
-                    {TIMEFRAMES.map((tf) => {
-                      const count = getTimeframeCount(tf);
-                      return (
-                        <button
-                          key={tf}
-                          onClick={() => setSelectedTimeframe(selectedTimeframe === tf ? null : tf)}
-                          aria-pressed={selectedTimeframe === tf}
-                          className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-[family-name:var(--font-inter)] font-medium transition-all flex items-center gap-1.5 ${selectedTimeframe === tf
-                              ? 'bg-[#353534] text-white shadow-sm'
-                              : 'text-[#94a3b8] hover:text-white'
-                            }`}
-                        >
-                          {tf}
-                          {count > 0 && (
-                            <span className="bg-[#2a2a2a] text-[#4fdbc8] text-[9px] px-1.5 py-0.2 rounded-full font-[family-name:var(--font-jetbrains-mono)] font-bold">
-                              {count}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  </div>
-                )}
+                {/* Sort Dropdown (Desktop) */}
+                <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+                  <label htmlFor="market-sort-select" className="sr-only">
+                    Sort markets
+                  </label>
+                  <select
+                    id="market-sort-select"
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as MarketSort)}
+                    className="bg-[#101010] text-xs text-[#cbd5e1] py-2 px-3 rounded-xl border border-white/[0.08] outline-none focus:border-[#ddb7ff]/60 transition-colors cursor-pointer"
+                  >
+                    <option value="closingSoon">Sort: Closing soon</option>
+                    <option value="liquidity">Sort: Most liquidity</option>
+                    <option value="active">Sort: Most active</option>
+                    <option value="newest">Sort: Newest</option>
+                    <option value="confidence">Sort: Highest AI confidence</option>
+                    <option value="disagreement">Sort: Largest AI disagreement</option>
+                    <option value="imbalance">Sort: Largest Follow/Fade imbalance</option>
+                  </select>
+                </div>
 
+                {/* Refresh Button */}
                 <button
                   onClick={handleRefresh}
                   disabled={isRefreshing}
-                  title="Refresh markets data"
-                  className="bg-[#1c1b1b] p-2.5 rounded-full text-[#94a3b8] hover:text-white hover:bg-[#353534] transition-colors shrink-0 border border-white/5 flex items-center gap-2"
+                  title="Refresh live on-chain market data"
+                  className="bg-[#101010] p-2 rounded-xl text-[#94a3b8] hover:text-white hover:bg-[#202020] transition-colors border border-white/[0.08] shrink-0"
                 >
                   <RotateCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-[#ddb7ff]' : ''}`} />
                 </button>
 
-                <label className="sr-only" htmlFor="market-sort">Sort markets</label>
-                <select
-                  id="market-sort"
-                  value={sortBy}
-                  onChange={(event) => setSortBy(event.target.value as MarketSort)}
-                  className="min-h-[42px] rounded-full border border-white/5 bg-[#1c1b1b] px-3 text-xs text-[#94a3b8] outline-none transition-colors focus:border-[#ddb7ff]/50 focus:text-white"
+                {/* Mobile Filter Drawer Button */}
+                <button
+                  onClick={() => setIsDrawerOpen(true)}
+                  className="sm:hidden bg-[#101010] p-2 rounded-xl text-[#94a3b8] hover:text-white border border-white/[0.08] flex items-center gap-1"
                 >
-                  <option value="closingSoon">Closing soon</option>
-                  <option value="liquidity">Most liquidity</option>
-                  <option value="newest">Newest</option>
-                </select>
+                  <SlidersHorizontal size={14} className="text-[#ddb7ff]" />
+                </button>
               </div>
+
             </div>
-          </div>
 
+            {/* Secondary Bar: Category Pills + Timeframe Pills */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/[0.04]">
+              
+              {/* Category Pills */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider text-[#64748b] mr-1">
+                  Category:
+                </span>
+                {['All Markets', 'Crypto', 'Football'].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      if (cat === 'Football') setSelectedTimeframe(null);
+                    }}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      selectedCategory === cat
+                        ? 'bg-[#ddb7ff] text-[#131313] shadow-sm'
+                        : 'bg-[#101010] border border-white/[0.06] text-[#94a3b8] hover:text-white'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
 
-          {/* ── CRYPTO SECTIONS (grouped by timeframe) ── */}
-          {showCrypto && (
-            <div className="space-y-12 mb-12">
-              {activeTimeframes.map((tf) => {
-                const meta = TIMEFRAME_META[tf];
-                const tfMarkets = marketsByTimeframe[tf] ?? [];
-                if (tfMarkets.length === 0) return null;
-
-                return (
-                  <section key={tf}>
-                    {/* Section header */}
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-full ${meta.bg}`}>
-                        <Clock className={`w-4 h-4 ${meta.color}`} />
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-[family-name:var(--font-hanken)] font-semibold text-white tracking-tight leading-none">
-                          {meta.label}
-                        </h2>
-                        <span className="text-xs text-[#94a3b8] font-[family-name:var(--font-inter)] mt-1 block">
-                          {meta.description} · {tfMarkets.length} market{tfMarkets.length !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Market grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {tfMarkets.map((market) => (
-                        <ProfessionalMarketCard
-                          key={market.marketId}
-                          market={market}
-                          onFollow={() => setStakeModal({ market: toUiMarket(market), side: 0 })}
-                          onFade={() => setStakeModal({ market: toUiMarket(market), side: 1 })}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                );
-              })}
-
-              {/* Empty state for crypto */}
-              {activeTimeframes.every((tf) => (marketsByTimeframe[tf]?.length ?? 0) === 0) && (
-                <div className="flex flex-col items-center justify-center py-24 text-center">
-                  <div className="w-12 h-12 rounded-xl bg-[#0f172a] border border-[#1e293b] flex items-center justify-center mb-4">
-                    <div className="w-2 h-2 rounded-full bg-[#ddb7ff] animate-pulse" />
-                  </div>
-                  <p className="font-[family-name:var(--font-hanken)] text-lg font-semibold text-[#94a3b8]">
-                    No crypto markets found
-                  </p>
-                  <p className="text-sm text-[#94a3b8]/60 mt-2">
-                    Trigger market generation to create fresh markets.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── FOOTBALL SECTION ── */}
-          {showFootball && (
-            <section className="mb-12">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#4ade80]/10">
-                  <span className="text-sm">⚽</span>
-                </div>
-                <div>
-                  <h2 className="text-xl font-[family-name:var(--font-hanken)] font-semibold text-white tracking-tight leading-none">
-                    Football
-                  </h2>
-                  <span className="text-xs text-[#94a3b8] font-[family-name:var(--font-inter)] mt-1 block">
-                    Match outcome predictions · {footballMarkets.length} market{footballMarkets.length !== 1 ? 's' : ''}
+              {/* Crypto Timeframe Filter Pills */}
+              {selectedCategory !== 'Football' && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider text-[#64748b] mr-1">
+                    Timeframe:
                   </span>
-                </div>
-              </div>
-
-              {footballMarkets.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {footballMarkets.map((market) => (
-                    <ProfessionalMarketCard
-                      key={market.marketId}
-                      market={market}
-                      onFollow={() => setStakeModal({ market: toUiMarket(market), side: 0 })}
-                      onFade={() => setStakeModal({ market: toUiMarket(market), side: 1 })}
-                    />
+                  <button
+                    onClick={() => setSelectedTimeframe(null)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      selectedTimeframe === null
+                        ? 'bg-[#2f2f2f] text-white border border-white/[0.1]'
+                        : 'bg-[#101010] border border-white/[0.06] text-[#94a3b8] hover:text-white'
+                    }`}
+                  >
+                    All
+                  </button>
+                  {TIMEFRAMES.map((tf) => (
+                    <button
+                      key={tf}
+                      onClick={() => setSelectedTimeframe(selectedTimeframe === tf ? null : tf)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                        selectedTimeframe === tf
+                          ? 'bg-[#ddb7ff]/20 text-[#ddb7ff] border border-[#ddb7ff]/50'
+                          : 'bg-[#101010] border border-white/[0.06] text-[#94a3b8] hover:text-white'
+                      }`}
+                    >
+                      {tf}
+                    </button>
                   ))}
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl bg-[#1e293b]/10 border border-[#1e293b]/50">
-                  <div className="w-12 h-12 rounded-xl bg-[#0f172a] border border-[#1e293b] flex items-center justify-center mb-4">
-                    <span className="text-xl">⚽</span>
-                  </div>
-                  <p className="font-[family-name:var(--font-hanken)] text-lg font-semibold text-[#94a3b8]">
-                    The football markets are currently building
-                  </p>
-                  <p className="text-sm text-[#94a3b8]/60 mt-2 max-w-sm">
-                    Our AI agents are analyzing upcoming fixtures and generating new prediction markets. Check back shortly.
-                  </p>
-                </div>
               )}
-            </section>
-          )}
 
-          {/* All empty */}
-          {filteredMarkets.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-32 text-center">
-              <div className="w-12 h-12 rounded-xl bg-[#0f172a] border border-[#1e293b] flex items-center justify-center mb-4">
-                <div className="w-2 h-2 rounded-full bg-[#ddb7ff] animate-pulse" />
-              </div>
-              <p className="font-[family-name:var(--font-hanken)] text-lg font-semibold text-[#94a3b8]">
-                {markets.length === 0 ? 'AI agents are generating markets...' : 'No markets match this view'}
-              </p>
-              <p className="text-sm text-[#94a3b8]/60 mt-2">
-                {markets.length === 0 ? 'Check back shortly or trigger market generation.' : 'Try another status, category, or search term.'}
-              </p>
-              {markets.length > 0 && (
-                <button
-                  onClick={() => {
-                    setSelectedView('all');
-                    setSelectedCategory('All Markets');
-                    setSelectedTimeframe(null);
-                    setSearchQuery('');
-                  }}
-                  className="mt-3 min-h-[44px] rounded-full border border-[#ddb7ff]/30 px-4 text-xs font-semibold text-[#ddb7ff] transition-colors hover:bg-[#ddb7ff]/10"
-                >
-                  Clear market filters
-                </button>
-              )}
             </div>
-          )}
-
-          <div className="mt-16">
-
           </div>
+
+          {/* ── 4. DENSE MARKET ROWS LIST (6–10 per screen density) ── */}
+          <section className="space-y-2.5">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs text-[#94a3b8]">
+                Showing <strong className="text-white">{sortedMarkets.length}</strong> market{sortedMarkets.length !== 1 ? 's' : ''}
+              </span>
+              <span className="text-[11px] text-[#64748b]">
+                Click any row for deep research & settlement rules
+              </span>
+            </div>
+
+            {sortedMarkets.length > 0 ? (
+              <div className="space-y-2">
+                {sortedMarkets.map((market) => (
+                  <MarketRow
+                    key={market.marketId}
+                    market={market}
+                    onFollow={() => setStakeModal({ market: toUiMarket(market), side: 0 })}
+                    onFade={() => setStakeModal({ market: toUiMarket(market), side: 1 })}
+                  />
+                ))}
+              </div>
+            ) : (
+              /* Differentiated Contextual Empty States */
+              <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-12 text-center flex flex-col items-center justify-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-[#202020] border border-white/[0.08] flex items-center justify-center text-[#ddb7ff]">
+                  <Search size={20} />
+                </div>
+                <h3 className="font-[family-name:var(--font-hanken)] text-lg font-bold text-white">
+                  {emptyStateContent.title}
+                </h3>
+                <p className="text-xs text-[#94a3b8] max-w-md leading-relaxed">
+                  {emptyStateContent.message}
+                </p>
+                <div className="pt-2">
+                  <button
+                    onClick={handleResetFilters}
+                    className="px-4 py-2 rounded-xl bg-[#ddb7ff] text-[#131313] text-xs font-bold hover:bg-[#ead7ff] transition-all shadow-md"
+                  >
+                    Clear All Filters
+                  </button>
+                </div>
+                <p className="text-[10px] text-[#64748b] pt-2">
+                  Prediction markets are deployed continuously by autonomous AI analyst agents.
+                </p>
+              </div>
+            )}
+          </section>
+
         </div>
       </main>
 
+      {/* Responsive Mobile Filters Drawer */}
+      <MarketFiltersDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        selectedCategory={selectedCategory}
+        onSelectCategory={setSelectedCategory}
+        selectedView={selectedView}
+        onSelectView={setSelectedView}
+        selectedTimeframe={selectedTimeframe}
+        onSelectTimeframe={setSelectedTimeframe}
+        sortBy={sortBy}
+        onSelectSort={setSortBy}
+        onReset={handleResetFilters}
+        counts={counts}
+      />
+
+      {/* Stake Modal */}
       {stakeModal && (
         <StakeModal
           market={stakeModal.market}

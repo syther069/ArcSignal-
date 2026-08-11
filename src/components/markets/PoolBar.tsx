@@ -22,23 +22,19 @@ export function PoolBar({ followPool, fadePool, className = '' }: PoolBarProps) 
   return (
     <div className={`w-full flex flex-col gap-2 ${className}`}>
       <div className="flex justify-between items-center text-[11px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-[0.08em] text-gray-400">
-        <span>Follow Pool {formatUSDC(followPool)} USDC</span>
-        <span>Fade Pool {formatUSDC(fadePool)} USDC</span>
+        <span className="text-[#4fdbc8]">Follow Pool {formatUSDC(followPool)} USDC</span>
+        <span className="text-[#f87171]">Fade Pool {formatUSDC(fadePool)} USDC</span>
       </div>
       
-      <div className="w-full h-7 rounded-[4px] overflow-hidden flex text-[11px] font-bold font-[family-name:var(--font-jetbrains-mono)] text-[#020817]">
+      <div className="w-full h-2.5 rounded-full overflow-hidden flex bg-[#262626]">
         <div 
-          className="h-full bg-[#34d399] flex items-center justify-start pl-3 transition-all duration-500 ease-out"
+          className="h-full bg-[#4fdbc8] transition-all duration-500 ease-out rounded-l-full"
           style={{ width: `${followPercent}%` }}
-        >
-          {followPercent > 10 && `${Math.round(followPercent)}%`}
-        </div>
+        />
         <div 
-          className="h-full bg-[#f87171] flex items-center justify-end pr-3 transition-all duration-500 ease-out"
+          className="h-full bg-[#f87171] transition-all duration-500 ease-out rounded-r-full"
           style={{ width: `${fadePercent}%` }}
-        >
-          {fadePercent > 10 && `${Math.round(fadePercent)}%`}
-        </div>
+        />
       </div>
     </div>
   );
