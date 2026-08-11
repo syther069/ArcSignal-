@@ -106,9 +106,9 @@ export function MarketTimeline({
               <div
                 className={`absolute -left-6 top-0.5 flex items-center justify-center w-5 h-5 rounded-full border text-[10px] transition-all ${
                   isComplete
-                    ? 'border-[#4fdbc8] bg-[#4fdbc8]/20 text-[#4fdbc8]'
+                    ? 'border-[#ddb7ff] bg-[#ddb7ff]/20 text-[#ddb7ff]'
                     : isActive
-                    ? 'border-[#ddb7ff] bg-[#ddb7ff]/20 text-[#ddb7ff] ring-4 ring-[#ddb7ff]/10 animate-pulse'
+                    ? 'border-[#ddb7ff] bg-[#ddb7ff]/30 text-[#ddb7ff] ring-4 ring-[#ddb7ff]/15 animate-pulse'
                     : 'border-white/[0.1] bg-[#1a1a1a] text-[#64748b]'
                 }`}
               >

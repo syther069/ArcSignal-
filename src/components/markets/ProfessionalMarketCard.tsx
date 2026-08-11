@@ -69,20 +69,20 @@ export function ProfessionalMarketCard({ market, onFollow, onFade }: Professiona
         <div className="mt-3 flex items-center gap-2 text-[11px] text-[#64748b]"><Clock3 size={13} /> Closes {closeTime.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}<ArrowUpRight size={13} className="ml-auto opacity-50" /></div>
       </Link>
 
-      <div className="mt-4 rounded-xl border border-white/[0.06] bg-[#101010] p-3">
+      <div className="mt-4 rounded-xl border border-white/[0.06] bg-[#101010] p-3 font-mono">
         <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-[0.12em] text-[#64748b]"><span>Market-implied split</span><span>{formatUsdc(totalPool)} USDC liquidity</span></div>
-        <div className="flex h-2 overflow-hidden rounded-full bg-[#292929]"><div className="bg-[#4fdbc8] transition-all" style={{ width: `${followShare}%` }} /><div className="bg-[#f87171] transition-all" style={{ width: `${fadeShare}%` }} /></div>
-        <div className="mt-2 grid grid-cols-2 gap-3 text-xs"><div><p className="text-[#94a3b8]">FOLLOW</p><p className="mt-0.5 font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#4fdbc8]">{followShare.toFixed(1)}%</p></div><div className="text-right"><p className="text-[#94a3b8]">FADE</p><p className="mt-0.5 font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#f87171]">{fadeShare.toFixed(1)}%</p></div></div>
+        <div className="flex h-2 overflow-hidden rounded-full bg-[#292929]"><div className="bg-[#ddb7ff] transition-all" style={{ width: `${followShare}%` }} /><div className="bg-[#f87171] transition-all" style={{ width: `${fadeShare}%` }} /></div>
+        <div className="mt-2 grid grid-cols-2 gap-3 text-xs"><div><p className="text-[#94a3b8]">FOLLOW</p><p className="mt-0.5 font-mono font-bold text-[#ddb7ff] tabular-nums">{followShare.toFixed(1)}%</p></div><div className="text-right"><p className="text-[#94a3b8]">FADE</p><p className="mt-0.5 font-mono font-bold text-[#f87171] tabular-nums">{fadeShare.toFixed(1)}%</p></div></div>
       </div>
 
       <div className="mt-3 flex items-center justify-between border-b border-white/[0.06] pb-3 text-[11px] text-[#94a3b8]">
-        <span className="inline-flex items-center gap-1.5"><Sparkles size={13} className="text-[#ddb7ff]" /> AI {aiPrediction}{confidence > 0 ? ` · ${confidence}% confidence` : ''}</span>
-        <span>{isResolved ? 'Settlement complete' : <CountdownTimer resolutionTime={market.resolutionTime} resolved={false} />}</span>
+        <span className="inline-flex items-center gap-1.5 font-mono text-[10px]"><Sparkles size={13} className="text-[#ddb7ff]" /> AI {aiPrediction}{confidence > 0 ? ` · ${confidence}% confidence` : ''}</span>
+        <span className="font-mono text-[11px]">{isResolved ? 'Settlement complete' : <CountdownTimer resolutionTime={market.resolutionTime} resolved={false} />}</span>
       </div>
 
       {isOpen ? (
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <button onClick={onFollow} className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#4fdbc8]/40 bg-[#4fdbc8]/10 px-3 text-xs font-bold text-[#4fdbc8] hover:bg-[#4fdbc8] hover:text-[#0b1716] transition-colors"><Check size={14} /> Follow AI</button>
+          <button onClick={onFollow} className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#ddb7ff]/40 bg-[#ddb7ff]/10 px-3 text-xs font-bold text-[#ddb7ff] hover:bg-[#ddb7ff] hover:text-[#121212] transition-colors"><Check size={14} /> Follow AI</button>
           <button onClick={onFade} className="flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-[#f87171]/40 bg-[#f87171]/10 px-3 text-xs font-bold text-[#f87171] hover:bg-[#f87171] hover:text-[#180a0a] transition-colors"><X size={14} /> Fade AI</button>
         </div>
       ) : (

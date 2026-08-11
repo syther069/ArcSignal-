@@ -9,6 +9,19 @@ import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { clearMarketCache } from '@/lib/markets';
 import { useWallet } from '@/hooks/useWallet';
 import toast from 'react-hot-toast';
+import {
+  X,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+  TrendingUp,
+  ShieldCheck,
+  ChevronRight,
+  Zap,
+  Info,
+  DollarSign,
+  ArrowRight,
+} from 'lucide-react';
 
 function friendlyError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
@@ -39,7 +52,6 @@ function friendlyError(err: unknown): string {
   if (lower.includes('chain mismatch') || lower.includes('wrong network'))
     return 'Wrong network — please switch to ARC Testnet in your wallet.';
 
-  // Fallback: strip technical noise, keep first sentence only
   const firstSentence = raw.split(/(?:Details:|Docs:|Contract Call:|Request Arguments:|Version:)/i)[0].trim();
   if (firstSentence.length > 120) return firstSentence.slice(0, 117) + '…';
   return firstSentence || 'Something went wrong. Please try again.';
@@ -95,24 +107,34 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   if (!isOpen) return null;
 
   const isFollow = selectedSide === 0;
+
+  // Violet theme for Follow AI (ArcSignal Brand Color), Coral/Rose for Fade AI
   const accent = isFollow
     ? {
         label: 'Follow AI',
-        dot: 'bg-[#14b8a6]',
-        text: 'text-[#5eead4]',
-        border: 'border-[#14b8a6]/35',
-        bg: 'bg-[#14b8a6]/10',
-        focus: 'focus-within:border-[#14b8a6]/70',
-        ring: 'shadow-[0_0_30px_rgba(20,184,166,0.14)]',
+        dot: 'bg-[#ddb7ff]',
+        text: 'text-[#ddb7ff]',
+        badgeBg: 'bg-[#ddb7ff]/10',
+        badgeBorder: 'border-[#ddb7ff]/30',
+        border: 'border-[#b76dff]/35',
+        bg: 'bg-[#b76dff]/10',
+        focus: 'focus-within:border-[#ddb7ff]',
+        ring: 'shadow-[0_0_35px_rgba(221,183,255,0.18)]',
+        btnActive: 'bg-gradient-to-r from-[#b76dff] to-[#ddb7ff] text-[#121212]',
+        pillActive: 'bg-[#ddb7ff] text-[#121212]',
       }
     : {
         label: 'Fade AI',
         dot: 'bg-[#fb7185]',
         text: 'text-[#fda4af]',
+        badgeBg: 'bg-[#fb7185]/10',
+        badgeBorder: 'border-[#fb7185]/30',
         border: 'border-[#fb7185]/35',
         bg: 'bg-[#fb7185]/10',
-        focus: 'focus-within:border-[#fb7185]/70',
-        ring: 'shadow-[0_0_30px_rgba(251,113,133,0.14)]',
+        focus: 'focus-within:border-[#fb7185]',
+        ring: 'shadow-[0_0_35px_rgba(251,113,133,0.18)]',
+        btnActive: 'bg-gradient-to-r from-[#f43f5e] to-[#fb7185] text-white',
+        pillActive: 'bg-[#fb7185] text-[#121212]',
       };
 
   const followProbability = Math.min(Math.max(market.probability ?? market.confidence ?? 50, 1), 99);
@@ -120,16 +142,18 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const impliedProbability = isFollow ? followProbability : fadeProbability;
   const entryPriceCents = impliedProbability;
   const payoutMultiplier = 100 / impliedProbability;
-  const platformFeeRate = 0.02;
+  const platformFeeRate = 0.005; // 0.5% Protocol Fee
   const platformFee = parsedAmount * platformFeeRate;
   const netStake = Math.max(parsedAmount - platformFee, 0);
   const estimatedWin = netStake * payoutMultiplier;
   const profit = estimatedWin - parsedAmount;
+  
   const nowSeconds = Math.floor(Date.now() / 1000);
   const closesInSeconds = Math.max(market.resolutionTime - nowSeconds, 0);
   const closeHours = Math.floor(closesInSeconds / 3600);
   const closeMinutes = Math.floor((closesInSeconds % 3600) / 60);
   const closesLabel = closesInSeconds > 0 ? `${closeHours}h ${closeMinutes}m` : 'closed';
+  
   const marketClosed =
     market.resolved ||
     market.status === 'CLOSED' ||
@@ -137,10 +161,12 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
     market.status === 'RESOLVED' ||
     market.status === 'VOIDED' ||
     closesInSeconds <= 0;
+    
   const minStake = 1;
   const hasAmount = parsedAmount > 0;
   const belowMinimum = hasAmount && parsedAmount < minStake;
   const insufficientBalance = hasAmount && amountBigInt > usdcBalanceBigInt;
+  
   const validationMessage = marketClosed
     ? 'This market has closed. Trading is disabled.'
     : belowMinimum
@@ -148,6 +174,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
       : insufficientBalance
         ? `Insufficient balance. You have ${Number(usdcBalanceFormatted).toFixed(2)} USDC.`
         : null;
+        
   const canContinue = step === 'idle' && hasAmount && !validationMessage && !isWrongNetwork;
   const ctaLabel = !hasAmount
     ? 'Enter an amount'
@@ -163,6 +190,13 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const newFadePool   = !isFollow ? market.fadePool + parsedAmount : market.fadePool;
   const winningPool   = isFollow ? newFollowPool : newFadePool;
   const poolShare     = winningPool > 0 ? (netStake / winningPool) * 100 : 0;
+
+  const handleQuickAdd = (addAmount: number) => {
+    const current = parseFloat(amount) || 0;
+    const nextVal = (current + addAmount).toFixed(2);
+    setAmount(nextVal);
+    setError(null);
+  };
 
   const handleApprove = async () => {
     if (isWrongNetwork) {
@@ -237,7 +271,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         address: ARCSIGNAL_ADDRESS,
         abi: ARCSIGNAL_ABI,
         functionName: 'stake',
-          args: [market.marketId, selectedSide, amountBigInt],
+        args: [market.marketId, selectedSide, amountBigInt],
       });
 
       const gas = await publicClient.estimateContractGas({
@@ -296,242 +330,269 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#020817]/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-[#0f172a] border border-[#1e293b] shadow-[0_0_40px_rgba(0,0,0,0.8),inset_0_0_20px_rgba(221,183,255,0.03)] w-full max-w-md rounded-xl relative overflow-hidden">
-        {/* Top decorative line */}
-        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#ddb7ff]/50 to-transparent" />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+      {/* Modal Card */}
+      <div className="bg-[#141414] border border-white/[0.1] shadow-[0_20px_60px_rgba(0,0,0,0.9),0_0_40px_rgba(183,109,255,0.08)] w-full max-w-md rounded-2xl relative overflow-hidden flex flex-col max-h-[92vh]">
+        
+        {/* Top Violet Brand Line */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#ddb7ff] to-transparent" />
 
-        {/* Header */}
-        <div className="p-6 border-b border-[#1e293b] flex justify-between items-center">
-          <div className="flex flex-col gap-1">
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-bold text-[#ddb7ff] tracking-[0.12em] uppercase">
-              Position Entry
+        {/* Modal Header */}
+        <div className="px-6 py-4 border-b border-white/[0.08] flex justify-between items-center bg-[#171717]">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#ddb7ff] animate-pulse" />
+            <span className="font-mono text-[11px] font-bold text-[#ddb7ff] tracking-[0.08em] uppercase">
+              ArcSignal Trading
             </span>
-            <h2 className="font-[family-name:var(--font-hanken)] text-xl font-bold text-white">
-              Place Position
-            </h2>
           </div>
           <button
             onClick={handleClose}
             disabled={step === 'approving' || step === 'staking' || step === 'confirming'}
-            className="text-[#94a3b8] hover:text-white transition-colors disabled:opacity-50"
+            className="rounded-full p-1.5 text-[#94a3b8] hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-50"
+            aria-label="Close modal"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+            <X size={18} />
           </button>
         </div>
 
-        {step === 'success' && txHash ? (
-          /* SUCCESS STATE */
-          <div className="p-8 flex flex-col items-center justify-center text-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-[#ddb7ff]/20 flex items-center justify-center mb-2">
-              <div className="w-8 h-8 rounded-full bg-[#ddb7ff] text-[#0f172a] flex items-center justify-center text-xl font-bold">
-                ✓
+        {/* Modal Content */}
+        <div className="overflow-y-auto custom-scrollbar flex-1">
+          
+          {step === 'success' && txHash ? (
+            /* ── SUCCESS CONFIRMATION STATE ── */
+            <div className="p-8 flex flex-col items-center justify-center text-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-[#ddb7ff]/15 border border-[#ddb7ff]/40 flex items-center justify-center mb-1 shadow-[0_0_30px_rgba(221,183,255,0.2)]">
+                <CheckCircle2 size={32} className="text-[#ddb7ff]" />
               </div>
-            </div>
-            <h3 className="font-[family-name:var(--font-hanken)] text-2xl font-bold text-white">
-              Position Recorded
-            </h3>
-            <p className="text-sm text-[#94a3b8]">
-              Your{' '}
-              <strong className={isFollow ? 'text-[#ddb7ff]' : 'text-[#ffb4ab]'}>
-                {isFollow ? 'FOLLOW' : 'FADE'}
-              </strong>{' '}
-              position has been confirmed on-chain.
-            </p>
-
-            <div className="bg-[#131313] w-full p-4 rounded-lg mt-2 border border-[#1e293b] flex flex-col gap-2">
-              <span className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider">
-                TX Hash
-              </span>
-              <a
-                href={`https://testnet.arcscan.app/tx/${txHash}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-[#ddb7ff] font-[family-name:var(--font-jetbrains-mono)] text-xs break-all hover:underline"
-              >
-                {txHash}
-              </a>
-            </div>
-
-            <button
-              onClick={handleClose}
-              className="w-full mt-2 bg-[#ddb7ff]/10 hover:bg-[#ddb7ff]/20 text-[#ddb7ff] border border-[#ddb7ff]/25 font-bold py-3 rounded-lg transition-colors font-[family-name:var(--font-jetbrains-mono)] text-[11px] tracking-widest uppercase"
-            >
-              Done
-            </button>
-          </div>
-        ) : step === 'review' ? (
-          <div className="p-6 space-y-5">
-            <div>
-              <p className={`text-[10px] ${accent.text} font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest mb-2`}>Review position</p>
-              <h3 className="text-xl font-[family-name:var(--font-hanken)] font-bold text-white leading-tight">
-                Confirm before signing
+              
+              <h3 className="font-display text-2xl font-bold text-white tracking-tight">
+                Position Confirmed
               </h3>
-              <p className="text-xs text-[#94a3b8] mt-2 leading-relaxed">
-                Check the market, side, and amount. Your wallet will ask for final approval in the next step.
+              
+              <p className="font-sans text-xs text-[#cbd5e1] max-w-xs leading-relaxed">
+                Your <strong className={isFollow ? 'text-[#ddb7ff]' : 'text-[#fda4af]'}>{isFollow ? 'FOLLOW AI' : 'FADE AI'}</strong> position of <strong className="font-mono text-white">{amountStr} USDC</strong> has been executed on-chain.
               </p>
-            </div>
 
-            <div className="rounded-xl border border-[#1e293b] bg-[#131313] p-4 space-y-3 text-xs">
-              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Market</span><span className="text-white text-right max-w-[230px]">{(market as any).question || (market as any).title || 'Prediction Market'}</span></div>
-              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Position</span><span className={`${accent.text} font-semibold`}>{accent.label}</span></div>
-              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Entry odds</span><span className="text-white font-[family-name:var(--font-jetbrains-mono)]">{entryPriceCents.toFixed(0)}c / {payoutMultiplier.toFixed(2)}x</span></div>
-              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Stake</span><span className="text-white font-[family-name:var(--font-jetbrains-mono)]">{amountStr} USDC</span></div>
-              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Platform fee</span><span className="text-white font-[family-name:var(--font-jetbrains-mono)]">-{platformFee.toFixed(2)} USDC</span></div>
-              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Estimated pool share</span><span className="text-white font-[family-name:var(--font-jetbrains-mono)]">{poolShare.toFixed(2)}%</span></div>
-              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Estimated win</span><span className={`${accent.text} font-[family-name:var(--font-jetbrains-mono)]`}>~{estimatedWin.toFixed(2)} USDC</span></div>
-              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Profit</span><span className={`font-[family-name:var(--font-jetbrains-mono)] ${profit >= 0 ? 'text-[#5eead4]' : 'text-[#fda4af]'}`}>{profit >= 0 ? '+' : ''}{profit.toFixed(2)} USDC</span></div>
-            </div>
+              <div className="bg-[#1c1b1b] w-full p-4 rounded-xl mt-2 border border-white/[0.08] flex flex-col gap-1.5 text-left font-mono">
+                <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider">
+                  Transaction Hash
+                </span>
+                <a
+                  href={`https://testnet.arcscan.app/tx/${txHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[#ddb7ff] text-xs break-all hover:underline"
+                >
+                  {txHash}
+                </a>
+              </div>
 
-            <p className="text-[10px] text-[#94a3b8] leading-relaxed">
-              Payouts are estimates and can change as other users enter the pool. The transaction is final once confirmed on-chain.
-            </p>
-
-            {isWrongNetwork && (
               <button
-                onClick={() => switchChain({ chainId: 5042002 })}
-                className="w-full min-h-[44px] rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-400 text-xs font-semibold"
+                onClick={handleClose}
+                className="w-full mt-3 bg-[#ddb7ff] hover:bg-[#ead7ff] text-[#121212] font-bold py-3.5 rounded-xl transition-colors font-mono text-xs tracking-wider uppercase shadow-lg"
               >
-                Switch to Arc Testnet
-              </button>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setStep('idle')}
-                className={`min-h-[48px] rounded-lg border border-[#3a3939] text-[#94a3b8] text-xs font-semibold hover:text-white ${isFollow ? 'hover:border-[#14b8a6]/40' : 'hover:border-[#fb7185]/40'} transition-colors`}
-              >
-                Back
-              </button>
-              <button
-                onClick={handleStake}
-                disabled={isWrongNetwork || !hasAmount || !!validationMessage}
-                className="min-h-[48px] rounded-lg bg-[#6D28D9] text-white text-xs font-bold hover:bg-[#7C3AED] transition-all disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Confirm & sign
+                Done & View Position
               </button>
             </div>
-          </div>
-        ) : (
-          /* INPUT STATE */
-          <>
-            <div className="p-6 bg-[#131313]/60 border-b border-[#1e293b] space-y-4">
+
+          ) : step === 'review' ? (
+            /* ── REVIEW / SIGNING CONFIRMATION STATE ── */
+            <div className="p-6 space-y-5">
               <div>
-                <div className="text-sm font-bold text-white mb-2 leading-tight font-[family-name:var(--font-hanken)]">
-                  {(market as any).question || (market as any).title || 'Prediction Market'}
+                <p className={`font-mono text-[10px] font-bold ${accent.text} uppercase tracking-widest mb-1`}>
+                  Review Position
+                </p>
+                <h3 className="font-display text-xl font-bold text-white tracking-tight leading-snug">
+                  Confirm Parameters Before Signing
+                </h3>
+                <p className="font-sans text-xs text-[#94a3b8] mt-1 leading-relaxed">
+                  Verify the market side, amount, and projected payout.
+                </p>
+              </div>
+
+              {/* Review Specs Card */}
+              <div className="rounded-xl border border-white/[0.08] bg-[#181818] p-4 space-y-3 font-mono text-xs">
+                <div className="flex justify-between gap-4">
+                  <span className="text-[#94a3b8] font-sans">Market</span>
+                  <span className="text-white text-right max-w-[220px] truncate font-display font-semibold">
+                    {(market as any).question || (market as any).title || 'Prediction Market'}
+                  </span>
                 </div>
-                <div className="text-xs text-[#94a3b8]">
-                  Follow {followProbability.toFixed(0)}% · Fade {fadeProbability.toFixed(0)}% · Closes {closesLabel}
+                <div className="flex justify-between gap-4">
+                  <span className="text-[#94a3b8] font-sans">Direction</span>
+                  <span className={`${accent.text} font-bold`}>{accent.label}</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-[#94a3b8] font-sans">Entry Price / Multiplier</span>
+                  <span className="text-white tabular-nums">{entryPriceCents.toFixed(0)}c · {payoutMultiplier.toFixed(2)}x</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-[#94a3b8] font-sans">Your Stake</span>
+                  <span className="text-white font-bold tabular-nums">{amountStr} USDC</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-[#94a3b8] font-sans">Protocol Fee (0.5%)</span>
+                  <span className="text-[#94a3b8] tabular-nums">-{platformFee.toFixed(2)} USDC</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-[#94a3b8] font-sans">Estimated Pool Share</span>
+                  <span className="text-white tabular-nums">{poolShare.toFixed(2)}%</span>
+                </div>
+                <div className="h-px bg-white/[0.06] w-full" />
+                <div className="flex justify-between gap-4 text-sm">
+                  <span className="text-[#94a3b8] font-sans font-medium">Estimated Win</span>
+                  <span className={`${accent.text} font-bold tabular-nums`}>~{estimatedWin.toFixed(2)} USDC</span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-[#94a3b8] font-sans">Net Profit</span>
+                  <span className={`font-bold tabular-nums ${isFollow ? 'text-[#ddb7ff]' : 'text-[#fda4af]'}`}>
+                    {profit >= 0 ? '+' : ''}{profit.toFixed(2)} USDC
+                  </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 rounded-lg bg-[#020817] p-1 border border-[#1e293b]">
+              <p className="font-sans text-[11px] text-[#64748b] leading-relaxed">
+                Payouts are non-custodial estimates calculated from current pool shares. Final payout is determined upon oracle settlement.
+              </p>
+
+              {isWrongNetwork && (
+                <button
+                  onClick={() => switchChain({ chainId: 5042002 })}
+                  className="w-full min-h-[44px] rounded-xl border border-amber-500/50 bg-amber-500/10 text-amber-300 text-xs font-semibold font-sans"
+                >
+                  Switch to Arc Testnet
+                </button>
+              )}
+
+              <div className="grid grid-cols-2 gap-3 pt-2 font-sans">
+                <button
+                  onClick={() => setStep('idle')}
+                  className="min-h-[46px] rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#cbd5e1] hover:text-white text-xs font-semibold transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleStake}
+                  disabled={isWrongNetwork || !hasAmount || !!validationMessage}
+                  className="min-h-[46px] rounded-xl bg-[#ddb7ff] hover:bg-[#ead7ff] text-[#121212] text-xs font-bold transition-all disabled:opacity-50 shadow-lg"
+                >
+                  Confirm & Sign
+                </button>
+              </div>
+            </div>
+
+          ) : (
+            /* ── MAIN INPUT & SPECIFICATION STATE ── */
+            <div className="p-6 space-y-5">
+              
+              {/* Question Summary & Closes Status */}
+              <div>
+                <h3 className="font-display text-sm sm:text-[15px] font-bold text-white mb-1.5 leading-snug">
+                  {(market as any).question || (market as any).title || 'Prediction Market'}
+                </h3>
+                <div className="flex items-center gap-2 font-mono text-[11px] text-[#94a3b8]">
+                  <span className="text-[#ddb7ff] font-semibold">Follow {followProbability.toFixed(0)}%</span>
+                  <span>·</span>
+                  <span className="text-[#fda4af] font-semibold">Fade {fadeProbability.toFixed(0)}%</span>
+                  <span>·</span>
+                  <span className="tabular-nums">Closes {closesLabel}</span>
+                </div>
+              </div>
+
+              {/* Follow / Fade Direction Dual Selector Tabs */}
+              <div className="grid grid-cols-2 gap-2 rounded-xl bg-[#0c0c0c] p-1.5 border border-white/[0.08]">
+                {/* Follow AI (Violet) */}
                 <button
                   type="button"
                   onClick={() => setSelectedSide(0)}
-                  className={`min-h-[40px] rounded-md text-xs font-bold transition-all ${
+                  className={`min-h-[42px] rounded-lg font-mono text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                     isFollow
-                      ? 'bg-[#14b8a6] text-[#022c22]'
-                      : 'text-[#94a3b8] hover:text-white'
+                      ? 'bg-[#ddb7ff] text-[#121212] shadow-md'
+                      : 'text-[#94a3b8] hover:text-white hover:bg-white/[0.04]'
                   }`}
                 >
-                  Follow AI
+                  <Sparkles size={14} className={isFollow ? 'text-[#121212]' : 'text-[#ddb7ff]'} />
+                  <span>Follow AI</span>
+                  <span className="opacity-80 tabular-nums">({followProbability.toFixed(0)}%)</span>
                 </button>
+
+                {/* Fade AI (Coral) */}
                 <button
                   type="button"
                   onClick={() => setSelectedSide(1)}
-                  className={`min-h-[40px] rounded-md text-xs font-bold transition-all ${
+                  className={`min-h-[42px] rounded-lg font-mono text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                     !isFollow
-                      ? 'bg-[#fb7185] text-[#3f0611]'
-                      : 'text-[#94a3b8] hover:text-white'
+                      ? 'bg-[#fb7185] text-[#121212] shadow-md'
+                      : 'text-[#94a3b8] hover:text-white hover:bg-white/[0.04]'
                   }`}
                 >
-                  Fade AI
+                  <X size={14} className={!isFollow ? 'text-[#121212]' : 'text-[#fb7185]'} />
+                  <span>Fade AI</span>
+                  <span className="opacity-80 tabular-nums">({fadeProbability.toFixed(0)}%)</span>
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-                <span className="inline-flex items-center gap-2 text-white">
-                  <span className={`h-2 w-2 rounded-full ${accent.dot}`} />
-                  Direction: {accent.label}
+              {/* Live Direction Spec Indicator */}
+              <div className="flex items-center justify-between text-xs font-sans px-1">
+                <span className="inline-flex items-center gap-2 text-white font-medium">
+                  <span className={`h-2 w-2 rounded-full ${accent.dot} animate-pulse`} />
+                  Selected Direction: <strong className={accent.text}>{accent.label}</strong>
                 </span>
-                <span className="text-[#94a3b8]">Market: {market.category === 'football' ? `${market.homeTeam} vs ${market.awayTeam}` : market.subType || market.category}</span>
+                <span className="font-mono text-[10px] text-[#94a3b8] uppercase tracking-wider">
+                  {market.category === 'football' ? `${market.homeTeam} vs ${market.awayTeam}` : market.subType || market.category}
+                </span>
               </div>
-            </div>
 
-            {isWrongNetwork && (
-              <div className="mx-6 mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-300" role="alert">
-                <div className="flex items-center justify-between gap-3">
-                  <span>Switch to Arc Testnet to approve or stake.</span>
-                  <button
-                    onClick={() => switchChain({ chainId: 5042002 })}
-                    className="min-h-[36px] shrink-0 rounded-md bg-amber-400 px-3 text-[10px] font-bold uppercase tracking-wide text-[#1a0a00]"
-                  >
-                    Switch
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {marketClosed && (
-              <div className="mx-6 mt-4 rounded-lg border border-[#ffb4ab]/30 bg-[#ffb4ab]/10 p-3 text-xs text-[#ffb4ab]" role="alert">
-                This market has closed. Trading is disabled.
-              </div>
-            )}
-
-            {/* Error */}
-            {error && (
-              <div className="mx-6 mt-4 p-3 bg-[#ffb4ab]/10 border border-[#ffb4ab]/30 rounded-lg text-[#ffb4ab] text-xs font-[family-name:var(--font-jetbrains-mono)]">
-                {error}
-              </div>
-            )}
-
-            {/* Input */}
-            <div className="p-6 space-y-6">
-              <div className={`rounded-lg border ${accent.border} ${accent.bg} ${accent.ring} p-4 space-y-3`}>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest text-[#94a3b8]">
-                    Entry Odds
+              {/* Entry Odds Specifications Box */}
+              <div className={`rounded-xl border ${accent.border} ${accent.bg} ${accent.ring} p-4 space-y-2.5 transition-all`}>
+                <div className="flex items-center justify-between font-mono">
+                  <span className="text-[10px] uppercase tracking-widest text-[#94a3b8] font-bold">
+                    Entry Odds & Conviction
                   </span>
-                  <span className={`text-xs font-semibold ${accent.text}`}>{accent.label} @ {entryPriceCents.toFixed(0)}c</span>
+                  <span className={`text-xs font-bold ${accent.text} tabular-nums`}>
+                    {accent.label} @ {entryPriceCents.toFixed(0)}c
+                  </span>
                 </div>
-                <div className="flex items-end justify-between gap-4">
+
+                <div className="flex items-baseline justify-between gap-4">
                   <div>
-                    <div className="text-2xl font-bold text-white font-[family-name:var(--font-jetbrains-mono)]">
+                    <div className="text-2xl font-bold font-mono text-white tabular-nums tracking-tight">
                       {payoutMultiplier.toFixed(2)}x
                     </div>
-                    <div className="text-xs text-[#94a3b8]">Potential payout</div>
+                    <div className="text-[11px] text-[#94a3b8] font-sans">Potential payout multiplier</div>
                   </div>
-                  <div className="text-right text-xs text-[#94a3b8]">
-                    <div>Implied: {impliedProbability.toFixed(0)}%</div>
-                    <div>Stake x (1 / {(impliedProbability / 100).toFixed(2)})</div>
+                  
+                  <div className="text-right text-xs font-mono text-[#94a3b8] space-y-0.5">
+                    <div>Implied Odds: <strong className="text-white">{impliedProbability.toFixed(0)}%</strong></div>
+                    <div className="text-[10px] opacity-70">Formula: Stake × (100 / {impliedProbability.toFixed(0)})</div>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
+              {/* Amount to Stake Input Box */}
+              <div className="space-y-2 font-sans">
                 <div className="flex justify-between items-end">
-                  <label className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] tracking-widest text-[#94a3b8] uppercase">
+                  <label className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#94a3b8]">
                     Amount to Stake
                   </label>
-                  <div className="text-right">
-                    <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8] block">
+                  <div className="text-right font-mono text-[11px]">
+                    <span className="text-[#94a3b8]">
                       Balance:{' '}
-                      <span className="text-white">
+                      <strong className="text-white tabular-nums">
                         {Number(usdcBalanceFormatted).toFixed(2)}
-                      </span>{' '}
+                      </strong>{' '}
                       USDC
                     </span>
                   </div>
                 </div>
 
-                <div className={`relative flex items-center bg-[#0b1220] border-2 border-[#1e293b] ${accent.focus} rounded-lg p-4 transition-all`}>
-                  <span className={`text-xs font-[family-name:var(--font-jetbrains-mono)] ${accent.text} uppercase tracking-wider mr-4`}>
-                    USDC
-                  </span>
+                {/* Input Field with Violet Focus */}
+                <div className={`relative flex items-center bg-[#0d0d0d] border-2 border-white/[0.1] ${accent.focus} rounded-xl p-4 transition-all`}>
+                  <div className="flex items-center gap-1.5 mr-3 px-2 py-1 rounded bg-white/[0.06] font-mono text-xs font-bold text-[#ddb7ff]">
+                    <DollarSign size={13} className="text-[#ddb7ff]" />
+                    <span>USDC</span>
+                  </div>
+                  
                   <input
                     type="number"
                     min="0"
@@ -541,104 +602,155 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                       setAmount(e.target.value);
                       setError(null);
                     }}
-                    className="w-full min-w-0 bg-transparent outline-none text-3xl font-[family-name:var(--font-jetbrains-mono)] text-white placeholder:text-white/20"
+                    className="w-full min-w-0 bg-transparent outline-none text-2xl sm:text-3xl font-mono font-bold text-white placeholder:text-white/20 tabular-nums"
                     placeholder="0.00"
                   />
+                  
                   <button
                     type="button"
                     onClick={() => setAmount(usdcBalanceFormatted)}
-                    className="text-xs font-[family-name:var(--font-jetbrains-mono)] text-[#7C3AED] hover:text-[#a78bfa] transition-colors"
+                    className="px-2.5 py-1 rounded-lg bg-[#ddb7ff]/15 hover:bg-[#ddb7ff]/25 border border-[#ddb7ff]/30 text-[#ddb7ff] font-mono text-xs font-bold transition-colors shrink-0"
                   >
                     MAX
                   </button>
                 </div>
-                <div className="flex items-center justify-between gap-3 text-xs">
-                  <span className="text-[#94a3b8]">${parsedAmount.toFixed(2)} USD</span>
-                  {validationMessage && !marketClosed && <span className="text-[#ffb4ab] text-right">{validationMessage}</span>}
+
+                {/* Quick Add Presets */}
+                <div className="flex items-center gap-1.5 pt-1 font-mono text-xs">
+                  {[10, 25, 50, 100].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleQuickAdd(preset)}
+                      className="flex-1 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-[#cbd5e1] hover:text-white text-[11px] font-semibold transition-colors"
+                    >
+                      +${preset}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-0.5">
+                  <span className="text-[#94a3b8] font-mono text-[11px]">≈ ${parsedAmount.toFixed(2)} USD</span>
+                  {validationMessage && !marketClosed && (
+                    <span className="text-[#fda4af] font-mono text-[11px] font-medium text-right">
+                      {validationMessage}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <div className="space-y-3 pt-1">
-                <div className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] tracking-widest text-[#94a3b8] uppercase">
-                  Payout Breakdown
+              {/* Payout Breakdown Specifications */}
+              <div className="rounded-xl border border-white/[0.06] bg-[#161616] p-4 space-y-2.5 font-mono text-xs">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] mb-1">
+                  Payout Breakdown Specifications
                 </div>
-                <div className="flex justify-between items-center text-xs font-[family-name:var(--font-jetbrains-mono)]">
-                  <span className="text-[#94a3b8]">Your stake</span>
-                  <span className="text-white">{parsedAmount.toFixed(2)} USDC</span>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-[#94a3b8] font-sans">Your Stake</span>
+                  <span className="text-white font-semibold tabular-nums">{parsedAmount.toFixed(2)} USDC</span>
                 </div>
-                <div className="flex justify-between items-center text-xs font-[family-name:var(--font-jetbrains-mono)]">
-                  <span className="text-[#94a3b8]">Platform fee (2%)</span>
-                  <span className="text-white">-{platformFee.toFixed(2)} USDC</span>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-[#94a3b8] font-sans">Platform Protocol Fee (0.5%)</span>
+                  <span className="text-[#94a3b8] tabular-nums">-{platformFee.toFixed(2)} USDC</span>
                 </div>
-                <div className="flex justify-between items-center text-xs font-[family-name:var(--font-jetbrains-mono)]">
-                  <span className="text-[#94a3b8]">Net pool share</span>
-                  <span className="text-white">{poolShare.toFixed(2)}%</span>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-[#94a3b8] font-sans">Estimated Pool Share</span>
+                  <span className="text-white tabular-nums">{poolShare.toFixed(2)}%</span>
                 </div>
-                <div className="h-px bg-[#1e293b] w-full" />
-                <div className="flex justify-between items-center text-xs font-[family-name:var(--font-jetbrains-mono)]">
-                  <span className="text-[#94a3b8]">If correct, win</span>
-                  <span className={`${accent.text} font-bold`}>{estimatedWin.toFixed(2)} USDC</span>
+
+                <div className="h-px bg-white/[0.06] w-full" />
+
+                <div className="flex justify-between items-center">
+                  <span className="text-white font-sans font-medium">Potential Payout (If Win)</span>
+                  <span className={`${accent.text} font-bold text-sm tabular-nums`}>
+                    {estimatedWin.toFixed(2)} USDC
+                  </span>
                 </div>
-                <div className="flex justify-between items-center text-xs font-[family-name:var(--font-jetbrains-mono)]">
-                  <span className="text-[#94a3b8]">Profit</span>
-                  <span className={`font-bold ${profit >= 0 ? 'text-[#5eead4]' : 'text-[#fda4af]'}`}>{profit >= 0 ? '+' : ''}{profit.toFixed(2)} USDC</span>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-[#94a3b8] font-sans">Estimated Net Profit</span>
+                  <span className={`font-bold tabular-nums ${isFollow ? 'text-[#ddb7ff]' : 'text-[#fda4af]'}`}>
+                    {profit >= 0 ? '+' : ''}{profit.toFixed(2)} USDC
+                  </span>
                 </div>
               </div>
 
-              {hasAmount && !validationMessage && (
-                <div className="text-[11px] text-[#94a3b8] leading-relaxed">
-                  You are risking {parsedAmount.toFixed(2)} USDC. If the market resolves against {accent.label}, you lose your stake. Odds can move before the transaction confirms.
+              {/* Error Message */}
+              {error && (
+                <div className="p-3 bg-[#fb7185]/10 border border-[#fb7185]/30 rounded-xl text-[#fda4af] text-xs font-mono flex items-center gap-2">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>{error}</span>
                 </div>
               )}
 
-              <details className="group rounded-lg border border-[#1e293b] bg-[#131313]/60 p-3 text-xs">
-                <summary className="cursor-pointer list-none font-[family-name:var(--font-jetbrains-mono)] text-[10px] uppercase tracking-widest text-[#94a3b8]">
-                  Market Details
+              {/* Market Details Dropdown */}
+              <details className="group rounded-xl border border-white/[0.06] bg-[#101010] p-3 text-xs font-mono">
+                <summary className="cursor-pointer list-none text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] flex items-center justify-between">
+                  <span>Smart Contract & Protocol Specs</span>
+                  <ChevronRight size={12} className="transition-transform group-open:rotate-90 text-[#94a3b8]" />
                 </summary>
-                <div className="mt-3 space-y-2 font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#94a3b8]">
-                  <div className="flex justify-between gap-3"><span>Contract</span><span className="text-white break-all text-right">{ARCSIGNAL_ADDRESS}</span></div>
-                  {estimatedGas && <div className="flex justify-between gap-3"><span>Estimated gas</span><span className="text-white">~{Number(estimatedGas).toFixed(6)} ARC</span></div>}
-                  <div className="flex justify-between gap-3"><span>Market ID</span><span className="text-white break-all text-right">{market.marketId}</span></div>
+                <div className="mt-3 space-y-2 text-[10px] text-[#94a3b8] border-t border-white/[0.04] pt-2">
+                  <div className="flex justify-between gap-3">
+                    <span>Contract</span>
+                    <span className="text-white truncate max-w-[190px]">{ARCSIGNAL_ADDRESS}</span>
+                  </div>
+                  {estimatedGas && (
+                    <div className="flex justify-between gap-3">
+                      <span>Est. Gas</span>
+                      <span className="text-white tabular-nums">~{Number(estimatedGas).toFixed(6)} ARC</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between gap-3">
+                    <span>Market ID</span>
+                    <span className="text-white truncate max-w-[190px]">{market.marketId}</span>
+                  </div>
                 </div>
               </details>
-            </div>
 
-            {/* Action */}
-            <div className="p-6 pt-0">
-              {currentAllowance < amountBigInt ? (
-                <button
-                  onClick={handleApprove}
-                  disabled={!canContinue}
-                  className="w-full bg-[#6D28D9] text-white font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold py-4 tracking-widest hover:bg-[#7C3AED] rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-40 flex items-center justify-center gap-2 uppercase"
-                >
-                  {step === 'approving' ? (
-                    <>
-                      <span className="animate-spin text-lg leading-none">↻</span>
-                      Approving USDC...
-                    </>
-                  ) : (
-                    canContinue ? 'Approve USDC' : ctaLabel
-                  )}
-                </button>
-              ) : (
-                <button
-                  onClick={() => setStep('review')}
-                  disabled={!canContinue}
-                  className="w-full bg-[#6D28D9] text-white font-[family-name:var(--font-jetbrains-mono)] text-[11px] font-bold py-4 tracking-widest hover:bg-[#7C3AED] rounded-lg transition-all disabled:cursor-not-allowed disabled:opacity-40 flex items-center justify-center gap-2 uppercase"
-                >
-                  {step === 'staking' || step === 'confirming' ? (
-                    <>
-                      <span className="animate-spin text-lg leading-none">↻</span>
-                      {step === 'confirming' ? 'Confirming on-chain...' : 'Placing your position...'}
-                    </>
-                  ) : (
-                    ctaLabel
-                  )}
-                </button>
-              )}
             </div>
-          </>
+          )}
+
+        </div>
+
+        {/* Modal Footer CTA */}
+        {step !== 'success' && step !== 'review' && (
+          <div className="p-6 pt-2 border-t border-white/[0.06] bg-[#171717]">
+            {currentAllowance < amountBigInt ? (
+              <button
+                onClick={handleApprove}
+                disabled={!canContinue}
+                className="w-full bg-[#ddb7ff] hover:bg-[#ead7ff] text-[#121212] font-mono text-xs font-bold py-4 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2 uppercase tracking-wider"
+              >
+                {step === 'approving' ? (
+                  <>
+                    <span className="animate-spin text-sm leading-none">↻</span>
+                    <span>Approving USDC...</span>
+                  </>
+                ) : (
+                  <span>{canContinue ? 'Approve USDC' : ctaLabel}</span>
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={() => setStep('review')}
+                disabled={!canContinue}
+                className="w-full bg-[#ddb7ff] hover:bg-[#ead7ff] text-[#121212] font-mono text-xs font-bold py-4 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2 uppercase tracking-wider"
+              >
+                {step === 'staking' || step === 'confirming' ? (
+                  <>
+                    <span className="animate-spin text-sm leading-none">↻</span>
+                    <span>{step === 'confirming' ? 'Confirming on-chain...' : 'Submitting Stake...'}</span>
+                  </>
+                ) : (
+                  <span>{ctaLabel}</span>
+                )}
+              </button>
+            )}
+          </div>
         )}
+
       </div>
     </div>
   );

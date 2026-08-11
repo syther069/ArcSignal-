@@ -163,7 +163,7 @@ export function MarketProbabilityChart({
       <div className="flex flex-wrap items-center justify-between gap-4 bg-[#191919] p-3 rounded-xl border border-white/[0.04]">
         <div className="flex items-center gap-6 font-mono">
           <div>
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-[#4fdbc8] block">
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-[#ddb7ff] block">
               ● Follow (Market)
             </span>
             <span className="text-base font-bold text-white tabular-nums tracking-tight">
@@ -207,8 +207,8 @@ export function MarketProbabilityChart({
           <defs>
             {/* Follow gradient */}
             <linearGradient id="followGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#4fdbc8" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#4fdbc8" stopOpacity="0.0" />
+              <stop offset="0%" stopColor="#ddb7ff" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#ddb7ff" stopOpacity="0.0" />
             </linearGradient>
           </defs>
 
@@ -244,10 +244,10 @@ export function MarketProbabilityChart({
             y1={calcY(aiConfidence)}
             x2={SVG_WIDTH - PADDING_X}
             y2={calcY(aiConfidence)}
-            stroke="#ddb7ff"
+            stroke="#b76dff"
             strokeDasharray="5 5"
             strokeWidth="1.5"
-            opacity="0.6"
+            opacity="0.7"
           />
 
           {/* Follow area fill */}
@@ -264,11 +264,11 @@ export function MarketProbabilityChart({
             opacity="0.85"
           />
 
-          {/* Follow trajectory line (Teal) */}
+          {/* Follow trajectory line (Violet) */}
           <path
             d={followPath}
             fill="none"
-            stroke="#4fdbc8"
+            stroke="#ddb7ff"
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -307,7 +307,7 @@ export function MarketProbabilityChart({
                       cx={cx}
                       cy={cy}
                       r="5"
-                      fill="#4fdbc8"
+                      fill="#ddb7ff"
                       stroke="#141414"
                       strokeWidth="2"
                       className="shadow-lg"
