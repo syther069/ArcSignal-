@@ -92,25 +92,25 @@ export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
       {/* Left Column: Metadata + Market Question */}
       <div className="flex-1 min-w-0 flex flex-col justify-center">
         {/* Meta badges row */}
-        <div className="flex flex-wrap items-center gap-2 mb-1.5">
-          <span className="rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#ddb7ff] bg-[#ddb7ff]/10 border border-[#ddb7ff]/20">
+        <div className="flex flex-wrap items-center gap-2 mb-1.5 font-mono text-[10px] tracking-[0.06em]">
+          <span className="rounded px-2 py-0.5 font-bold uppercase text-[#ddb7ff] bg-[#ddb7ff]/10 border border-[#ddb7ff]/20">
             {market.category}
           </span>
 
           {timeframe && (
-            <span className="rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[#94a3b8] bg-white/[0.04] border border-white/[0.08]">
+            <span className="rounded px-1.5 py-0.5 font-medium uppercase text-[#94a3b8] bg-white/[0.04] border border-white/[0.08]">
               {timeframe}
             </span>
           )}
 
-          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusColorClass}`}>
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold uppercase ${statusColorClass}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${isOpen ? 'bg-emerald-400 animate-pulse' : isPending ? 'bg-amber-300' : 'bg-current'}`} />
             {statusLabel}
           </span>
 
-          <div className="flex items-center gap-1 text-[11px] text-[#94a3b8] ml-auto xl:ml-2">
+          <div className="flex items-center gap-1 font-sans text-[11px] text-[#94a3b8] ml-auto xl:ml-2">
             <Clock3 size={12} className="text-[#94a3b8]" />
-            <span className="tabular-nums">
+            <span className="tabular-nums font-mono text-[11px]">
               {isResolved ? (
                 'Settled'
               ) : isPending ? (
@@ -125,7 +125,7 @@ export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
         {/* Primary Question Text */}
         <Link
           href={`/market/${market.marketId}`}
-          className="group/link flex items-center gap-1.5 text-white font-[family-name:var(--font-hanken)] text-base font-semibold tracking-tight hover:text-[#ead7ff] transition-colors leading-snug line-clamp-2"
+          className="group/link flex items-center gap-1.5 text-white font-display text-[15px] sm:text-[16px] font-semibold tracking-[-0.015em] hover:text-[#ead7ff] transition-colors leading-[1.35] line-clamp-2"
         >
           <span>{market.question || market.marketId}</span>
           <ArrowUpRight size={14} className="opacity-0 -translate-x-1 group-hover/link:opacity-100 group-hover/link:translate-x-0 transition-all text-[#ddb7ff] shrink-0" />
@@ -137,12 +137,12 @@ export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
         
         {/* Follow / Fade Implied Odds with Split Bar */}
         <div className="flex flex-col gap-1.5 min-w-[200px] lg:min-w-[220px]">
-          <div className="flex items-center justify-between text-xs font-semibold">
-            <span className="text-[#4fdbc8] flex items-center gap-1">
-              FOLLOW <span className="font-[family-name:var(--font-jetbrains-mono)] font-bold">{followShare.toFixed(0)}%</span>
+          <div className="flex items-center justify-between text-xs font-mono">
+            <span className="text-[#4fdbc8] flex items-center gap-1 font-semibold tracking-tight">
+              FOLLOW <span className="font-bold tabular-nums text-[13px]">{followShare.toFixed(0)}%</span>
             </span>
-            <span className="text-[#f87171] flex items-center gap-1">
-              FADE <span className="font-[family-name:var(--font-jetbrains-mono)] font-bold">{fadeShare.toFixed(0)}%</span>
+            <span className="text-[#f87171] flex items-center gap-1 font-semibold tracking-tight">
+              FADE <span className="font-bold tabular-nums text-[13px]">{fadeShare.toFixed(0)}%</span>
             </span>
           </div>
 
@@ -161,15 +161,15 @@ export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
           </div>
 
           {/* Context details: Liquidity + AI Signal */}
-          <div className="flex items-center justify-between text-[11px] text-[#94a3b8]">
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[#cbd5e1]">
-              {formatUsdc(totalPool)} <span className="text-[#64748b]">USDC</span>
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="font-mono tabular-nums text-[#cbd5e1] font-medium">
+              {formatUsdc(totalPool)} <span className="text-[#64748b] font-sans text-[10px] font-normal">USDC</span>
             </span>
 
-            <span className="inline-flex items-center gap-1 text-[#ddb7ff]">
+            <span className="inline-flex items-center gap-1 text-[#ddb7ff] font-mono text-[10px]">
               <Sparkles size={11} className="text-[#ddb7ff]" />
-              <span className="font-semibold text-white">AI {isFollowAi ? 'FOLLOW' : 'FADE'}</span>
-              {confidence > 0 && <span className="text-[#94a3b8]">· {confidence}%</span>}
+              <span className="font-bold text-white uppercase tracking-tight">AI {isFollowAi ? 'FOLLOW' : 'FADE'}</span>
+              {confidence > 0 && <span className="text-[#94a3b8] tabular-nums">· {confidence}%</span>}
             </span>
           </div>
         </div>
@@ -183,12 +183,12 @@ export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
             <button
               type="button"
               onClick={onFollow}
-              className="flex-1 group/btn relative flex items-center justify-center gap-1.5 rounded-lg border border-[#4fdbc8]/40 bg-[#4fdbc8]/10 hover:bg-[#4fdbc8] text-[#4fdbc8] hover:text-[#0b1716] font-semibold text-xs py-2.5 px-3 transition-all duration-150 active:scale-[0.98] shadow-sm"
+              className="flex-1 group/btn relative flex items-center justify-center gap-1.5 rounded-lg border border-[#4fdbc8]/40 bg-[#4fdbc8]/10 hover:bg-[#4fdbc8] text-[#4fdbc8] hover:text-[#0b1716] font-sans font-semibold text-xs py-2.5 px-3 transition-all duration-150 active:scale-[0.98] shadow-sm"
               title="Support the AI prediction"
             >
               <Check size={13} className="stroke-[2.5]" />
               <span>Follow</span>
-              <span className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-[11px] opacity-90">
+              <span className="font-mono font-bold text-[11px] tabular-nums opacity-90">
                 {followShare.toFixed(0)}%
               </span>
             </button>
@@ -197,12 +197,12 @@ export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
             <button
               type="button"
               onClick={onFade}
-              className="flex-1 group/btn relative flex items-center justify-center gap-1.5 rounded-lg border border-[#f87171]/40 bg-[#f87171]/10 hover:bg-[#f87171] text-[#f87171] hover:text-[#180a0a] font-semibold text-xs py-2.5 px-3 transition-all duration-150 active:scale-[0.98] shadow-sm"
+              className="flex-1 group/btn relative flex items-center justify-center gap-1.5 rounded-lg border border-[#f87171]/40 bg-[#f87171]/10 hover:bg-[#f87171] text-[#f87171] hover:text-[#180a0a] font-sans font-semibold text-xs py-2.5 px-3 transition-all duration-150 active:scale-[0.98] shadow-sm"
               title="Oppose the AI prediction"
             >
               <X size={13} className="stroke-[2.5]" />
               <span>Fade</span>
-              <span className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-[11px] opacity-90">
+              <span className="font-mono font-bold text-[11px] tabular-nums opacity-90">
                 {fadeShare.toFixed(0)}%
               </span>
             </button>
@@ -221,11 +221,11 @@ export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
               </button>
 
               {showTooltip && (
-                <div className="absolute right-0 bottom-full mb-2 w-64 p-2.5 rounded-lg bg-[#0e0e0e] border border-white/[0.12] shadow-2xl text-[11px] text-[#cbd5e1] z-30 leading-relaxed pointer-events-none">
-                  <p className="font-semibold text-white mb-1">Trading Mechanics:</p>
+                <div className="absolute right-0 bottom-full mb-2 w-64 p-2.5 rounded-lg bg-[#0e0e0e] border border-white/[0.12] shadow-2xl text-[11px] text-[#cbd5e1] z-30 leading-relaxed pointer-events-none font-sans">
+                  <p className="font-semibold text-white mb-1 font-display">Trading Mechanics:</p>
                   <p className="mb-1"><strong className="text-[#4fdbc8]">Follow</strong> = support AI prediction ({aiPrediction})</p>
                   <p className="mb-1"><strong className="text-[#f87171]">Fade</strong> = oppose AI prediction</p>
-                  <p className="text-[10px] text-[#94a3b8] border-t border-white/[0.06] pt-1 mt-1">
+                  <p className="text-[10px] text-[#94a3b8] border-t border-white/[0.06] pt-1 mt-1 font-mono">
                     Percentages reflect current market pool split, not a guaranteed payout probability.
                   </p>
                 </div>
@@ -236,13 +236,13 @@ export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
           <div className="flex flex-col gap-1">
             <Link
               href={`/market/${market.marketId}`}
-              className="flex items-center justify-center gap-1.5 rounded-lg border border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.08] text-[#cbd5e1] hover:text-white font-medium text-xs py-2 px-3 transition-colors text-center"
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.08] text-[#cbd5e1] hover:text-white font-sans font-medium text-xs py-2 px-3 transition-colors text-center"
             >
               <span>{isPending ? 'View Resolution Status' : 'View Market Details'}</span>
               <ArrowUpRight size={13} />
             </Link>
             {statusExplanation && (
-              <p className="text-[10px] text-[#94a3b8] text-center line-clamp-1">
+              <p className="text-[10px] text-[#94a3b8] text-center line-clamp-1 font-sans">
                 {statusExplanation}
               </p>
             )}
@@ -251,7 +251,7 @@ export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
 
         {/* Micro-copy intent line for open markets */}
         {isOpen && (
-          <div className="flex items-center justify-between text-[10px] text-[#64748b] px-0.5">
+          <div className="flex items-center justify-between font-mono text-[9px] tracking-wide text-[#64748b] px-0.5 uppercase">
             <span>Follow: Support AI</span>
             <span>Fade: Oppose AI</span>
           </div>

@@ -86,10 +86,10 @@ export function MarketTimeline({
   return (
     <div className="rounded-2xl border border-white/[0.08] bg-[#141414] p-5 lg:p-6 space-y-4">
       <div className="border-b border-white/[0.06] pb-3">
-        <h3 className="font-[family-name:var(--font-hanken)] text-base font-bold text-white">
+        <h3 className="font-display text-base font-bold text-white tracking-tight">
           Market Lifecycle Timeline
         </h3>
-        <p className="text-xs text-[#94a3b8] mt-0.5">
+        <p className="font-sans text-xs text-[#94a3b8] mt-0.5">
           Step-by-step verification and oracle settlement progression
         </p>
       </div>
@@ -118,7 +118,7 @@ export function MarketTimeline({
               {/* Step details */}
               <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
                 <h4
-                  className={`text-xs font-bold font-[family-name:var(--font-inter)] ${
+                  className={`text-xs font-bold font-sans tracking-tight ${
                     isComplete
                       ? 'text-white'
                       : isActive
@@ -128,11 +128,11 @@ export function MarketTimeline({
                 >
                   {step.title}
                 </h4>
-                <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#94a3b8]">
+                <span className="font-mono text-[10px] text-[#94a3b8] tabular-nums">
                   {step.time}
                 </span>
               </div>
-              <p className="text-[11px] text-[#64748b] mt-0.5 leading-normal">
+              <p className="font-sans text-[11px] text-[#64748b] mt-0.5 leading-normal">
                 {step.desc}
               </p>
             </div>

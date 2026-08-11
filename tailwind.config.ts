@@ -77,6 +77,12 @@ const config: Config = {
         "margin-mobile": "16px"
       },
       fontFamily: {
+        sans: ["var(--font-inter)", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        mono: ["var(--font-jetbrains-mono)", "JetBrains Mono", "SFMono-Regular", "Menlo", "monospace"],
+        display: ["var(--font-hanken)", "Hanken Grotesk", "sans-serif"],
+        inter: ["var(--font-inter)", "sans-serif"],
+        hanken: ["var(--font-hanken)", "sans-serif"],
+        jetbrains: ["var(--font-jetbrains-mono)", "monospace"],
         "body-md": ["var(--font-inter)"],
         "label-caps": ["var(--font-jetbrains-mono)"],
         "headline-xl": ["var(--font-hanken)"],

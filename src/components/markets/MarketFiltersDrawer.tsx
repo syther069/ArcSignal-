@@ -74,7 +74,7 @@ export function MarketFiltersDrawer({
         <div className="flex items-center justify-between border-b border-white/[0.08] pb-4">
           <div className="flex items-center gap-2">
             <SlidersHorizontal size={18} className="text-[#ddb7ff]" />
-            <h3 className="font-[family-name:var(--font-hanken)] text-lg font-bold text-white">
+            <h3 className="font-display text-lg font-bold text-white tracking-tight">
               Market Filters & Sorting
             </h3>
           </div>
@@ -87,8 +87,8 @@ export function MarketFiltersDrawer({
         </div>
 
         {/* Category section */}
-        <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
+        <div className="space-y-2 font-sans">
+          <label className="font-mono text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
             Category
           </label>
           <div className="grid grid-cols-3 gap-2">
@@ -109,8 +109,8 @@ export function MarketFiltersDrawer({
         </div>
 
         {/* Lifecycle status section */}
-        <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
+        <div className="space-y-2 font-sans">
+          <label className="font-mono text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
             Market Status
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -132,7 +132,7 @@ export function MarketFiltersDrawer({
                 }`}
               >
                 <span>{label}</span>
-                <span className="text-[11px] opacity-70">({count})</span>
+                <span className="font-mono text-[11px] opacity-70 tabular-nums">({count})</span>
               </button>
             ))}
           </div>
@@ -140,11 +140,11 @@ export function MarketFiltersDrawer({
 
         {/* Timeframe section */}
         {selectedCategory !== 'Football' && (
-          <div className="space-y-2">
-            <label className="text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
+          <div className="space-y-2 font-sans">
+            <label className="font-mono text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
               Crypto Timeframe
             </label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 font-mono">
               <button
                 onClick={() => onSelectTimeframe(null)}
                 className={`py-2 px-4 rounded-xl text-xs font-semibold transition-all ${
@@ -173,8 +173,8 @@ export function MarketFiltersDrawer({
         )}
 
         {/* Sort by section */}
-        <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
+        <div className="space-y-2 font-sans">
+          <label className="font-mono text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
             Sort By
           </label>
           <div className="space-y-1.5">
@@ -189,8 +189,8 @@ export function MarketFiltersDrawer({
                 }`}
               >
                 <div>
-                  <p className="font-semibold text-white">{opt.label}</p>
-                  <p className="text-[10px] text-[#94a3b8]">{opt.desc}</p>
+                  <p className="font-semibold text-white font-display">{opt.label}</p>
+                  <p className="text-[10px] text-[#94a3b8] font-sans">{opt.desc}</p>
                 </div>
                 {sortBy === opt.value && (
                   <Check size={16} className="text-[#ddb7ff] shrink-0" />
@@ -201,7 +201,7 @@ export function MarketFiltersDrawer({
         </div>
 
         {/* Drawer footer action buttons */}
-        <div className="flex items-center gap-3 pt-2 border-t border-white/[0.08]">
+        <div className="flex items-center gap-3 pt-2 border-t border-white/[0.08] font-sans">
           <button
             onClick={() => {
               onReset();

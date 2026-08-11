@@ -24,11 +24,8 @@ import {
   Clock,
   ShieldCheck,
   ExternalLink,
-  HelpCircle,
   Sparkles,
   Zap,
-  Lock,
-  DollarSign,
 } from 'lucide-react';
 
 const ArcSignal_ABI = [
@@ -60,7 +57,7 @@ function getTimeframe(marketId: string) {
 export default function MarketDetailClient({ market }: MarketDetailClientProps) {
   const [stakeModalSide, setStakeModalSide] = useState<StakeSide | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
-  const [activeTab, setActiveTab] = useState<'analysis' | 'rules' | 'timeline'>('analysis');
+  const [activeTab, setActiveTab] = useState<'analysis' | 'rules'>('analysis');
 
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
@@ -199,7 +196,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
         <div className="max-w-[1400px] mx-auto w-full px-4 sm:px-6 lg:px-8 space-y-6">
 
           {/* ── 1. BREADCRUMBS & TOP NAV ── */}
-          <nav className="flex flex-wrap items-center gap-2 text-xs font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8] pt-2">
+          <nav className="flex flex-wrap items-center gap-2 text-xs font-mono text-[#94a3b8] pt-2">
             <Link href="/markets" className="hover:text-[#ddb7ff] transition-colors">
               MARKETS
             </Link>
@@ -227,8 +224,8 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                 : 'bg-white/[0.04] border-white/[0.08] text-[#cbd5e1]'
             }`}>
               <ShieldCheck size={18} className="mt-0.5 shrink-0 text-[#ddb7ff]" />
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-white">
+              <div className="font-sans">
+                <p className="font-mono text-xs font-bold uppercase tracking-wider text-white">
                   Market Status: {statusLabel}
                 </p>
                 <p className="text-xs text-[#94a3b8] mt-0.5 leading-relaxed">
@@ -242,25 +239,25 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
           <header className="rounded-2xl border border-white/[0.08] bg-[#161616] p-6 lg:p-8 space-y-6 shadow-lg">
             
             {/* Meta Row */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 font-mono text-xs">
               <div className="flex items-center gap-2">
-                <span className="rounded px-2.5 py-1 text-xs font-bold uppercase tracking-wider text-[#ddb7ff] bg-[#ddb7ff]/10 border border-[#ddb7ff]/20">
+                <span className="rounded px-2.5 py-1 font-bold uppercase tracking-wider text-[#ddb7ff] bg-[#ddb7ff]/10 border border-[#ddb7ff]/20">
                   {market.category}
                 </span>
                 {timeframe && (
-                  <span className="rounded px-2 py-1 text-xs font-medium uppercase tracking-wider text-[#94a3b8] bg-white/[0.04] border border-white/[0.08]">
+                  <span className="rounded px-2 py-1 font-medium uppercase tracking-wider text-[#94a3b8] bg-white/[0.04] border border-white/[0.08]">
                     {timeframe} Timeframe
                   </span>
                 )}
-                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${statusBadgeClass}`}>
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-bold uppercase tracking-wider ${statusBadgeClass}`}>
                   <span className={`w-2 h-2 rounded-full ${isOpen ? 'bg-emerald-400 animate-pulse' : 'bg-current'}`} />
                   {statusLabel}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-[#94a3b8]">
+              <div className="flex items-center gap-2 text-xs text-[#94a3b8] font-sans">
                 <Clock size={14} className="text-[#94a3b8]" />
-                <span>
+                <span className="font-mono tabular-nums text-[11px]">
                   {resolved ? (
                     'Settlement Complete'
                   ) : isPending ? (
@@ -273,18 +270,18 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
             </div>
 
             {/* Question Text */}
-            <h1 className="font-[family-name:var(--font-hanken)] text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight leading-tight">
+            <h1 className="font-display text-2xl sm:text-3xl lg:text-[32px] font-extrabold text-white tracking-[-0.025em] leading-[1.25]">
               {market.title}
             </h1>
 
             {/* Key Metrics Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-white/[0.06]">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-white/[0.06] font-mono">
               {/* AI Prediction */}
               <div className="space-y-1">
-                <span className="text-[10px] font-bold font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider text-[#94a3b8]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#94a3b8]">
                   AI Prediction
                 </span>
-                <p className="text-lg sm:text-xl font-bold text-[#ddb7ff] flex items-center gap-1.5">
+                <p className="text-lg sm:text-xl font-bold text-[#ddb7ff] flex items-center gap-1.5 tracking-tight">
                   <Sparkles size={16} />
                   <span>{isFollowAi ? 'FOLLOW AI' : 'FADE AI'}</span>
                 </p>
@@ -292,31 +289,31 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
 
               {/* AI Confidence */}
               <div className="space-y-1">
-                <span className="text-[10px] font-bold font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider text-[#94a3b8]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#94a3b8]">
                   AI Confidence
                 </span>
-                <p className="text-lg sm:text-xl font-bold font-[family-name:var(--font-jetbrains-mono)] text-white">
+                <p className="text-lg sm:text-xl font-bold text-white tabular-nums tracking-tight">
                   {market.confidence}%
                 </p>
               </div>
 
               {/* Market Odds Split */}
               <div className="space-y-1">
-                <span className="text-[10px] font-bold font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider text-[#94a3b8]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#94a3b8]">
                   Market Split
                 </span>
-                <p className="text-lg sm:text-xl font-bold font-[family-name:var(--font-jetbrains-mono)] text-white">
+                <p className="text-lg sm:text-xl font-bold text-white tabular-nums tracking-tight">
                   <span className="text-[#4fdbc8]">{followPercent.toFixed(0)}%</span> / <span className="text-[#f87171]">{fadePercent.toFixed(0)}%</span>
                 </p>
               </div>
 
               {/* Liquidity Pool */}
               <div className="space-y-1">
-                <span className="text-[10px] font-bold font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider text-[#94a3b8]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#94a3b8]">
                   Total Liquidity
                 </span>
-                <p className="text-lg sm:text-xl font-bold font-[family-name:var(--font-jetbrains-mono)] text-white">
-                  {totalPool.toFixed(2)} <span className="text-xs text-[#94a3b8] font-normal">USDC</span>
+                <p className="text-lg sm:text-xl font-bold text-white tabular-nums tracking-tight">
+                  {totalPool.toFixed(2)} <span className="text-xs text-[#94a3b8] font-sans font-normal">USDC</span>
                 </p>
               </div>
             </div>
@@ -353,7 +350,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
               <div className="rounded-2xl border border-white/[0.08] bg-[#141414] p-5 lg:p-6 space-y-5">
                 
                 {/* Section Navigation Tabs */}
-                <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
+                <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3 font-sans">
                   <button
                     onClick={() => setActiveTab('analysis')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
@@ -378,14 +375,14 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
 
                 {/* Tab Content: AI Analysis */}
                 {activeTab === 'analysis' && (
-                  <div className="space-y-6">
+                  <div className="space-y-6 font-sans">
                     {/* Executive Summary */}
                     {market.summary && (
                       <div className="space-y-2">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-[#ddb7ff] flex items-center gap-1.5">
+                        <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-[#ddb7ff] flex items-center gap-1.5">
                           <FileText size={14} /> Executive Summary
                         </h3>
-                        <p className="text-xs sm:text-sm text-[#cbd5e1] leading-relaxed bg-[#1a1a1a] p-4 rounded-xl border border-white/[0.04]">
+                        <p className="text-[13px] sm:text-sm text-[#cbd5e1] leading-[1.65] bg-[#1a1a1a] p-4 rounded-xl border border-white/[0.04]">
                           {market.summary}
                         </p>
                       </div>
@@ -396,20 +393,20 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {market.bull_case && (
                           <div className="p-4 rounded-xl border border-[#4fdbc8]/20 bg-[#4fdbc8]/5 space-y-2">
-                            <h4 className="text-xs font-bold text-[#4fdbc8] uppercase tracking-wider flex items-center gap-1.5">
+                            <h4 className="font-mono text-xs font-bold text-[#4fdbc8] uppercase tracking-wider flex items-center gap-1.5">
                               <TrendingUp size={14} /> Bull Case (Follow)
                             </h4>
-                            <p className="text-xs text-[#cbd5e1] leading-relaxed">
+                            <p className="text-[13px] text-[#cbd5e1] leading-[1.6]">
                               {market.bull_case}
                             </p>
                           </div>
                         )}
                         {market.bear_case && (
                           <div className="p-4 rounded-xl border border-[#f87171]/20 bg-[#f87171]/5 space-y-2">
-                            <h4 className="text-xs font-bold text-[#f87171] uppercase tracking-wider flex items-center gap-1.5">
+                            <h4 className="font-mono text-xs font-bold text-[#f87171] uppercase tracking-wider flex items-center gap-1.5">
                               <TrendingDown size={14} /> Bear Case (Fade)
                             </h4>
-                            <p className="text-xs text-[#cbd5e1] leading-relaxed">
+                            <p className="text-[13px] text-[#cbd5e1] leading-[1.6]">
                               {market.bear_case}
                             </p>
                           </div>
@@ -420,7 +417,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                     {/* Psychology & Key Factors */}
                     {market.keyFactors && market.keyFactors.length > 0 && (
                       <div className="space-y-2">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
+                        <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
                           Psychological & Market Conviction Factors
                         </h3>
                         <div className="space-y-2">
@@ -430,12 +427,12 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                               className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-[#1a1a1a] border border-white/[0.04] gap-2"
                             >
                               <div className="flex items-center gap-2.5">
-                                <span className="text-[9px] font-bold font-[family-name:var(--font-jetbrains-mono)] uppercase px-2 py-0.5 rounded bg-white/[0.06] text-[#ddb7ff]">
+                                <span className="text-[9px] font-bold font-mono uppercase px-2 py-0.5 rounded bg-white/[0.06] text-[#ddb7ff]">
                                   {categoryLabels[i] || `FACTOR ${i + 1}`}
                                 </span>
-                                <span className="text-xs text-white">{factor}</span>
+                                <span className="text-xs sm:text-[13px] text-white">{factor}</span>
                               </div>
-                              <span className="text-[10px] font-bold text-[#4fdbc8] font-[family-name:var(--font-jetbrains-mono)] shrink-0 self-end sm:self-auto">
+                              <span className="text-[10px] font-bold text-[#4fdbc8] font-mono shrink-0 self-end sm:self-auto">
                                 STRENGTH: HIGH
                               </span>
                             </div>
@@ -446,21 +443,21 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
 
                     {/* Data Sources */}
                     <div className="space-y-2">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
+                      <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
                         Data Ingestion Feeds & Oracles
                       </h3>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 font-mono">
                         {market.data_sources && market.data_sources.length > 0 ? (
                           market.data_sources.map((src, i) => (
                             <span
                               key={i}
-                              className="px-3 py-1.5 rounded-lg bg-[#1a1a1a] border border-white/[0.06] text-xs font-[family-name:var(--font-jetbrains-mono)] text-[#cbd5e1]"
+                              className="px-3 py-1.5 rounded-lg bg-[#1a1a1a] border border-white/[0.06] text-xs text-[#cbd5e1]"
                             >
                               {src}
                             </span>
                           ))
                         ) : (
-                          <span className="px-3 py-1.5 rounded-lg bg-[#1a1a1a] border border-white/[0.06] text-xs font-[family-name:var(--font-jetbrains-mono)] text-[#cbd5e1]">
+                          <span className="px-3 py-1.5 rounded-lg bg-[#1a1a1a] border border-white/[0.06] text-xs text-[#cbd5e1]">
                             {market.category === 'football' ? 'API-Football Live Oracle' : 'CoinGecko Live Price Feed'}
                           </span>
                         )}
@@ -471,35 +468,35 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
 
                 {/* Tab Content: Settlement Rules & Transparency */}
                 {activeTab === 'rules' && (
-                  <div className="space-y-6">
+                  <div className="space-y-6 font-sans">
                     <div className="space-y-2">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#ddb7ff] flex items-center gap-1.5">
+                      <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-[#ddb7ff] flex items-center gap-1.5">
                         <Gavel size={14} /> Official Resolution Clause
                       </h3>
-                      <div className="bg-[#1a1a1a] p-4 rounded-xl border border-white/[0.06] text-xs text-[#cbd5e1] leading-relaxed italic space-y-2">
+                      <div className="bg-[#1a1a1a] p-4 rounded-xl border border-white/[0.06] text-xs sm:text-[13px] text-[#cbd5e1] leading-[1.7] italic space-y-2">
                         <p>
                           {market.category === 'crypto'
                             ? `This market resolves deterministically based on the verified volume-weighted index price from primary oracle feeds (CoinGecko / Chainlink). If the condition stated in the market title is met at the timestamp cutoff, FOLLOW is recorded as winning. If the condition is not met, FADE is recorded as winning.`
                             : `This market resolves based on the official 90-minute + stoppage time match score verified via sports oracle data feeds. Extra time and penalty shootouts are excluded unless explicitly specified in the market parameters.`}
                         </p>
-                        <p className="text-[11px] text-[#94a3b8] not-italic border-t border-white/[0.06] pt-2">
-                          Resolution Source: <strong className="text-white">{market.resolution_source || (market.category === 'football' ? 'API-Football' : 'CoinGecko')}</strong>
+                        <p className="text-[11px] text-[#94a3b8] not-italic border-t border-white/[0.06] pt-2 font-mono">
+                          Resolution Source: <strong className="text-white font-sans">{market.resolution_source || (market.category === 'football' ? 'API-Football' : 'CoinGecko')}</strong>
                         </p>
                       </div>
                     </div>
 
                     {/* On-chain Explorer Transparency */}
                     <div className="space-y-3">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
+                      <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
                         Blockchain Contract Transparency
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                         <div className="p-3 rounded-xl bg-[#1a1a1a] border border-white/[0.04] space-y-1">
-                          <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider block">
+                          <span className="font-mono text-[10px] text-[#94a3b8] uppercase tracking-wider block">
                             Contract Address
                           </span>
                           <div className="flex items-center justify-between">
-                            <span className="font-[family-name:var(--font-jetbrains-mono)] text-white truncate max-w-[180px]">
+                            <span className="font-mono text-white truncate max-w-[180px]">
                               {ARCSIGNAL_ADDRESS}
                             </span>
                             <a
@@ -514,10 +511,10 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                         </div>
 
                         <div className="p-3 rounded-xl bg-[#1a1a1a] border border-white/[0.04] space-y-1">
-                          <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider block">
+                          <span className="font-mono text-[10px] text-[#94a3b8] uppercase tracking-wider block">
                             Protocol Trading Fee
                           </span>
-                          <span className="font-[family-name:var(--font-jetbrains-mono)] text-white font-bold">
+                          <span className="font-mono text-white font-bold">
                             0.5% (Non-custodial pool)
                           </span>
                         </div>
@@ -531,7 +528,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
             </div>
 
             {/* Right Column: Execution & Trading Terminal (4 cols) */}
-            <aside className="lg:col-span-4 space-y-6 shrink-0">
+            <aside className="lg:col-span-4 space-y-6 shrink-0 font-sans">
               
               {/* Trading Terminal Box */}
               <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-6 space-y-6 shadow-xl sticky top-24">
@@ -539,7 +536,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
                   <div>
-                    <h2 className="font-[family-name:var(--font-hanken)] text-base font-bold text-white">
+                    <h2 className="font-display text-base font-bold text-white tracking-tight">
                       {resolved ? 'Settlement Terminal' : 'Trading Action'}
                     </h2>
                     <p className="text-[11px] text-[#94a3b8] mt-0.5">
@@ -550,13 +547,13 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                 </div>
 
                 {/* Pool Status Visualizer */}
-                <div className="space-y-2">
+                <div className="space-y-2 font-mono">
                   <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-[#4fdbc8]">
-                      FOLLOW {followPercent.toFixed(0)}%
+                    <span className="text-[#4fdbc8] tracking-tight">
+                      FOLLOW <span className="tabular-nums">{followPercent.toFixed(0)}%</span>
                     </span>
-                    <span className="text-[#f87171]">
-                      FADE {fadePercent.toFixed(0)}%
+                    <span className="text-[#f87171] tracking-tight">
+                      FADE <span className="tabular-nums">{fadePercent.toFixed(0)}%</span>
                     </span>
                   </div>
 
@@ -571,19 +568,19 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                     />
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] text-[#94a3b8] font-[family-name:var(--font-jetbrains-mono)]">
+                  <div className="flex items-center justify-between text-[11px] text-[#94a3b8] tabular-nums">
                     <span>{followPool.toFixed(2)} USDC</span>
                     <span>{fadePool.toFixed(2)} USDC</span>
                   </div>
                 </div>
 
                 {/* Reward Multipliers Cards */}
-                <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="grid grid-cols-2 gap-2 text-center font-mono">
                   <div className="p-3 rounded-xl bg-[#1c1b1b] border border-white/[0.04]">
                     <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider block mb-1">
                       Follow Payout
                     </span>
-                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-base font-bold text-[#4fdbc8]">
+                    <span className="text-base font-bold text-[#4fdbc8] tabular-nums tracking-tight">
                       {followMultiplier}x
                     </span>
                   </div>
@@ -591,7 +588,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                     <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider block mb-1">
                       Fade Payout
                     </span>
-                    <span className="font-[family-name:var(--font-jetbrains-mono)] text-base font-bold text-[#f87171]">
+                    <span className="text-base font-bold text-[#f87171] tabular-nums tracking-tight">
                       {fadeMultiplier}x
                     </span>
                   </div>
@@ -604,13 +601,13 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                       <button
                         type="button"
                         onClick={() => setStakeModalSide(0)}
-                        className="w-full flex items-center justify-between py-3.5 px-4 rounded-xl border border-[#4fdbc8]/40 bg-[#4fdbc8]/10 hover:bg-[#4fdbc8] text-[#4fdbc8] hover:text-[#0b1716] font-bold text-xs transition-all duration-150 active:scale-[0.98] shadow-md group"
+                        className="w-full flex items-center justify-between py-3.5 px-4 rounded-xl border border-[#4fdbc8]/40 bg-[#4fdbc8]/10 hover:bg-[#4fdbc8] text-[#4fdbc8] hover:text-[#0b1716] font-sans font-bold text-xs transition-all duration-150 active:scale-[0.98] shadow-md group"
                       >
                         <div className="flex items-center gap-2">
                           <CheckCircle2 size={16} />
                           <span>Follow AI Prediction</span>
                         </div>
-                        <span className="font-[family-name:var(--font-jetbrains-mono)] text-xs">
+                        <span className="font-mono text-xs tabular-nums font-bold">
                           {followPercent.toFixed(0)}%
                         </span>
                       </button>
@@ -618,13 +615,13 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                       <button
                         type="button"
                         onClick={() => setStakeModalSide(1)}
-                        className="w-full flex items-center justify-between py-3.5 px-4 rounded-xl border border-[#f87171]/40 bg-[#f87171]/10 hover:bg-[#f87171] text-[#f87171] hover:text-[#180a0a] font-bold text-xs transition-all duration-150 active:scale-[0.98] shadow-md group"
+                        className="w-full flex items-center justify-between py-3.5 px-4 rounded-xl border border-[#f87171]/40 bg-[#f87171]/10 hover:bg-[#f87171] text-[#f87171] hover:text-[#180a0a] font-sans font-bold text-xs transition-all duration-150 active:scale-[0.98] shadow-md group"
                       >
                         <div className="flex items-center gap-2">
                           <XCircle size={16} />
                           <span>Fade AI Prediction</span>
                         </div>
-                        <span className="font-[family-name:var(--font-jetbrains-mono)] text-xs">
+                        <span className="font-mono text-xs tabular-nums font-bold">
                           {fadePercent.toFixed(0)}%
                         </span>
                       </button>
@@ -644,10 +641,10 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                   <div className="space-y-4 pt-2">
                     <div className="p-4 rounded-xl bg-[#1c1b1b] border border-white/[0.06] space-y-2 text-center">
                       <Gavel size={24} className="mx-auto text-[#ddb7ff]" />
-                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                      <h4 className="font-mono text-xs font-bold text-white uppercase tracking-wider">
                         Official Outcome Recorded
                       </h4>
-                      <p className={`font-[family-name:var(--font-jetbrains-mono)] text-base font-bold ${
+                      <p className={`font-mono text-base font-bold tracking-tight ${
                         outcome === 1 ? 'text-[#4fdbc8]' : outcome === 2 ? 'text-[#f87171]' : 'text-white'
                       }`}>
                         {outcome === 1 ? 'FOLLOW WON' : outcome === 2 ? 'FADE WON' : 'CANCELLED / REFUND'}
@@ -658,7 +655,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                       <button
                         onClick={handleClaim}
                         disabled={isClaiming}
-                        className="w-full py-4 rounded-xl font-bold text-xs font-[family-name:var(--font-jetbrains-mono)] tracking-wider transition-all disabled:opacity-50 shadow-lg"
+                        className="w-full py-4 rounded-xl font-bold text-xs font-mono tracking-wider transition-all disabled:opacity-50 shadow-lg"
                         style={{
                           background: isClaiming
                             ? '#1c1b1b'
@@ -672,19 +669,19 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                     )}
 
                     {userWon && isClaimed && (
-                      <div className="w-full py-3.5 rounded-xl bg-[#4fdbc8]/10 border border-[#4fdbc8]/30 text-[#4fdbc8] text-center font-bold text-xs">
+                      <div className="w-full py-3.5 rounded-xl bg-[#4fdbc8]/10 border border-[#4fdbc8]/30 text-[#4fdbc8] text-center font-bold text-xs font-mono">
                         ✓ Winnings Claimed Successfully
                       </div>
                     )}
 
                     {!userWon && (followStakeRaw > 0n || fadeStakeRaw > 0n) && (
-                      <div className="w-full py-3.5 rounded-xl bg-[#f87171]/10 border border-[#f87171]/30 text-[#f87171] text-center font-semibold text-xs">
+                      <div className="w-full py-3.5 rounded-xl bg-[#f87171]/10 border border-[#f87171]/30 text-[#f87171] text-center font-semibold text-xs font-sans">
                         Position Closed (No Winnings)
                       </div>
                     )}
 
                     {followStakeRaw === 0n && fadeStakeRaw === 0n && (
-                      <div className="w-full py-3 rounded-xl bg-[#1c1b1b] border border-white/[0.04] text-[#64748b] text-center text-xs">
+                      <div className="w-full py-3 rounded-xl bg-[#1c1b1b] border border-white/[0.04] text-[#64748b] text-center text-xs font-sans">
                         No active wallet position in this pool
                       </div>
                     )}
@@ -693,19 +690,19 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
 
                 {/* User's Current Position */}
                 {address && (followStakeRaw > 0n || fadeStakeRaw > 0n) && (
-                  <div className="p-3.5 rounded-xl bg-[#1a1a1a] border border-[#ddb7ff]/20 space-y-1.5">
-                    <span className="text-[10px] font-bold text-[#ddb7ff] uppercase tracking-wider block">
+                  <div className="p-3.5 rounded-xl bg-[#1a1a1a] border border-[#ddb7ff]/20 space-y-1.5 font-sans">
+                    <span className="font-mono text-[10px] font-bold text-[#ddb7ff] uppercase tracking-wider block">
                       Your Position
                     </span>
                     <div className="flex justify-between text-xs">
                       <span className="text-[#94a3b8]">Staked Side:</span>
-                      <strong className={followStakeRaw > 0n ? 'text-[#4fdbc8]' : 'text-[#f87171]'}>
+                      <strong className={`font-mono ${followStakeRaw > 0n ? 'text-[#4fdbc8]' : 'text-[#f87171]'}`}>
                         {followStakeRaw > 0n ? 'FOLLOW' : 'FADE'}
                       </strong>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-[#94a3b8]">Amount:</span>
-                      <span className="font-[family-name:var(--font-jetbrains-mono)] text-white">
+                      <span className="font-mono text-white tabular-nums">
                         {formatUnits(followStakeRaw > 0n ? followStakeRaw : fadeStakeRaw, 6)} USDC
                       </span>
                     </div>

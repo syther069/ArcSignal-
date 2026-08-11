@@ -13,7 +13,6 @@ import {
   RotateCw,
   Search,
   SlidersHorizontal,
-  TrendingUp,
   Flame,
   Clock,
   ArrowRight,
@@ -131,7 +130,6 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
       }
 
       if (sortBy === 'active') {
-        // Sort by liquidity + AI activity
         const diff = getTotalLiquidity(b) - getTotalLiquidity(a);
         if (diff !== 0n) return diff > 0n ? 1 : -1;
         return (b.analysis?.confidence ?? 0) - (a.analysis?.confidence ?? 0);
@@ -222,34 +220,34 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
           {/* ── 1. PAGE HEADER & BENCHMARK TAGLINE ── */}
           <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 pt-4 border-b border-white/[0.06] pb-6">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="inline-flex items-center gap-1 rounded-md bg-[#ddb7ff]/10 px-2 py-0.5 text-[11px] font-bold text-[#ddb7ff] border border-[#ddb7ff]/20">
+              <div className="flex items-center gap-2 mb-1.5 font-mono text-[10px] tracking-[0.08em]">
+                <span className="inline-flex items-center gap-1 rounded-md bg-[#ddb7ff]/10 px-2 py-0.5 font-bold text-[#ddb7ff] border border-[#ddb7ff]/20">
                   <ShieldCheck size={12} /> ON-CHAIN VERIFIED
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-400 border border-emerald-500/20">
-                  <Zap size={12} /> LIVE ODDA
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 font-bold text-emerald-400 border border-emerald-500/20">
+                  <Zap size={12} /> LIVE ODDS
                 </span>
               </div>
-              <h1 className="font-[family-name:var(--font-hanken)] text-3xl sm:text-4xl font-bold text-white tracking-tight">
+              <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-white tracking-[-0.025em] leading-tight">
                 Markets
               </h1>
-              <p className="text-xs sm:text-sm text-[#94a3b8] mt-1 max-w-2xl">
+              <p className="font-sans text-xs sm:text-sm text-[#94a3b8] mt-1 max-w-2xl leading-relaxed">
                 Discover live AI prediction markets, compare market-implied conviction, and make your call.
               </p>
             </div>
 
             {/* Live Stats Pill Group */}
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#94a3b8]">
+            <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-[#94a3b8]">
               <span className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-3 py-1.5 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-[#4fdbc8] animate-pulse" />
-                <strong className="text-white font-[family-name:var(--font-jetbrains-mono)]">{counts.live}</strong> Open
+                <strong className="text-white tabular-nums">{counts.live}</strong> Open
               </span>
               <span className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-3 py-1.5 flex items-center gap-1.5">
                 <Clock size={12} className="text-[#fbbf24]" />
-                <strong className="text-[#fbbf24] font-[family-name:var(--font-jetbrains-mono)]">{counts.closingSoon}</strong> Closing Soon
+                <strong className="text-[#fbbf24] tabular-nums">{counts.closingSoon}</strong> Closing Soon
               </span>
               <span className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-3 py-1.5">
-                <strong className="text-[#ddb7ff] font-[family-name:var(--font-jetbrains-mono)]">{counts.resolved}</strong> Settled
+                <strong className="text-[#ddb7ff] tabular-nums">{counts.resolved}</strong> Settled
               </span>
             </div>
           </header>
@@ -258,7 +256,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
           {trendingMarkets.length > 0 && selectedView !== 'resolved' && !searchQuery && (
             <section className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#ddb7ff]">
+                <div className="flex items-center gap-1.5 font-mono text-xs font-bold uppercase tracking-[0.08em] text-[#ddb7ff]">
                   <Flame size={14} className="text-[#fb7185]" />
                   <span>Trending & High Conviction</span>
                 </div>
@@ -267,7 +265,6 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {trendingMarkets.map((m) => {
                   const follow = getFollowShare(m);
-                  const fade = 100 - follow;
                   const total = getTotalLiquidity(m);
                   const totalFormatted = (Number(total) / 1_000_000).toFixed(2);
                   return (
@@ -277,26 +274,26 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                       className="group flex items-center justify-between p-3.5 rounded-xl border border-white/[0.08] bg-[#171717] hover:border-[#ddb7ff]/40 hover:bg-[#1c1b1c] transition-all duration-150 gap-3 shadow-sm"
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="rounded px-1.5 py-0.5 text-[9px] font-bold text-[#ddb7ff] bg-[#ddb7ff]/10">
+                        <div className="flex items-center gap-2 mb-1 font-mono text-[9px] tracking-wide">
+                          <span className="rounded px-1.5 py-0.5 font-bold text-[#ddb7ff] bg-[#ddb7ff]/10">
                             {m.category}
                           </span>
-                          <span className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-jetbrains-mono)]">
+                          <span className="text-[#94a3b8] tabular-nums">
                             {totalFormatted} USDC Pool
                           </span>
                         </div>
-                        <h3 className="text-xs sm:text-sm font-semibold text-white truncate group-hover:text-[#ead7ff] transition-colors">
+                        <h3 className="font-display text-[13px] sm:text-sm font-semibold text-white tracking-[-0.015em] truncate group-hover:text-[#ead7ff] transition-colors leading-snug">
                           {m.question || m.marketId}
                         </h3>
                       </div>
 
                       <div className="flex items-center gap-3 shrink-0">
-                        <div className="text-right">
-                          <div className="text-[11px] font-bold font-[family-name:var(--font-jetbrains-mono)] text-[#4fdbc8]">
+                        <div className="text-right font-mono">
+                          <div className="text-[12px] font-bold text-[#4fdbc8] tabular-nums tracking-tight">
                             {follow.toFixed(0)}% Follow
                           </div>
-                          <div className="text-[10px] text-[#94a3b8]">
-                            AI {m.analysis?.prediction || 'YES'} · {m.analysis?.confidence ?? 0}%
+                          <div className="text-[10px] text-[#94a3b8] tracking-tight">
+                            AI {m.analysis?.prediction || 'YES'} · <span className="tabular-nums">{m.analysis?.confidence ?? 0}%</span>
                           </div>
                         </div>
                         <ArrowRight size={14} className="text-[#94a3b8] group-hover:text-[#ddb7ff] group-hover:translate-x-0.5 transition-all" />
@@ -327,14 +324,14 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                   <button
                     key={view}
                     onClick={() => setSelectedView(view)}
-                    className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    className={`whitespace-nowrap px-3 py-1.5 rounded-lg font-sans text-xs font-semibold tracking-[-0.01em] transition-all ${
                       selectedView === view
                         ? 'bg-[#2f2f2f] text-white shadow-sm border border-white/[0.08]'
                         : 'text-[#94a3b8] hover:text-white'
                     }`}
                   >
                     {label}{' '}
-                    <span className="text-[10px] opacity-70 font-[family-name:var(--font-jetbrains-mono)]">
+                    <span className="font-mono text-[10px] opacity-70 tabular-nums">
                       ({counts[view]})
                     </span>
                   </button>
@@ -351,12 +348,12 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                     placeholder="Search markets, assets, questions..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[#101010] text-white text-xs pl-8 pr-7 py-2 rounded-xl border border-white/[0.08] focus:outline-none focus:border-[#ddb7ff]/60 transition-colors placeholder:text-[#64748b]"
+                    className="w-full bg-[#101010] text-white font-sans text-xs pl-8 pr-7 py-2 rounded-xl border border-white/[0.08] focus:outline-none focus:border-[#ddb7ff]/60 transition-colors placeholder:text-[#64748b]"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[#94a3b8] hover:text-white"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[#94a3b8] hover:text-white font-mono"
                     >
                       ✕
                     </button>
@@ -372,7 +369,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                     id="market-sort-select"
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as MarketSort)}
-                    className="bg-[#101010] text-xs text-[#cbd5e1] py-2 px-3 rounded-xl border border-white/[0.08] outline-none focus:border-[#ddb7ff]/60 transition-colors cursor-pointer"
+                    className="bg-[#101010] font-sans text-xs text-[#cbd5e1] font-medium py-2 px-3 rounded-xl border border-white/[0.08] outline-none focus:border-[#ddb7ff]/60 transition-colors cursor-pointer"
                   >
                     <option value="closingSoon">Sort: Closing soon</option>
                     <option value="liquidity">Sort: Most liquidity</option>
@@ -397,7 +394,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                 {/* Mobile Filter Drawer Button */}
                 <button
                   onClick={() => setIsDrawerOpen(true)}
-                  className="sm:hidden bg-[#101010] p-2 rounded-xl text-[#94a3b8] hover:text-white border border-white/[0.08] flex items-center gap-1"
+                  className="sm:hidden bg-[#101010] p-2 rounded-xl text-[#94a3b8] hover:text-white border border-white/[0.08] flex items-center gap-1 font-sans text-xs"
                 >
                   <SlidersHorizontal size={14} className="text-[#ddb7ff]" />
                 </button>
@@ -409,8 +406,8 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-white/[0.04]">
               
               {/* Category Pills */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider text-[#64748b] mr-1">
+              <div className="flex items-center gap-1.5 font-sans">
+                <span className="font-mono text-[10px] uppercase tracking-wider text-[#64748b] mr-1">
                   Category:
                 </span>
                 {['All Markets', 'Crypto', 'Football'].map((cat) => (
@@ -433,8 +430,8 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
 
               {/* Crypto Timeframe Filter Pills */}
               {selectedCategory !== 'Football' && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider text-[#64748b] mr-1">
+                <div className="flex items-center gap-1.5 font-mono text-xs">
+                  <span className="text-[10px] uppercase tracking-wider text-[#64748b] mr-1 font-mono">
                     Timeframe:
                   </span>
                   <button
@@ -468,9 +465,9 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
 
           {/* ── 4. DENSE MARKET ROWS LIST (6–10 per screen density) ── */}
           <section className="space-y-2.5">
-            <div className="flex items-center justify-between px-1">
+            <div className="flex items-center justify-between px-1 font-sans">
               <span className="text-xs text-[#94a3b8]">
-                Showing <strong className="text-white">{sortedMarkets.length}</strong> market{sortedMarkets.length !== 1 ? 's' : ''}
+                Showing <strong className="text-white font-mono tabular-nums">{sortedMarkets.length}</strong> market{sortedMarkets.length !== 1 ? 's' : ''}
               </span>
               <span className="text-[11px] text-[#64748b]">
                 Click any row for deep research & settlement rules
@@ -494,21 +491,21 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                 <div className="w-12 h-12 rounded-2xl bg-[#202020] border border-white/[0.08] flex items-center justify-center text-[#ddb7ff]">
                   <Search size={20} />
                 </div>
-                <h3 className="font-[family-name:var(--font-hanken)] text-lg font-bold text-white">
+                <h3 className="font-display text-lg font-bold text-white tracking-tight">
                   {emptyStateContent.title}
                 </h3>
-                <p className="text-xs text-[#94a3b8] max-w-md leading-relaxed">
+                <p className="font-sans text-xs text-[#94a3b8] max-w-md leading-relaxed">
                   {emptyStateContent.message}
                 </p>
                 <div className="pt-2">
                   <button
                     onClick={handleResetFilters}
-                    className="px-4 py-2 rounded-xl bg-[#ddb7ff] text-[#131313] text-xs font-bold hover:bg-[#ead7ff] transition-all shadow-md"
+                    className="px-4 py-2 rounded-xl bg-[#ddb7ff] text-[#131313] font-sans text-xs font-bold hover:bg-[#ead7ff] transition-all shadow-md"
                   >
                     Clear All Filters
                   </button>
                 </div>
-                <p className="text-[10px] text-[#64748b] pt-2">
+                <p className="font-sans text-[10px] text-[#64748b] pt-2">
                   Prediction markets are deployed continuously by autonomous AI analyst agents.
                 </p>
               </div>

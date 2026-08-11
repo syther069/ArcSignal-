@@ -132,17 +132,17 @@ export function MarketProbabilityChart({
         <div>
           <div className="flex items-center gap-2">
             <TrendingUp size={16} className="text-[#ddb7ff]" />
-            <h3 className="font-[family-name:var(--font-hanken)] text-base font-bold text-white">
+            <h3 className="font-display text-base font-bold text-white tracking-tight">
               Probability & Conviction History
             </h3>
           </div>
-          <p className="text-xs text-[#94a3b8] mt-0.5">
+          <p className="font-sans text-xs text-[#94a3b8] mt-0.5">
             Real-time market-implied odds vs AI predictive signal
           </p>
         </div>
 
         {/* Range Buttons */}
-        <div className="flex items-center gap-1 bg-[#1c1b1b] rounded-lg p-1 border border-white/[0.06] self-start sm:self-auto">
+        <div className="flex items-center gap-1 bg-[#1c1b1b] rounded-lg p-1 border border-white/[0.06] self-start sm:self-auto font-mono">
           {(['1H', '6H', '24H', 'ALL'] as const).map((range) => (
             <button
               key={range}
@@ -161,12 +161,12 @@ export function MarketProbabilityChart({
 
       {/* Snapshot metrics bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-[#191919] p-3 rounded-xl border border-white/[0.04]">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-6 font-mono">
           <div>
             <span className="text-[10px] uppercase tracking-wider font-semibold text-[#4fdbc8] block">
               ● Follow (Market)
             </span>
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-base font-bold text-white">
+            <span className="text-base font-bold text-white tabular-nums tracking-tight">
               {displayPoint?.follow.toFixed(1)}%
             </span>
           </div>
@@ -175,7 +175,7 @@ export function MarketProbabilityChart({
             <span className="text-[10px] uppercase tracking-wider font-semibold text-[#f87171] block">
               ● Fade (Market)
             </span>
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-base font-bold text-white">
+            <span className="text-base font-bold text-white tabular-nums tracking-tight">
               {displayPoint?.fade.toFixed(1)}%
             </span>
           </div>
@@ -184,14 +184,14 @@ export function MarketProbabilityChart({
             <span className="text-[10px] uppercase tracking-wider font-semibold text-[#ddb7ff] block">
               -- AI Conviction
             </span>
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-base font-bold text-[#ddb7ff]">
+            <span className="text-base font-bold text-[#ddb7ff] tabular-nums tracking-tight">
               {aiConfidence}% ({aiPrediction})
             </span>
           </div>
         </div>
 
         {displayPoint && (
-          <span className="text-[11px] text-[#94a3b8] font-[family-name:var(--font-jetbrains-mono)]">
+          <span className="text-[11px] text-[#94a3b8] font-mono tabular-nums">
             Snapshot: {displayPoint.timeLabel}
           </span>
         )}
@@ -231,6 +231,7 @@ export function MarketProbabilityChart({
                 fontSize="9"
                 textAnchor="end"
                 fontFamily="var(--font-jetbrains-mono)"
+                className="font-mono"
               >
                 {level}%
               </text>
@@ -320,12 +321,12 @@ export function MarketProbabilityChart({
       </div>
 
       {/* Footer explanation note */}
-      <div className="flex items-center justify-between text-[11px] text-[#64748b] border-t border-white/[0.04] pt-3">
+      <div className="flex items-center justify-between text-[11px] text-[#64748b] border-t border-white/[0.04] pt-3 font-sans">
         <span className="flex items-center gap-1.5">
           <Sparkles size={12} className="text-[#ddb7ff]" />
           Dashed violet line denotes AI confidence baseline model output.
         </span>
-        <span>Updated block-by-block</span>
+        <span className="font-mono text-[10px]">Updated block-by-block</span>
       </div>
 
     </div>
