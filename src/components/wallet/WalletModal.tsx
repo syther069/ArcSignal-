@@ -52,49 +52,110 @@ function WalletLogo({ connector }: { connector: Connector }) {
   return (
     <span style={logoShellStyle} aria-hidden="true">
       {brand === 'metamask' && (
-        <svg viewBox="0 0 48 48" width="30" height="30" role="img">
-          <path fill="#E2761B" d="M43.1 5.1 28.1 16.2l2.8-6.6z" />
-          <path fill="#E4761B" d="M4.8 5.1 19.7 16.3 17 9.6z" />
-          <path fill="#F6851B" d="m37.7 33.1-4 6.1 8.5 2.3 2.4-8.2zM3.4 33.3l2.4 8.2 8.5-2.3-4-6.1z" />
-          <path fill="#763D16" d="m13.8 22.8-2.4 3.7 8.4.4-.3-9zM34.1 22.8l-5.8-5-.2 9 8.4-.4z" />
-          <path fill="#E2761B" d="m14.3 39.2 5.1-2.5-4.4-3.4zM28.5 36.7l5.2 2.5-.8-5.9z" />
-          <path fill="#CD6116" d="m33.7 39.2-5.2-2.5.4 3.4v1.4zM14.3 39.2l4.8 2.3v-1.4l.3-3.4z" />
-          <path fill="#233447" d="m19.2 31.1-4.2-1.2 3 1.4zM28.7 31.1l1.3.2 3-1.4z" />
-          <path fill="#CC6228" d="m14.3 39.2.8-6.1-4.8.2zM32.8 33.1l.9 6.1 4-5.9z" />
-          <path fill="#E4751F" d="m36.5 26.4-8.4.4.8 4.3 1.3-1.2 3 1.4zM15 31.3l3-1.4 1.2 1.2.8-4.3-8.6-.4z" />
-          <path fill="#F6851B" d="m11.4 26.4 3.6 6.9-.1-2zM33.1 31.3v2l3.4-6.9zM20 26.8l-.8 4.3 1 5.1.2-6.7zM28.1 26.8l-.4 2.6.2 6.8 1-5.1z" />
-          <path fill="#C0AD9E" d="m28.9 31.1-1 5.1.7.5 4.3-3.4.2-2zM14.9 31.3l.1 2 4.4 3.4.8-.5-1-5.1z" />
-          <path fill="#161616" d="m28.9 41.5v-1.4l-.7-.6h-8.5l-.6.6v1.4l-4.8-2.3 1.7 1.4 3.6 2.5h8.7l3.7-2.5 1.7-1.4z" />
-          <path fill="#763D16" d="m28.5 36.7-.7-.5h-7.6l-.8.5-.3 3.4.6-.6h8.5l.7.6z" />
-          <path fill="#F6851B" d="m43.7 16.9 1.3-6.2-1.9-5.6-14.6 10.8 5.6 4.7 7.9 2.3 1.7-2-.7-.5 1.1-1-.9-.7 1.1-.8zM2.9 10.7l1.3 6.2-.8 1 1.1.8-.9.7 1.1 1-.7.5 1.7 2 7.9-2.3 5.6-4.7L4.8 5.1z" />
+        <svg viewBox="0 0 318.6 318.6" width="26" height="26" role="img" fill="none">
+          <path fill="#E17726" d="m274.1 35.5-99.5 73.9L194 65.4z" />
+          <path fill="#E27625" d="m44.5 35.5 98.9 74.5-18.7-44.6z" />
+          <path fill="#E27625" d="m238.3 206.8-27.4 41.6 57.6 15.8 16.5-56.6z" />
+          <path fill="#E27625" d="m33.6 207.6 16.4 56.6 57.8-15.8-27.5-41.6z" />
+          <path fill="#E27625" d="m93.6 136.2-16.1 24.3 56.4 2.5-.9-60.6z" />
+          <path fill="#E27625" d="m225 136.2-39.9-34.3-.8 61.1 56.8-2.5z" />
+          <path fill="#F5841F" d="m96.7 247.6 34.7-16.8-29.6-23.1z" />
+          <path fill="#F5841F" d="m187.2 230.8 34.6 16.8-5.1-40.4z" />
+          <path fill="#763D16" d="m221.8 247.6-34.6-16.8 2.6 22.9v9.7z" />
+          <path fill="#763D16" d="m96.7 247.6 32 15.8v-9.7l2.6-22.9z" />
+          <path fill="#F5841F" d="m129.5 220.8-27.7-8.1 19.8 9.5z" />
+          <path fill="#F5841F" d="m189.1 220.8 8.6-1.4 19.2 9.5z" />
+          <path fill="#C0AD9E" d="m96.7 247.6 5.1-40.9-32.3 1.2z" />
+          <path fill="#C0AD9E" d="m216.7 207.9 5.1 40.9 27.2-40.4z" />
+          <path fill="#161616" d="m241.8 177.3-56.8 2.5 5.2 28.1 8.6-1.4 20 9.7z" />
+          <path fill="#161616" d="m101.8 217.4 19.8-9.7 7.9 1.4 5.2-28.1-56.4-2.5z" />
+          <path fill="#763D16" d="m77.5 160.5 24.3 47.4-.5-1.2z" />
+          <path fill="#763D16" d="m216.7 207.9v-1.2l24.3-47.4z" />
+          <path fill="#F5841F" d="m133.3 162.9-4.8 17.5 6.6 34.3 1.2-45.1z" />
+          <path fill="#F5841F" d="m185.3 162.9-3 6.7 1.2 45.1 6.6-34.3z" />
+          <path fill="#F5841F" d="m189.8 207.2-6.6 34.3 4.6 2.3 22.9-19.1.5-16.1z" />
+          <path fill="#F5841F" d="m101.8 217.4.5 16.1 22.9 19.1 4.6-2.3-6.6-34.3z" />
+          <path fill="#393939" d="m189.8 273.4v-9.7l-4.6-2.3h-51.8l-4.6 2.3v9.7l-32.1-15.8 11.5 9.4 24.2 16.8h58.8l24.2-16.8 11.5-9.4z" />
+          <path fill="#D7C1B3" d="m187.2 230.8-4.6 3.4-3.5 29.5 4.6 2.3h5.1v-9.7l-1.6-25.5z" />
+          <path fill="#D7C1B3" d="m136.3 234.2-4.6-3.4-1.6 25.5v9.7h5.1l4.6-2.3-3.5-29.5z" />
+          <path fill="#233447" d="m214.8 176.6-20-9.7-9.5-30.7 39.9 34.3z" />
+          <path fill="#233447" d="m93.6 136.2 39.9 30.7-20 9.7-19.9-40.4z" />
+          <path fill="#CD6116" d="m278.3 114.2 8.5-41.9-12.7-36.8-98.9 73.9 38.3 32 53.6 15.6 11.8-13.8-4.9-3.5 7.7-6.8-6.1-4.7 7.7-5.5z" />
+          <path fill="#CD6116" d="m44.5 35.5-12.7 36.8 8.5 41.9-4.5 1.1 7.7 5.5-6.1 4.7 7.7 6.8-4.9 3.5 11.8 13.8 53.6-15.6 38.3-32z" />
         </svg>
       )}
       {brand === 'walletconnect' && (
-        <svg viewBox="0 0 48 48" width="30" height="30" role="img">
+        <svg viewBox="0 0 48 48" width="26" height="26" role="img">
           <circle cx="24" cy="24" r="22" fill="#3B99FC" />
           <path fill="#fff" d="M14.7 20.5c5.1-5 13.4-5 18.5 0l.6.6a.6.6 0 0 1 0 .9l-2.1 2.1a.6.6 0 0 1-.9 0l-.9-.9c-3.3-3.2-8.6-3.2-11.9 0l-1 .9a.6.6 0 0 1-.8 0L14.1 22a.6.6 0 0 1 0-.9zm22.9 4 1.9 1.9a.6.6 0 0 1 0 .9l-8.4 8.3a.6.6 0 0 1-.8 0l-6-5.9a.3.3 0 0 0-.4 0l-6 5.9a.6.6 0 0 1-.8 0l-8.4-8.3a.6.6 0 0 1 0-.9l1.9-1.9a.6.6 0 0 1 .9 0l6 6a.3.3 0 0 0 .4 0l6-6a.6.6 0 0 1 .9 0l6 6a.3.3 0 0 0 .4 0l6-6a.6.6 0 0 1 .8 0z" />
         </svg>
       )}
       {brand === 'coinbase' && (
-        <svg viewBox="0 0 48 48" width="30" height="30" role="img">
+        <svg viewBox="0 0 48 48" width="26" height="26" role="img">
           <circle cx="24" cy="24" r="22" fill="#0052FF" />
           <path fill="#fff" d="M24 34.5c-5.8 0-10.5-4.7-10.5-10.5S18.2 13.5 24 13.5c5.2 0 9.5 3.8 10.3 8.7H27a3.7 3.7 0 0 0-3-1.5 3.3 3.3 0 1 0 0 6.6 3.7 3.7 0 0 0 3-1.5h7.3c-.8 4.9-5.1 8.7-10.3 8.7z" />
         </svg>
       )}
       {brand === 'rabby' && (
-        <svg viewBox="0 0 48 48" width="30" height="30" role="img">
-          <rect x="5" y="7" width="38" height="34" rx="12" fill="#F97316" />
-          <path fill="#FFEDD5" d="M15 22c0-6.1 4-10.5 9-10.5S33 15.9 33 22v5.3c0 5.4-3.7 9.2-9 9.2s-9-3.8-9-9.2z" />
-          <path fill="#FFEDD5" d="M15.5 16.7 11 11.8c-.4-.4-.2-1.1.4-1.2l7.4-.8zM32.5 16.7l4.5-4.9c.4-.4.2-1.1-.4-1.2l-7.4-.8z" />
-          <circle cx="20" cy="24" r="2.2" fill="#1F2937" />
-          <circle cx="28" cy="24" r="2.2" fill="#1F2937" />
-          <path stroke="#1F2937" strokeLinecap="round" strokeWidth="2" d="M21.5 30c1.5 1.2 3.5 1.2 5 0" />
+        <svg viewBox="0 0 120 120" width="28" height="28" role="img" fill="none">
+          <defs>
+            <linearGradient id="rabbyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#8697FF" />
+              <stop offset="100%" stopColor="#5D73F0" />
+            </linearGradient>
+            <linearGradient id="rabbyGlass" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#1E293B" />
+              <stop offset="100%" stopColor="#0F172A" />
+            </linearGradient>
+          </defs>
+          {/* Rounded Rabby Background */}
+          <rect width="120" height="120" rx="30" fill="url(#rabbyGrad)" />
+          {/* Bunny Ears */}
+          <path
+            d="M40 22 C35 15, 26 25, 33 46 C37 55, 46 62, 50 62 C48 48, 44 28, 40 22 Z"
+            fill="#FFFFFF"
+          />
+          <path
+            d="M80 22 C85 15, 94 25, 87 46 C83 55, 74 62, 70 62 C72 48, 76 28, 80 22 Z"
+            fill="#FFFFFF"
+          />
+          <path
+            d="M39 28 C36 24, 30 30, 35 43 C38 49, 44 54, 46 54 C45 45, 42 32, 39 28 Z"
+            fill="#FFD2DE"
+            opacity="0.8"
+          />
+          <path
+            d="M81 28 C84 24, 90 30, 85 43 C82 49, 76 54, 74 54 C75 45, 78 32, 81 28 Z"
+            fill="#FFD2DE"
+            opacity="0.8"
+          />
+          {/* Bunny Face / Head */}
+          <path
+            d="M26 68 C26 50, 41 46, 60 46 C79 46, 94 50, 94 68 C94 88, 79 98, 60 98 C41 98, 26 88, 26 68 Z"
+            fill="#FFFFFF"
+          />
+          {/* Cute Sunglasses / Visor Frame */}
+          <rect x="33" y="58" width="24" height="20" rx="7" fill="url(#rabbyGlass)" />
+          <rect x="63" y="58" width="24" height="20" rx="7" fill="url(#rabbyGlass)" />
+          <rect x="54" y="64" width="12" height="4" rx="2" fill="url(#rabbyGlass)" />
+          {/* Glass Reflection highlights */}
+          <path d="M37 62 L43 62 L39 74 L35 74 Z" fill="#60A5FA" opacity="0.6" />
+          <path d="M67 62 L73 62 L69 74 L65 74 Z" fill="#60A5FA" opacity="0.6" />
+          {/* Cute Nose and Smile */}
+          <ellipse cx="60" cy="83" rx="3" ry="2.2" fill="#FFAEC0" />
+          <path
+            d="M55 87 Q60 91 65 87"
+            stroke="#64748B"
+            strokeWidth="2"
+            strokeLinecap="round"
+            fill="none"
+          />
         </svg>
       )}
       {brand === 'okx' && (
-        <svg viewBox="0 0 48 48" width="30" height="30" role="img">
-          <rect width="48" height="48" rx="24" fill="#fff" />
-          <path fill="#111" d="M10 10h10v10H10zM28 10h10v10H28zM19 19h10v10H19zM10 28h10v10H10zM28 28h10v10H28z" />
+        <svg viewBox="0 0 48 48" width="26" height="26" role="img">
+          <rect width="48" height="48" rx="12" fill="#111" />
+          <path fill="#fff" d="M10 10h10v10H10zM28 10h10v10H28zM19 19h10v10H19zM10 28h10v10H10zM28 28h10v10H28z" />
         </svg>
       )}
       {brand === 'generic' && <Wallet size={22} color="#a1a1aa" strokeWidth={1.8} />}
