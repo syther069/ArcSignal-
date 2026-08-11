@@ -3,7 +3,6 @@
 import React, { useMemo, useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import { MarketRow } from '@/components/markets/MarketRow';
-import { MarketRowSkeleton } from '@/components/markets/MarketRowSkeleton';
 import { MarketFiltersDrawer, type MarketView, type MarketSort } from '@/components/markets/MarketFiltersDrawer';
 import { StakeModal } from '@/components/markets/StakeModal';
 import { Market, StakeSide } from '@/types';
@@ -239,7 +238,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
             {/* Live Stats Pill Group */}
             <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-[#94a3b8]">
               <span className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-3 py-1.5 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#4fdbc8] animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-[#ddb7ff] animate-pulse" />
                 <strong className="text-white tabular-nums">{counts.live}</strong> Open
               </span>
               <span className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] px-3 py-1.5 flex items-center gap-1.5">
@@ -271,7 +270,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                     <Link
                       key={m.marketId}
                       href={`/market/${m.marketId}`}
-                      className="group flex items-center justify-between p-3.5 rounded-xl border border-white/[0.08] bg-[#171717] hover:border-[#ddb7ff]/40 hover:bg-[#1c1b1c] transition-all duration-150 gap-3 shadow-sm"
+                      className="group flex items-center justify-between p-3.5 rounded-xl border border-[#ddb7ff]/[0.12] bg-gradient-to-br from-[#ddb7ff]/[0.06] to-[#171717] hover:border-[#ddb7ff]/40 hover:bg-[#1c1b1c] transition-all duration-150 gap-3 shadow-sm"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1 font-mono text-[9px] tracking-wide">
@@ -289,7 +288,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
 
                       <div className="flex items-center gap-3 shrink-0">
                         <div className="text-right font-mono">
-                          <div className="text-[12px] font-bold text-[#4fdbc8] tabular-nums tracking-tight">
+                          <div className="text-[12px] font-bold text-[#ddb7ff] tabular-nums tracking-tight">
                             {follow.toFixed(0)}% Follow
                           </div>
                           <div className="text-[10px] text-[#94a3b8] tracking-tight">
@@ -306,7 +305,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
           )}
 
           {/* ── 3. UNIFIED TOP NAVIGATION & CONTROLS ROW ── */}
-          <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-3 sm:p-4 space-y-3 shadow-md">
+          <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-3 sm:p-4 space-y-3 shadow-md sticky top-20 z-20 backdrop-blur-md">
             
             {/* Top Control Bar: Views + Search + Sort + Refresh */}
             <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
@@ -324,6 +323,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                   <button
                     key={view}
                     onClick={() => setSelectedView(view)}
+                    aria-pressed={selectedView === view}
                     className={`whitespace-nowrap px-3 py-1.5 rounded-lg font-sans text-xs font-semibold tracking-[-0.01em] transition-all ${
                       selectedView === view
                         ? 'bg-[#2f2f2f] text-white shadow-sm border border-white/[0.08]'
@@ -353,6 +353,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
+                      aria-label="Clear search"
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[#94a3b8] hover:text-white font-mono"
                     >
                       ✕
@@ -417,6 +418,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                       setSelectedCategory(cat);
                       if (cat === 'Football') setSelectedTimeframe(null);
                     }}
+                    aria-pressed={selectedCategory === cat}
                     className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
                       selectedCategory === cat
                         ? 'bg-[#ddb7ff] text-[#131313] shadow-sm'
@@ -436,6 +438,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                   </span>
                   <button
                     onClick={() => setSelectedTimeframe(null)}
+                    aria-pressed={selectedTimeframe === null}
                     className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
                       selectedTimeframe === null
                         ? 'bg-[#2f2f2f] text-white border border-white/[0.1]'
@@ -448,6 +451,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                     <button
                       key={tf}
                       onClick={() => setSelectedTimeframe(selectedTimeframe === tf ? null : tf)}
+                      aria-pressed={selectedTimeframe === tf}
                       className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
                         selectedTimeframe === tf
                           ? 'bg-[#ddb7ff]/20 text-[#ddb7ff] border border-[#ddb7ff]/50'

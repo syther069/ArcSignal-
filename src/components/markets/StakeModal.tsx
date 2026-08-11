@@ -248,8 +248,8 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         {step === 'success' && txHash ? (
           /* SUCCESS STATE */
           <div className="p-8 flex flex-col items-center justify-center text-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-[#4fdbc8]/20 flex items-center justify-center mb-2">
-              <div className="w-8 h-8 rounded-full bg-[#4fdbc8] text-[#0f172a] flex items-center justify-center text-xl font-bold">
+            <div className="w-16 h-16 rounded-full bg-[#ddb7ff]/20 flex items-center justify-center mb-2">
+              <div className="w-8 h-8 rounded-full bg-[#ddb7ff] text-[#0f172a] flex items-center justify-center text-xl font-bold">
                 ✓
               </div>
             </div>
@@ -258,7 +258,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
             </h3>
             <p className="text-sm text-[#94a3b8]">
               Your{' '}
-              <strong className={isFollow ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'}>
+              <strong className={isFollow ? 'text-[#ddb7ff]' : 'text-[#ffb4ab]'}>
                 {isFollow ? 'FOLLOW' : 'FADE'}
               </strong>{' '}
               position has been confirmed on-chain.
@@ -299,10 +299,10 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
 
             <div className="rounded-xl border border-[#1e293b] bg-[#131313] p-4 space-y-3 text-xs">
               <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Market</span><span className="text-white text-right max-w-[230px]">{(market as any).question || (market as any).title || 'Prediction Market'}</span></div>
-              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Position</span><span className={isFollow ? 'text-[#4fdbc8] font-semibold' : 'text-[#ffb4ab] font-semibold'}>{isFollow ? 'FOLLOW AI' : 'FADE AI'}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Position</span><span className={isFollow ? 'text-[#ddb7ff] font-semibold' : 'text-[#ffb4ab] font-semibold'}>{isFollow ? 'FOLLOW AI' : 'FADE AI'}</span></div>
               <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Stake</span><span className="text-white font-[family-name:var(--font-jetbrains-mono)]">{amountStr} USDC</span></div>
               <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Estimated pool share</span><span className="text-white font-[family-name:var(--font-jetbrains-mono)]">{poolShare.toFixed(2)}%</span></div>
-              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Estimated payout</span><span className="text-[#4fdbc8] font-[family-name:var(--font-jetbrains-mono)]">~{payout.toFixed(2)} USDC</span></div>
+              <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Estimated payout</span><span className="text-[#ddb7ff] font-[family-name:var(--font-jetbrains-mono)]">~{payout.toFixed(2)} USDC</span></div>
             </div>
 
             <p className="text-[10px] text-[#94a3b8] leading-relaxed">
@@ -355,7 +355,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                 <div
                   className={`px-3 py-1.5 text-[10px] font-bold font-[family-name:var(--font-jetbrains-mono)] tracking-widest rounded-lg border shrink-0 uppercase ${
                     isFollow
-                      ? 'bg-[#4fdbc8]/20 text-[#4fdbc8] border-[#4fdbc8]/30'
+                      ? 'bg-[#ddb7ff]/20 text-[#ddb7ff] border-[#ddb7ff]/30'
                       : 'bg-[#ffb4ab]/20 text-[#ffb4ab] border-[#ffb4ab]/30'
                   }`}
                 >
@@ -442,7 +442,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                   <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] tracking-widest text-[#94a3b8] uppercase">
                     Estimated Payout
                   </span>
-                  <span className="text-xl font-[family-name:var(--font-jetbrains-mono)] text-[#4fdbc8] font-bold">
+                  <span className="text-xl font-[family-name:var(--font-jetbrains-mono)] text-[#ddb7ff] font-bold">
                     ~{payout.toFixed(2)} USDC
                   </span>
                 </div>
