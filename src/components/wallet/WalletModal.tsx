@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Loader2, Wallet, X } from 'lucide-react';
+import { ExternalLink, Loader2, Monitor, ShieldCheck, Wallet, X } from 'lucide-react';
+import Logo from '@/components/ui/Logo';
 import { useWallet } from '@/hooks/useWallet';
 import type { Connector } from 'wagmi';
 
@@ -10,9 +11,31 @@ interface WalletModalProps {
   onClose: () => void;
 }
 
-const LAST_WALLET_KEY = 'arcsignal:last-wallet';
+type WalletBrand = 'metamask' | 'walletconnect' | 'coinbase' | 'rabby' | 'okx' | 'phantom' | 'trust' | 'generic';
 
-type WalletBrand = 'metamask' | 'walletconnect' | 'coinbase' | 'rabby' | 'okx' | 'generic';
+interface WalletOption {
+  brand: WalletBrand;
+  label: string;
+  description: string;
+  connector?: Connector;
+  href?: string;
+}
+
+const LAST_WALLET_KEY = 'arcsignal:last-wallet';
+const INSTALL_OPTIONS: WalletOption[] = [
+  {
+    brand: 'phantom',
+    label: 'Phantom',
+    description: 'Install the browser extension',
+    href: 'https://phantom.app/download',
+  },
+  {
+    brand: 'trust',
+    label: 'Trust Wallet',
+    description: 'Install the browser extension',
+    href: 'https://trustwallet.com/browser-extension',
+  },
+];
 
 function getWalletBrand(connector: Connector): WalletBrand {
   const id = connector.id.toLowerCase();
@@ -23,6 +46,8 @@ function getWalletBrand(connector: Connector): WalletBrand {
   if (name.includes('coinbase')) return 'coinbase';
   if (name.includes('rabby')) return 'rabby';
   if (name.includes('okx')) return 'okx';
+  if (name.includes('phantom')) return 'phantom';
+  if (name.includes('trust')) return 'trust';
   return 'generic';
 }
 
@@ -33,26 +58,44 @@ function getConnectorLabel(connector: Connector): string {
   if (brand === 'coinbase') return 'Coinbase Wallet';
   if (brand === 'rabby') return 'Rabby Wallet';
   if (brand === 'okx') return 'OKX Wallet';
+  if (brand === 'phantom') return 'Phantom';
+  if (brand === 'trust') return 'Trust Wallet';
   return connector.name;
 }
 
-function brandRank(connector: Connector) {
-  const brand = getWalletBrand(connector);
-  if (brand === 'metamask') return 0;
-  if (brand === 'coinbase') return 1;
-  if (brand === 'walletconnect') return 2;
-  if (brand === 'rabby') return 3;
-  if (brand === 'okx') return 4;
-  return 5;
+function getDescription(brand: WalletBrand, isRecent: boolean) {
+  if (isRecent) return 'Recently used on ArcSignal';
+  if (brand === 'walletconnect') return 'QR or mobile wallet';
+  if (brand === 'coinbase') return 'Extension, QR, or mobile';
+  if (brand === 'generic') return 'Available wallet connector';
+  return 'Detected in this browser';
 }
 
-function WalletLogo({ connector }: { connector: Connector }) {
-  const brand = getWalletBrand(connector);
+function brandRank(brand: WalletBrand) {
+  if (brand === 'rabby') return 0;
+  if (brand === 'okx') return 1;
+  if (brand === 'metamask') return 2;
+  if (brand === 'walletconnect') return 3;
+  if (brand === 'coinbase') return 4;
+  if (brand === 'phantom') return 5;
+  if (brand === 'trust') return 6;
+  return 7;
+}
 
+function getErrorMessage(err: unknown) {
+  const raw = err instanceof Error ? err.message : String(err);
+  const lower = raw.toLowerCase();
+  if (lower.includes('reject') || lower.includes('denied')) return 'Connection rejected. Try again.';
+  if (lower.includes('timeout') || lower.includes('timed out')) return "Wallet didn't respond. Check the extension.";
+  if (lower.includes('not found') || lower.includes('provider')) return 'Wallet extension not detected.';
+  return 'Connection failed. Try again.';
+}
+
+function WalletLogo({ brand }: { brand: WalletBrand }) {
   return (
-    <span style={logoShellStyle} aria-hidden="true">
+    <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#E6E3EA] bg-white">
       {brand === 'metamask' && (
-        <svg viewBox="0 0 318.6 318.6" width="26" height="26" role="img" fill="none">
+        <svg viewBox="0 0 318.6 318.6" width="34" height="34" role="img" fill="none">
           <path fill="#E17726" d="m274.1 35.5-99.5 73.9L194 65.4z" />
           <path fill="#E27625" d="m44.5 35.5 98.9 74.5-18.7-44.6z" />
           <path fill="#E27625" d="m238.3 206.8-27.4 41.6 57.6 15.8 16.5-56.6z" />
@@ -85,258 +128,190 @@ function WalletLogo({ connector }: { connector: Connector }) {
         </svg>
       )}
       {brand === 'walletconnect' && (
-        <svg viewBox="0 0 48 48" width="26" height="26" role="img">
+        <svg viewBox="0 0 48 48" width="34" height="34" role="img">
           <circle cx="24" cy="24" r="22" fill="#3B99FC" />
           <path fill="#fff" d="M14.7 20.5c5.1-5 13.4-5 18.5 0l.6.6a.6.6 0 0 1 0 .9l-2.1 2.1a.6.6 0 0 1-.9 0l-.9-.9c-3.3-3.2-8.6-3.2-11.9 0l-1 .9a.6.6 0 0 1-.8 0L14.1 22a.6.6 0 0 1 0-.9zm22.9 4 1.9 1.9a.6.6 0 0 1 0 .9l-8.4 8.3a.6.6 0 0 1-.8 0l-6-5.9a.3.3 0 0 0-.4 0l-6 5.9a.6.6 0 0 1-.8 0l-8.4-8.3a.6.6 0 0 1 0-.9l1.9-1.9a.6.6 0 0 1 .9 0l6 6a.3.3 0 0 0 .4 0l6-6a.6.6 0 0 1 .9 0l6 6a.3.3 0 0 0 .4 0l6-6a.6.6 0 0 1 .8 0z" />
         </svg>
       )}
       {brand === 'coinbase' && (
-        <svg viewBox="0 0 48 48" width="26" height="26" role="img">
+        <svg viewBox="0 0 48 48" width="34" height="34" role="img">
           <circle cx="24" cy="24" r="22" fill="#0052FF" />
           <path fill="#fff" d="M24 34.5c-5.8 0-10.5-4.7-10.5-10.5S18.2 13.5 24 13.5c5.2 0 9.5 3.8 10.3 8.7H27a3.7 3.7 0 0 0-3-1.5 3.3 3.3 0 1 0 0 6.6 3.7 3.7 0 0 0 3-1.5h7.3c-.8 4.9-5.1 8.7-10.3 8.7z" />
         </svg>
       )}
       {brand === 'rabby' && (
-        <svg viewBox="0 0 120 120" width="28" height="28" role="img" fill="none">
-          <defs>
-            <linearGradient id="rabbyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#8697FF" />
-              <stop offset="100%" stopColor="#5D73F0" />
-            </linearGradient>
-            <linearGradient id="rabbyGlass" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#1E293B" />
-              <stop offset="100%" stopColor="#0F172A" />
-            </linearGradient>
-          </defs>
-          {/* Rounded Rabby Background */}
-          <rect width="120" height="120" rx="30" fill="url(#rabbyGrad)" />
-          {/* Bunny Ears */}
-          <path
-            d="M40 22 C35 15, 26 25, 33 46 C37 55, 46 62, 50 62 C48 48, 44 28, 40 22 Z"
-            fill="#FFFFFF"
-          />
-          <path
-            d="M80 22 C85 15, 94 25, 87 46 C83 55, 74 62, 70 62 C72 48, 76 28, 80 22 Z"
-            fill="#FFFFFF"
-          />
-          <path
-            d="M39 28 C36 24, 30 30, 35 43 C38 49, 44 54, 46 54 C45 45, 42 32, 39 28 Z"
-            fill="#FFD2DE"
-            opacity="0.8"
-          />
-          <path
-            d="M81 28 C84 24, 90 30, 85 43 C82 49, 76 54, 74 54 C75 45, 78 32, 81 28 Z"
-            fill="#FFD2DE"
-            opacity="0.8"
-          />
-          {/* Bunny Face / Head */}
-          <path
-            d="M26 68 C26 50, 41 46, 60 46 C79 46, 94 50, 94 68 C94 88, 79 98, 60 98 C41 98, 26 88, 26 68 Z"
-            fill="#FFFFFF"
-          />
-          {/* Cute Sunglasses / Visor Frame */}
-          <rect x="33" y="58" width="24" height="20" rx="7" fill="url(#rabbyGlass)" />
-          <rect x="63" y="58" width="24" height="20" rx="7" fill="url(#rabbyGlass)" />
-          <rect x="54" y="64" width="12" height="4" rx="2" fill="url(#rabbyGlass)" />
-          {/* Glass Reflection highlights */}
-          <path d="M37 62 L43 62 L39 74 L35 74 Z" fill="#60A5FA" opacity="0.6" />
-          <path d="M67 62 L73 62 L69 74 L65 74 Z" fill="#60A5FA" opacity="0.6" />
-          {/* Cute Nose and Smile */}
-          <ellipse cx="60" cy="83" rx="3" ry="2.2" fill="#FFAEC0" />
-          <path
-            d="M55 87 Q60 91 65 87"
-            stroke="#64748B"
-            strokeWidth="2"
-            strokeLinecap="round"
-            fill="none"
-          />
+        <svg viewBox="0 0 48 48" width="34" height="34" role="img" fill="none">
+          <rect x="6" y="9" width="36" height="30" rx="14" fill="#7C8CFF" />
+          <path fill="#EEF2FF" d="M14 24c0-8 5-13 10-13s10 5 10 13v3c0 6-4 10-10 10s-10-4-10-10z" />
+          <path fill="#EEF2FF" d="M17 16 12 10c-.5-.6-.1-1.5.7-1.4l8 1.1zM31 16l5-6c.5-.6.1-1.5-.7-1.4l-8 1.1z" />
+          <path fill="#7181F4" d="M11 25c6-5 12-5 18-1 3 2 6 2 8 1-2 7-7 11-14 11-6 0-10-4-12-11z" />
+          <circle cx="20" cy="25" r="2" fill="#fff" />
+          <circle cx="28" cy="25" r="2" fill="#fff" />
         </svg>
       )}
       {brand === 'okx' && (
-        <svg viewBox="0 0 48 48" width="26" height="26" role="img">
-          <rect width="48" height="48" rx="12" fill="#111" />
+        <svg viewBox="0 0 48 48" width="34" height="34" role="img">
+          <rect width="48" height="48" rx="12" fill="#050505" />
           <path fill="#fff" d="M10 10h10v10H10zM28 10h10v10H28zM19 19h10v10H19zM10 28h10v10H10zM28 28h10v10H28z" />
         </svg>
       )}
-      {brand === 'generic' && <Wallet size={22} color="#a1a1aa" strokeWidth={1.8} />}
+      {brand === 'phantom' && (
+        <svg viewBox="0 0 48 48" width="34" height="34" role="img">
+          <rect width="48" height="48" rx="12" fill="#AB9FF2" />
+          <path fill="#fff" d="M12 28.2c0-9.3 6.9-16.2 16-16.2 8.6 0 14 5.8 14 13.8 0 6.4-3.8 10.9-8.7 10.9-2 0-3.5-.8-4.3-2.1-1.3 1.8-3.3 2.9-5.7 2.9H12z" />
+          <circle cx="31.5" cy="23.5" r="1.8" fill="#AB9FF2" />
+          <circle cx="37" cy="23.5" r="1.8" fill="#AB9FF2" />
+        </svg>
+      )}
+      {brand === 'trust' && (
+        <svg viewBox="0 0 48 48" width="34" height="34" role="img">
+          <path fill="#0500FF" d="M24 5 39 10v11c0 10.4-5.8 18.1-15 22-9.2-3.9-15-11.6-15-22V10z" />
+          <path fill="#16C8FF" d="M24 5v38c9.2-3.9 15-11.6 15-22V10z" />
+        </svg>
+      )}
+      {brand === 'generic' && <Wallet size={26} color="#6B7280" strokeWidth={1.8} />}
     </span>
   );
 }
 
-const logoShellStyle: React.CSSProperties = {
-  width: 40,
-  height: 40,
-  borderRadius: 10,
-  backgroundColor: '#27272A',
-  border: '1px solid #3F3F46',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  flexShrink: 0,
-};
+function StatusPill({ status, isPending }: { status: 'ready' | 'connect' | 'install'; isPending: boolean }) {
+  if (isPending) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF2FF] px-3 py-1 text-xs font-semibold text-[#5B21B6]">
+        <Loader2 size={12} className="animate-spin" />
+        Connecting
+      </span>
+    );
+  }
+
+  if (status === 'ready') {
+    return <span className="rounded-full bg-[#E7F7EF] px-3 py-1 text-xs font-bold text-[#16824B]">Ready</span>;
+  }
+
+  if (status === 'connect') {
+    return <span className="rounded-full bg-[#EAF1FF] px-3 py-1 text-xs font-bold text-[#2563EB]">Connect</span>;
+  }
+
+  return <span className="rounded-full bg-[#F4F4F5] px-3 py-1 text-xs font-bold text-[#71717A]">Install</span>;
+}
 
 export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
   const { connect, connectors } = useWallet();
-  const [hoveredUid, setHoveredUid] = useState<string | null>(null);
   const [pendingUid, setPendingUid] = useState<string | null>(null);
-  const [rowError, setRowError] = useState<{ uid: string; message: string } | null>(null);
+  const [rowError, setRowError] = useState<{ key: string; message: string } | null>(null);
   const [lastWalletUid, setLastWalletUid] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     setLastWalletUid(window.localStorage.getItem(LAST_WALLET_KEY));
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !pendingUid) onClose();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !pendingUid) onClose();
     };
+
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose, pendingUid]);
 
   useEffect(() => {
     if (!pendingUid) return;
+
     const timeout = window.setTimeout(() => {
-      setRowError({ uid: pendingUid, message: "Wallet didn't respond. Check the extension or app." });
+      setRowError({ key: pendingUid, message: "Wallet didn't respond. Check the extension." });
       setPendingUid(null);
     }, 15000);
+
     return () => window.clearTimeout(timeout);
   }, [pendingUid]);
 
-  const sortedConnectors = useMemo(
-    () => [...connectors].sort((a, b) => brandRank(a) - brandRank(b) || getConnectorLabel(a).localeCompare(getConnectorLabel(b))),
-    [connectors]
-  );
+  const walletOptions = useMemo(() => {
+    const detected = connectors.map((connector): WalletOption => {
+      const brand = getWalletBrand(connector);
+      return {
+        brand,
+        connector,
+        label: getConnectorLabel(connector),
+        description: getDescription(brand, connector.uid === lastWalletUid),
+      };
+    });
+    const detectedBrands = new Set(detected.map((option) => option.brand));
+    const installOnly = INSTALL_OPTIONS.filter((option) => !detectedBrands.has(option.brand));
 
-  const recentlyUsed = sortedConnectors.find((connector) => connector.uid === lastWalletUid);
-  const recommended = sortedConnectors.find((connector) => getWalletBrand(connector) === 'metamask') ?? sortedConnectors[0];
-  const moreOptions = sortedConnectors.filter((connector) =>
-    recentlyUsed ? connector.uid !== recentlyUsed.uid : connector.uid !== recommended?.uid
-  );
+    return [...detected, ...installOnly].sort(
+      (a, b) => brandRank(a.brand) - brandRank(b.brand) || a.label.localeCompare(b.label)
+    );
+  }, [connectors, lastWalletUid]);
 
   if (!isOpen) return null;
 
-  const getErrorMessage = (err: unknown) => {
-    const raw = err instanceof Error ? err.message : String(err);
-    const lower = raw.toLowerCase();
-    if (lower.includes('reject') || lower.includes('denied')) return 'Connection rejected. Try again.';
-    if (lower.includes('timeout') || lower.includes('timed out')) return "Wallet didn't respond. Check the extension or app.";
-    if (lower.includes('not found') || lower.includes('provider')) return 'Wallet extension not detected.';
-    return 'Connection failed. Try again.';
-  };
+  const readyCount = walletOptions.filter((option) => option.connector).length;
 
-  const handleConnect = (connector: Connector) => {
+  const handleConnect = (option: WalletOption) => {
+    if (!option.connector) {
+      if (option.href) window.open(option.href, '_blank', 'noopener,noreferrer');
+      return;
+    }
     if (pendingUid) return;
+
     setRowError(null);
-    setPendingUid(connector.uid);
+    setPendingUid(option.connector.uid);
 
     try {
       connect(
-        { connector },
+        { connector: option.connector },
         {
           onSuccess: () => {
-            window.localStorage.setItem(LAST_WALLET_KEY, connector.uid);
+            window.localStorage.setItem(LAST_WALLET_KEY, option.connector!.uid);
             setPendingUid(null);
             onClose();
           },
           onError: (err) => {
             setPendingUid(null);
-            setRowError({ uid: connector.uid, message: getErrorMessage(err) });
+            setRowError({ key: option.connector!.uid, message: getErrorMessage(err) });
           },
         }
       );
     } catch (err) {
       setPendingUid(null);
-      setRowError({ uid: connector.uid, message: getErrorMessage(err) });
+      setRowError({ key: option.connector.uid, message: getErrorMessage(err) });
     }
   };
 
-  const renderWalletRow = (connector: Connector, options?: { recommended?: boolean; recent?: boolean }) => {
-    const isPending = pendingUid === connector.uid;
-    const isDisabled = !!pendingUid && !isPending;
-    const isHovered = hoveredUid === connector.uid;
-    const error = rowError?.uid === connector.uid ? rowError.message : null;
+  const renderWalletOption = (option: WalletOption) => {
+    const key = option.connector?.uid ?? option.brand;
+    const isPending = pendingUid === key;
+    const disabled = !!pendingUid && !isPending;
+    const isRecentlyUsed = option.connector?.uid === lastWalletUid;
+    const status = option.connector ? (option.brand === 'metamask' || option.brand === 'walletconnect' || option.brand === 'coinbase' ? 'connect' : 'ready') : 'install';
+    const error = rowError?.key === key ? rowError.message : null;
 
     return (
-      <div key={connector.uid}>
+      <div key={key}>
         <button
           type="button"
-          onClick={() => handleConnect(connector)}
-          disabled={isDisabled}
-          onMouseEnter={() => setHoveredUid(connector.uid)}
-          onMouseLeave={() => setHoveredUid(null)}
-          style={{
-            width: '100%',
-            minHeight: 56,
-            backgroundColor: isHovered || isPending ? '#27272A' : 'transparent',
-            border: '1px solid #3F3F46',
-            borderLeft: isPending ? '2px solid #ddb7ff' : '1px solid #3F3F46',
-            borderRadius: 12,
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 16px',
-            gap: 12,
-            cursor: isDisabled ? 'not-allowed' : 'pointer',
-            opacity: isDisabled ? 0.45 : 1,
-            transition: 'background-color 150ms ease-out, border-color 150ms ease-out, opacity 150ms ease-out',
-          }}
+          disabled={disabled}
+          onClick={() => handleConnect(option)}
+          className="group flex min-h-[104px] w-full items-center gap-4 rounded-[20px] border border-[#E5E3EA] bg-white px-4 text-left transition duration-150 ease-out hover:-translate-y-0.5 hover:border-[#D8D2E7] hover:bg-[#FCFBFF] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <WalletLogo connector={connector} />
-          <span
-            style={{
-              color: '#fff',
-              fontWeight: 500,
-              fontSize: 14,
-              flex: 1,
-              textAlign: 'left',
-            }}
-          >
-            {getConnectorLabel(connector)}
+          <WalletLogo brand={option.brand} />
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-2 text-base font-extrabold text-[#111827]">
+              {option.label}
+              {isRecentlyUsed && <span className="rounded-full bg-[#F2EBFF] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#6D28D9]">Last</span>}
+            </span>
+            <span className="mt-1 block text-sm leading-5 text-[#6B7280]">{option.description}</span>
+            {error && <span className="mt-2 block text-xs font-medium text-[#B42318]">{error}</span>}
           </span>
-          {options?.recommended && (
-            <span
-              style={{
-                color: '#ddb7ff',
-                backgroundColor: 'rgba(221,183,255,0.1)',
-                border: '1px solid rgba(221,183,255,0.22)',
-                borderRadius: 999,
-                padding: '3px 8px',
-                fontSize: 10,
-                fontWeight: 600,
-              }}
-            >
-              Recommended
-            </span>
-          )}
-          {options?.recent && !isPending && <span style={{ color: '#4fdbc8', fontSize: 16 }}>✓</span>}
-          {isPending ? (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#ddb7ff', fontSize: 12, fontWeight: 500 }}>
-              <Loader2 size={14} className="animate-spin" />
-              Connecting...
-            </span>
-          ) : (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: isHovered ? '#ddb7ff' : '#71717A', fontSize: 12, fontWeight: 500 }}>
-              {isHovered ? 'Connect' : <ArrowRight size={16} />}
-            </span>
-          )}
+          <StatusPill status={status} isPending={isPending} />
+          {!option.connector && <ExternalLink size={14} className="hidden text-[#A1A1AA] sm:block" />}
         </button>
-        {error && <div style={{ color: '#ffb4ab', fontSize: 12, marginTop: 8, paddingLeft: 4 }}>{error}</div>}
       </div>
     );
   };
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 9999,
-        backgroundColor: 'rgba(0,0,0,0.72)',
-        backdropFilter: 'blur(4px)',
-        padding: 16,
-      }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/55 p-4 backdrop-blur-md"
       onClick={() => {
         if (!pendingUid) onClose();
       }}
@@ -345,128 +320,73 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="wallet-modal-title"
-        style={{
-          position: 'relative',
-          width: 400,
-          maxWidth: '100%',
-          maxHeight: '86vh',
-          backgroundColor: '#18181B',
-          border: '1px solid #3F3F46',
-          borderRadius: 12,
-          zIndex: 10000,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-        onClick={(e) => e.stopPropagation()}
+        className="relative flex max-h-[92vh] w-full max-w-[712px] flex-col overflow-hidden rounded-[26px] border border-white/70 bg-[#FBFAFC] text-[#111111]"
+        onClick={(event) => event.stopPropagation()}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: 16,
-            padding: '20px 24px',
-            borderBottom: '1px solid #3F3F46',
-            backgroundColor: '#18181B',
-          }}
-        >
-          <div>
-            <h2 id="wallet-modal-title" style={{ color: '#fff', fontWeight: 700, fontSize: 18, margin: 0 }}>
-              Connect Wallet
-            </h2>
-            <p style={{ color: '#A1A1AA', fontSize: 13, lineHeight: '18px', margin: '6px 0 0' }}>
-              Link your wallet to start trading on prediction markets.
+        <div className="bg-[linear-gradient(112deg,#FFF9EA_0%,#D9F7EB_39%,#E8E7FF_70%,#FFEAF8_100%)] px-7 pb-8 pt-7 sm:px-9">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-white text-[#0F172A]">
+                <Logo className="h-8 w-8" />
+              </span>
+              <span className="font-[family-name:var(--font-jetbrains-mono)] text-sm font-extrabold uppercase tracking-wide text-[#66666D]">
+                ArcSignal Portal
+              </span>
+            </div>
+            <button
+              type="button"
+              disabled={!!pendingUid}
+              onClick={onClose}
+              aria-label="Close wallet modal"
+              className="flex h-[52px] w-[52px] items-center justify-center rounded-full border border-[#D8D3DF] bg-white/60 text-[#6B6472] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          <h2 id="wallet-modal-title" className="mt-6 text-4xl font-black tracking-normal text-[#111111]">
+            Connect wallet
+          </h2>
+          <p className="mt-3 text-lg leading-7 text-[#5F646D]">
+            Choose how you want to sign in. No transaction required.
+          </p>
+        </div>
+
+        <div className="overflow-y-auto px-7 pb-7 pt-6 sm:px-7">
+          <div className="flex items-center gap-4 rounded-[20px] border border-[#E5E3EA] bg-white px-4 py-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-[14px] border border-[#E7E5EB] bg-white text-[#111827]">
+              <Monitor size={25} />
+            </span>
+            <div>
+              <div className="text-base font-extrabold text-[#111827]">Choose a browser wallet</div>
+              <div className="text-sm text-[#6B7280]">Detected extensions are shown first.</div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center justify-between px-1 font-[family-name:var(--font-jetbrains-mono)] text-xs font-extrabold uppercase tracking-wide text-[#71717A]">
+            <span>Wallets</span>
+            <span>{readyCount} Ready</span>
+          </div>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {walletOptions.map(renderWalletOption)}
+          </div>
+
+          <div className="mt-5 flex items-start gap-3 rounded-[16px] border border-[#D5EEE2] bg-[#ECF9F2] px-5 py-4 text-sm leading-5 text-[#38765A]">
+            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#139B63]" />
+            <p>
+              <strong className="font-extrabold text-[#1E6F4D]">Sign-in only.</strong> Connecting asks for a signature. It never moves funds or costs gas.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={!!pendingUid}
-            aria-label="Close modal"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: pendingUid ? 'not-allowed' : 'pointer',
-              color: '#A1A1AA',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 6,
-              borderRadius: 8,
-              opacity: pendingUid ? 0.45 : 1,
-            }}
-          >
-            <X size={20} />
-          </button>
-        </div>
 
-        <div
-          style={{
-            overflowY: 'auto',
-            flex: 1,
-            padding: '18px 24px 20px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 18,
-          }}
-        >
-          {recentlyUsed ? (
-            <section>
-              <div style={sectionLabelStyle}>Recently Used</div>
-              {renderWalletRow(recentlyUsed, { recent: true })}
-            </section>
-          ) : (
-            recommended && (
-              <section>
-                <div style={sectionLabelStyle}>Recommended</div>
-                {renderWalletRow(recommended, { recommended: true })}
-              </section>
-            )
-          )}
-
-          {moreOptions.length > 0 && (
-            <section>
-              <div style={sectionLabelStyle}>More Options</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {moreOptions.map((connector) => renderWalletRow(connector))}
-              </div>
-            </section>
-          )}
-
-          <div style={{ fontSize: 12, color: '#A1A1AA' }}>
-            Don&apos;t have a wallet?{' '}
-            <a href="https://metamask.io/download/" target="_blank" rel="noreferrer" style={{ color: '#ddb7ff', textDecoration: 'none', fontWeight: 500 }}>
-              Get started →
-            </a>
+          <div className="mt-5 text-center text-xs text-[#6B7280]">
+            By connecting, you agree to our{' '}
+            <a href="/terms" className="font-semibold text-[#6D28D9] hover:text-[#7C3AED]">Terms</a>
+            {' '}and{' '}
+            <a href="/privacy" className="font-semibold text-[#6D28D9] hover:text-[#7C3AED]">Privacy Policy</a>.
           </div>
-        </div>
-
-        <div
-          style={{
-            padding: '14px 24px 16px',
-            backgroundColor: '#18181B',
-            borderTop: '1px solid #3F3F46',
-            color: '#A1A1AA',
-            fontSize: 11,
-            lineHeight: '16px',
-          }}
-        >
-          By connecting, you agree to our{' '}
-          <a href="/terms" style={{ color: '#ddb7ff', textDecoration: 'none' }}>Terms</a>
-          {' '}and{' '}
-          <a href="/privacy" style={{ color: '#ddb7ff', textDecoration: 'none' }}>Privacy Policy</a>.
         </div>
       </div>
     </div>
   );
 }
-
-const sectionLabelStyle: React.CSSProperties = {
-  color: '#71717A',
-  fontSize: 11,
-  fontWeight: 600,
-  letterSpacing: '0.08em',
-  textTransform: 'uppercase',
-  marginBottom: 8,
-};
