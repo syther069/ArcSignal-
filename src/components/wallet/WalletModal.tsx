@@ -93,9 +93,9 @@ function getErrorMessage(err: unknown) {
 
 function WalletLogo({ brand }: { brand: WalletBrand }) {
   return (
-    <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#E6E3EA] bg-white">
+    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-[#141414] shadow-inner">
       {brand === 'metamask' && (
-        <svg viewBox="0 0 318.6 318.6" width="34" height="34" role="img" fill="none">
+        <svg viewBox="0 0 318.6 318.6" width="30" height="30" role="img" fill="none">
           <path fill="#E17726" d="m274.1 35.5-99.5 73.9L194 65.4z" />
           <path fill="#E27625" d="m44.5 35.5 98.9 74.5-18.7-44.6z" />
           <path fill="#E27625" d="m238.3 206.8-27.4 41.6 57.6 15.8 16.5-56.6z" />
@@ -128,19 +128,19 @@ function WalletLogo({ brand }: { brand: WalletBrand }) {
         </svg>
       )}
       {brand === 'walletconnect' && (
-        <svg viewBox="0 0 48 48" width="34" height="34" role="img">
+        <svg viewBox="0 0 48 48" width="30" height="30" role="img">
           <circle cx="24" cy="24" r="22" fill="#3B99FC" />
           <path fill="#fff" d="M14.7 20.5c5.1-5 13.4-5 18.5 0l.6.6a.6.6 0 0 1 0 .9l-2.1 2.1a.6.6 0 0 1-.9 0l-.9-.9c-3.3-3.2-8.6-3.2-11.9 0l-1 .9a.6.6 0 0 1-.8 0L14.1 22a.6.6 0 0 1 0-.9zm22.9 4 1.9 1.9a.6.6 0 0 1 0 .9l-8.4 8.3a.6.6 0 0 1-.8 0l-6-5.9a.3.3 0 0 0-.4 0l-6 5.9a.6.6 0 0 1-.8 0l-8.4-8.3a.6.6 0 0 1 0-.9l1.9-1.9a.6.6 0 0 1 .9 0l6 6a.3.3 0 0 0 .4 0l6-6a.6.6 0 0 1 .9 0l6 6a.3.3 0 0 0 .4 0l6-6a.6.6 0 0 1 .8 0z" />
         </svg>
       )}
       {brand === 'coinbase' && (
-        <svg viewBox="0 0 48 48" width="34" height="34" role="img">
+        <svg viewBox="0 0 48 48" width="30" height="30" role="img">
           <circle cx="24" cy="24" r="22" fill="#0052FF" />
           <path fill="#fff" d="M24 34.5c-5.8 0-10.5-4.7-10.5-10.5S18.2 13.5 24 13.5c5.2 0 9.5 3.8 10.3 8.7H27a3.7 3.7 0 0 0-3-1.5 3.3 3.3 0 1 0 0 6.6 3.7 3.7 0 0 0 3-1.5h7.3c-.8 4.9-5.1 8.7-10.3 8.7z" />
         </svg>
       )}
       {brand === 'rabby' && (
-        <svg viewBox="0 0 48 48" width="34" height="34" role="img" fill="none">
+        <svg viewBox="0 0 48 48" width="30" height="30" role="img" fill="none">
           <rect x="6" y="9" width="36" height="30" rx="14" fill="#7C8CFF" />
           <path fill="#EEF2FF" d="M14 24c0-8 5-13 10-13s10 5 10 13v3c0 6-4 10-10 10s-10-4-10-10z" />
           <path fill="#EEF2FF" d="M17 16 12 10c-.5-.6-.1-1.5.7-1.4l8 1.1zM31 16l5-6c.5-.6.1-1.5-.7-1.4l-8 1.1z" />
@@ -150,13 +150,13 @@ function WalletLogo({ brand }: { brand: WalletBrand }) {
         </svg>
       )}
       {brand === 'okx' && (
-        <svg viewBox="0 0 48 48" width="34" height="34" role="img">
+        <svg viewBox="0 0 48 48" width="30" height="30" role="img">
           <rect width="48" height="48" rx="12" fill="#050505" />
           <path fill="#fff" d="M10 10h10v10H10zM28 10h10v10H28zM19 19h10v10H19zM10 28h10v10H10zM28 28h10v10H28z" />
         </svg>
       )}
       {brand === 'phantom' && (
-        <svg viewBox="0 0 48 48" width="34" height="34" role="img">
+        <svg viewBox="0 0 48 48" width="30" height="30" role="img">
           <rect width="48" height="48" rx="12" fill="#AB9FF2" />
           <path fill="#fff" d="M12 28.2c0-9.3 6.9-16.2 16-16.2 8.6 0 14 5.8 14 13.8 0 6.4-3.8 10.9-8.7 10.9-2 0-3.5-.8-4.3-2.1-1.3 1.8-3.3 2.9-5.7 2.9H12z" />
           <circle cx="31.5" cy="23.5" r="1.8" fill="#AB9FF2" />
@@ -164,12 +164,12 @@ function WalletLogo({ brand }: { brand: WalletBrand }) {
         </svg>
       )}
       {brand === 'trust' && (
-        <svg viewBox="0 0 48 48" width="34" height="34" role="img">
+        <svg viewBox="0 0 48 48" width="30" height="30" role="img">
           <path fill="#0500FF" d="M24 5 39 10v11c0 10.4-5.8 18.1-15 22-9.2-3.9-15-11.6-15-22V10z" />
           <path fill="#16C8FF" d="M24 5v38c9.2-3.9 15-11.6 15-22V10z" />
         </svg>
       )}
-      {brand === 'generic' && <Wallet size={26} color="#6B7280" strokeWidth={1.8} />}
+      {brand === 'generic' && <Wallet size={24} className="text-[#ddb7ff]" strokeWidth={1.8} />}
     </span>
   );
 }
@@ -177,7 +177,7 @@ function WalletLogo({ brand }: { brand: WalletBrand }) {
 function StatusPill({ status, isPending }: { status: 'ready' | 'connect' | 'install'; isPending: boolean }) {
   if (isPending) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF2FF] px-3 py-1 text-xs font-semibold text-[#5B21B6]">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ddb7ff]/20 border border-[#ddb7ff]/40 px-2.5 py-1 text-xs font-semibold text-[#ddb7ff] shadow-[0_0_10px_rgba(221,183,255,0.2)]">
         <Loader2 size={12} className="animate-spin" />
         Connecting
       </span>
@@ -185,14 +185,26 @@ function StatusPill({ status, isPending }: { status: 'ready' | 'connect' | 'inst
   }
 
   if (status === 'ready') {
-    return <span className="rounded-full bg-[#E7F7EF] px-3 py-1 text-xs font-bold text-[#16824B]">Ready</span>;
+    return (
+      <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 text-xs font-mono font-bold text-emerald-400">
+        Ready
+      </span>
+    );
   }
 
   if (status === 'connect') {
-    return <span className="rounded-full bg-[#EAF1FF] px-3 py-1 text-xs font-bold text-[#2563EB]">Connect</span>;
+    return (
+      <span className="rounded-full bg-[#ddb7ff]/15 border border-[#ddb7ff]/30 px-2.5 py-1 text-xs font-mono font-bold text-[#ddb7ff] group-hover:bg-[#ddb7ff] group-hover:text-[#131313] transition-all">
+        Connect
+      </span>
+    );
   }
 
-  return <span className="rounded-full bg-[#F4F4F5] px-3 py-1 text-xs font-bold text-[#71717A]">Install</span>;
+  return (
+    <span className="rounded-full bg-white/[0.05] border border-white/[0.08] px-2.5 py-1 text-xs font-mono font-medium text-[#94a3b8]">
+      Install
+    </span>
+  );
 }
 
 export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
@@ -291,19 +303,23 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
           type="button"
           disabled={disabled}
           onClick={() => handleConnect(option)}
-          className="group flex min-h-[104px] w-full items-center gap-4 rounded-[20px] border border-[#E5E3EA] bg-white px-4 text-left transition duration-150 ease-out hover:-translate-y-0.5 hover:border-[#D8D2E7] hover:bg-[#FCFBFF] disabled:cursor-not-allowed disabled:opacity-50"
+          className="group flex min-h-[92px] w-full items-center gap-3.5 rounded-2xl border border-white/[0.08] bg-[#1c1b1b] px-4 py-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[#ddb7ff]/40 hover:bg-[#232228] hover:shadow-[0_0_20px_rgba(183,109,255,0.12)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <WalletLogo brand={option.brand} />
           <span className="min-w-0 flex-1">
-            <span className="flex items-center gap-2 text-base font-extrabold text-[#111827]">
+            <span className="flex items-center gap-2 text-sm sm:text-base font-bold text-white group-hover:text-[#ddb7ff] transition-colors">
               {option.label}
-              {isRecentlyUsed && <span className="rounded-full bg-[#F2EBFF] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#6D28D9]">Last</span>}
+              {isRecentlyUsed && (
+                <span className="rounded-full bg-[#ddb7ff]/20 border border-[#ddb7ff]/40 px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wide text-[#ddb7ff]">
+                  Last
+                </span>
+              )}
             </span>
-            <span className="mt-1 block text-sm leading-5 text-[#6B7280]">{option.description}</span>
-            {error && <span className="mt-2 block text-xs font-medium text-[#B42318]">{error}</span>}
+            <span className="mt-0.5 block text-xs leading-4 text-[#94a3b8]">{option.description}</span>
+            {error && <span className="mt-1.5 block text-xs font-medium text-rose-400">{error}</span>}
           </span>
           <StatusPill status={status} isPending={isPending} />
-          {!option.connector && <ExternalLink size={14} className="hidden text-[#A1A1AA] sm:block" />}
+          {!option.connector && <ExternalLink size={14} className="hidden text-[#94a3b8] sm:block group-hover:text-white transition-colors" />}
         </button>
       </div>
     );
@@ -311,7 +327,7 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/55 p-4 backdrop-blur-md"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-200"
       onClick={() => {
         if (!pendingUid) onClose();
       }}
@@ -320,16 +336,20 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="wallet-modal-title"
-        className="relative flex max-h-[92vh] w-full max-w-[712px] flex-col overflow-hidden rounded-[26px] border border-white/70 bg-[#FBFAFC] text-[#111111]"
+        className="relative flex max-h-[92vh] w-full max-w-[680px] flex-col overflow-hidden rounded-[24px] border border-white/[0.1] bg-[#141414] text-[#e5e2e1] shadow-[0_25px_60px_rgba(0,0,0,0.9),0_0_40px_rgba(183,109,255,0.1)]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="bg-[linear-gradient(112deg,#FFF9EA_0%,#D9F7EB_39%,#E8E7FF_70%,#FFEAF8_100%)] px-7 pb-8 pt-7 sm:px-9">
+        {/* Glowing top line */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#ddb7ff] to-transparent z-10" />
+
+        {/* Modal Header */}
+        <div className="bg-gradient-to-b from-[#211b2b] via-[#18161f] to-[#141414] px-6 pb-6 pt-6 sm:px-8 sm:pt-7 border-b border-white/[0.08]">
           <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-white text-[#0F172A]">
-                <Logo className="h-8 w-8" />
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#ddb7ff]/15 border border-[#ddb7ff]/30 text-[#ddb7ff] shadow-[0_0_15px_rgba(221,183,255,0.2)]">
+                <Logo className="h-5 w-5" />
               </span>
-              <span className="font-[family-name:var(--font-jetbrains-mono)] text-sm font-extrabold uppercase tracking-wide text-[#66666D]">
+              <span className="font-mono text-xs font-bold uppercase tracking-widest text-[#ddb7ff]">
                 ArcSignal Portal
               </span>
             </div>
@@ -338,52 +358,56 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
               disabled={!!pendingUid}
               onClick={onClose}
               aria-label="Close wallet modal"
-              className="flex h-[52px] w-[52px] items-center justify-center rounded-full border border-[#D8D3DF] bg-white/60 text-[#6B6472] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-[#94a3b8] transition-all hover:bg-white/10 hover:text-white hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <X size={24} />
+              <X size={18} />
             </button>
           </div>
 
-          <h2 id="wallet-modal-title" className="mt-6 text-4xl font-black tracking-normal text-[#111111]">
+          <h2 id="wallet-modal-title" className="mt-5 font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
             Connect wallet
           </h2>
-          <p className="mt-3 text-lg leading-7 text-[#5F646D]">
+          <p className="mt-1.5 text-sm sm:text-base text-[#94a3b8] leading-relaxed">
             Choose how you want to sign in. No transaction required.
           </p>
         </div>
 
-        <div className="overflow-y-auto px-7 pb-7 pt-6 sm:px-7">
-          <div className="flex items-center gap-4 rounded-[20px] border border-[#E5E3EA] bg-white px-4 py-3">
-            <span className="flex h-12 w-12 items-center justify-center rounded-[14px] border border-[#E7E5EB] bg-white text-[#111827]">
-              <Monitor size={25} />
+        {/* Modal Body */}
+        <div className="overflow-y-auto custom-scrollbar px-6 pb-6 pt-5 sm:px-8">
+          <div className="flex items-center gap-3.5 rounded-xl border border-white/[0.08] bg-[#1c1b1b] px-4 py-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-[#ddb7ff]">
+              <Monitor size={20} />
             </span>
             <div>
-              <div className="text-base font-extrabold text-[#111827]">Choose a browser wallet</div>
-              <div className="text-sm text-[#6B7280]">Detected extensions are shown first.</div>
+              <div className="text-sm font-bold text-white">Choose a browser wallet</div>
+              <div className="text-xs text-[#94a3b8]">Detected extensions are shown first.</div>
             </div>
           </div>
 
-          <div className="mt-6 flex items-center justify-between px-1 font-[family-name:var(--font-jetbrains-mono)] text-xs font-extrabold uppercase tracking-wide text-[#71717A]">
+          <div className="mt-5 flex items-center justify-between px-1 font-mono text-[11px] font-bold uppercase tracking-wider text-[#94a3b8]">
             <span>Wallets</span>
-            <span>{readyCount} Ready</span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              {readyCount} Ready
+            </span>
           </div>
 
-          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             {walletOptions.map(renderWalletOption)}
           </div>
 
-          <div className="mt-5 flex items-start gap-3 rounded-[16px] border border-[#D5EEE2] bg-[#ECF9F2] px-5 py-4 text-sm leading-5 text-[#38765A]">
-            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#139B63]" />
+          <div className="mt-5 flex items-start gap-3 rounded-xl border border-[#4fdbc8]/20 bg-[#4fdbc8]/5 px-4 py-3 text-xs leading-relaxed text-[#cbd5e1]">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#4fdbc8]" />
             <p>
-              <strong className="font-extrabold text-[#1E6F4D]">Sign-in only.</strong> Connecting asks for a signature. It never moves funds or costs gas.
+              <strong className="font-bold text-[#4fdbc8]">Sign-in only.</strong> Connecting asks for a signature. It never moves funds or costs gas.
             </p>
           </div>
 
-          <div className="mt-5 text-center text-xs text-[#6B7280]">
+          <div className="mt-4 text-center text-[11px] text-[#64748b]">
             By connecting, you agree to our{' '}
-            <a href="/terms" className="font-semibold text-[#6D28D9] hover:text-[#7C3AED]">Terms</a>
+            <a href="/terms" className="font-semibold text-[#ddb7ff] hover:text-white underline-offset-2 hover:underline transition-colors">Terms</a>
             {' '}and{' '}
-            <a href="/privacy" className="font-semibold text-[#6D28D9] hover:text-[#7C3AED]">Privacy Policy</a>.
+            <a href="/privacy" className="font-semibold text-[#ddb7ff] hover:text-white underline-offset-2 hover:underline transition-colors">Privacy Policy</a>.
           </div>
         </div>
       </div>
