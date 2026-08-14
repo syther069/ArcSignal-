@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import Image from 'next/image';
 import { ExternalLink, Loader2, ShieldCheck, Wallet, X, ChevronRight, AlertCircle } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
 import type { Connector } from 'wagmi';
@@ -337,8 +336,8 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#18161f] px-5 py-4">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] border border-white/[0.08] overflow-hidden shrink-0">
-              <Image src="/logo.png" alt="ArcSignal Logo" width={24} height={24} className="h-6 w-6 object-contain" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-[#ddb7ff] shrink-0">
+              <Wallet size={17} strokeWidth={2} />
             </div>
             <div>
               <h2 id="wallet-modal-title" className="font-display text-base font-bold tracking-tight text-white leading-tight">
