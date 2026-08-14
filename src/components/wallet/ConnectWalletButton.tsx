@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Wallet, ChevronDown, LogOut, AlertTriangle, Loader2, Copy, Check, ShieldCheck } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
 import WalletModal from './WalletModal';
-import Logo from '@/components/ui/Logo';
 
 export default function ConnectWalletButton() {
   const { 
@@ -46,7 +45,7 @@ export default function ConnectWalletButton() {
 
   // Skeleton while hydrating
   if (!mounted) {
-    return <div className="h-[42px] w-[160px] rounded-full bg-white/5 border border-white/10 animate-pulse" />;
+    return <div className="h-[42px] w-[148px] rounded-full bg-white/5 border border-white/10 animate-pulse" />;
   }
 
   // STATE 2: Connecting
@@ -81,10 +80,10 @@ export default function ConnectWalletButton() {
       <div className="relative" ref={dropdownRef}>
         <button 
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="group flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-[#3a3939] bg-[#1c1b1b] hover:bg-[#252424] hover:border-[#ddb7ff]/40 px-2.5 py-1.5 text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#ddb7ff]/50 focus:ring-offset-2 focus:ring-offset-[#131313] shadow-lg"
+          className="group flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-[#3a3939] bg-[#1c1b1b] hover:bg-[#252424] hover:border-[#ddb7ff]/40 px-3 py-1.5 text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#ddb7ff]/50 focus:ring-offset-2 focus:ring-offset-[#131313] shadow-lg"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
-            <ShieldCheck size={16} />
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+            <ShieldCheck size={14} />
           </span>
           <span className="pr-1 text-sm font-mono font-bold text-[#e5e2e1] group-hover:text-white transition-colors">
             {shortAddress}
@@ -166,11 +165,8 @@ export default function ConnectWalletButton() {
     <>
       <button 
         onClick={() => setIsModalOpen(true)}
-        className="group relative flex min-h-[42px] items-center justify-center gap-2.5 rounded-full border border-white/[0.12] bg-[#1c1b1b] px-2.5 py-1.5 pr-4 text-white transition-all duration-200 hover:bg-[#252424] hover:border-[#ddb7ff]/50 hover:shadow-[0_0_20px_rgba(183,109,255,0.2)] focus:outline-none focus:ring-2 focus:ring-[#ddb7ff]/50 focus:ring-offset-2 focus:ring-offset-[#131313] disabled:pointer-events-none disabled:opacity-50"
+        className="group relative flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-[#1c1b1b] px-4 py-1.5 text-white transition-all duration-200 hover:bg-[#252424] hover:border-[#ddb7ff]/50 hover:shadow-[0_0_20px_rgba(183,109,255,0.2)] focus:outline-none focus:ring-2 focus:ring-[#ddb7ff]/50 focus:ring-offset-2 focus:ring-offset-[#131313] disabled:pointer-events-none disabled:opacity-50"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ddb7ff]/15 border border-[#ddb7ff]/30 text-[#ddb7ff] group-hover:bg-[#ddb7ff] group-hover:text-[#131313] transition-all duration-200">
-          <Logo className="h-4 w-4" />
-        </span>
         <span className="text-sm font-bold tracking-tight text-white group-hover:text-[#ddb7ff] transition-colors">
           Connect wallet
         </span>
