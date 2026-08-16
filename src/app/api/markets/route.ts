@@ -4,6 +4,8 @@ import { getIndexedMarkets } from '@/lib/indexed-markets';
 
 export const dynamic = 'force-dynamic';
 
+const CHAIN_FALLBACK_LIMIT = 24;
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const limit = Math.min(Math.max(Number(url.searchParams.get('limit') ?? 160), 1), 300);
@@ -17,10 +19,16 @@ export async function GET(req: Request) {
       const indexed = await getIndexedMarkets(limit, offset);
       markets = indexed.length > 0
         ? indexed.map(serializeMarket)
-        : (await getMarketsFromChain(false, { limit, offset })).map(serializeMarket);
+        : (await getMarketsFromChain(false, {
+            limit: Math.min(limit, CHAIN_FALLBACK_LIMIT),
+            offset,
+          })).map(serializeMarket);
     } catch (indexError) {
       console.warn('[/api/markets] index unavailable; falling back to chain:', indexError);
-      markets = (await getMarketsFromChain(false, { limit, offset })).map(serializeMarket);
+      markets = (await getMarketsFromChain(false, {
+        limit: Math.min(limit, CHAIN_FALLBACK_LIMIT),
+        offset,
+      })).map(serializeMarket);
     }
     return NextResponse.json({ markets });
   } catch (error) {

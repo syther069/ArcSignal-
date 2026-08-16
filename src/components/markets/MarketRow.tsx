@@ -3,9 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { formatUnits } from 'viem';
-import { useReadContract } from 'wagmi';
 import { ArrowUpRight, Check, Clock3, HelpCircle, Sparkles, X } from 'lucide-react';
-import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import type { SerializableMarket } from '@/lib/markets';
 import { CountdownTimer } from './CountdownTimer';
 
@@ -33,17 +31,11 @@ function getTimeframe(marketId: string) {
 export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
   const [showTooltip, setShowTooltip] = useState(false);
 
-  const { data } = useReadContract({
-    address: ARCSIGNAL_ADDRESS,
-    abi: ARCSIGNAL_ABI,
-    functionName: 'getMarket',
-    args: [market.marketId],
-    query: { enabled: market.marketId.length > 0, staleTime: 10_000, refetchInterval: 15_000 },
-  });
-
-  const chainMarket = data as { followPool?: bigint; fadePool?: bigint } | undefined;
-  const followPool = chainMarket?.followPool ?? asRawUsdc(market.followPool);
-  const fadePool = chainMarket?.fadePool ?? asRawUsdc(market.fadePool);
+  // Pool values are loaded by the server-side market index/chain fallback.
+  // Reading every market again from the browser created one RPC request per
+  // row and exhausted ARC's public RPC rate limit on the markets page.
+  const followPool = asRawUsdc(market.followPool);
+  const fadePool = asRawUsdc(market.fadePool);
   const totalPool = followPool + fadePool;
 
   const followShare = totalPool > 0n ? Number((followPool * 1000n) / totalPool) / 10 : 50;

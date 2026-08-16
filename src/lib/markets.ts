@@ -37,8 +37,11 @@ export function clearMarketCache() {
 const MARKET_CACHE_TTL_MS = 60_000;
 const MARKET_RPC_TIMEOUT_MS = 8_000;
 const DEFAULT_MARKET_PAGE_SIZE = 60;
-const MARKET_READ_CONCURRENCY = 2;
-const MARKET_READ_STAGGER_MS = 90;
+const MARKET_READ_CONCURRENCY = 1;
+const MARKET_RPC_MIN_INTERVAL_MS = 1_050;
+const MARKET_RPC_RETRY_BASE_MS = 1_200;
+
+let lastMarketRpcRequestAt = 0;
 
 async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   let timeout: ReturnType<typeof setTimeout>;
@@ -81,6 +84,17 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function waitForMarketRpcSlot() {
+  const waitMs = Math.max(0, MARKET_RPC_MIN_INTERVAL_MS - (Date.now() - lastMarketRpcRequestAt));
+  if (waitMs > 0) await sleep(waitMs);
+  lastMarketRpcRequestAt = Date.now();
+}
+
+function isRateLimitError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /429|too many requests|request limit|rate limit/i.test(message);
+}
+
 async function mapWithConcurrency<T, R>(
   items: T[],
   concurrency: number,
@@ -93,7 +107,6 @@ async function mapWithConcurrency<T, R>(
     while (cursor < items.length) {
       const index = cursor++;
       try {
-        if (index > 0) await sleep(MARKET_READ_STAGGER_MS);
         results[index] = { status: 'fulfilled', value: await mapper(items[index], index) };
       } catch (reason) {
         results[index] = { status: 'rejected', reason };
@@ -115,14 +128,27 @@ async function readContractWithRetry<T>(
 ): Promise<T> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
+      await waitForMarketRpcSlot();
       return await withTimeout(read(), timeoutMs, label);
     } catch (err) {
       if (attempt === 2) throw err;
-      await sleep(250 * (attempt + 1));
+      await sleep(isRateLimitError(err) ? MARKET_RPC_RETRY_BASE_MS * (attempt + 1) : 300 * (attempt + 1));
     }
   }
 
   throw new Error(`Failed to read ${label}`);
+}
+
+async function fetchAllMarketIds(): Promise<string[]> {
+  return readContractWithRetry(
+    'getAllMarketIds',
+    () => publicClient.readContract({
+      address: ARCSIGNAL_ADDRESS as Address,
+      abi: ARCSIGNAL_ABI,
+      functionName: 'getAllMarketIds',
+    }) as Promise<string[]>,
+    6_000
+  );
 }
 
 async function fetchMarketIdByIndex(index: bigint): Promise<string> {
@@ -174,34 +200,43 @@ export async function getMarketsFromChain(
   }
 
   try {
-    const marketCount = await readContractWithRetry(
-      'getMarketCount',
-      () => publicClient.readContract({
-        address: ARCSIGNAL_ADDRESS as Address,
-        abi: ARCSIGNAL_ABI,
-        functionName: 'getMarketCount',
-      }) as Promise<bigint>
-    );
-
-    if (marketCount === 0n) return [];
-
     const nowUnix = Math.floor(Date.now() / 1000);
-    const startIndex = Number(marketCount) - 1 - offset;
-    if (startIndex < 0) return [];
+    let targetIds: string[];
 
-    const indexes = Array.from(
-      { length: Math.min(limit, startIndex + 1) },
-      (_, i) => BigInt(startIndex - i)
-    );
+    try {
+      // One ID read avoids one RPC request per market before the market data
+      // reads begin. This matters on ARC's public endpoint, which is heavily
+      // rate limited.
+      const allMarketIds = await fetchAllMarketIds();
+      targetIds = allMarketIds.slice().reverse().slice(offset, offset + limit);
+    } catch (allIdsError) {
+      console.warn('Bulk market ID read unavailable; falling back to indexed IDs:', allIdsError);
+      const marketCount = await readContractWithRetry(
+        'getMarketCount',
+        () => publicClient.readContract({
+          address: ARCSIGNAL_ADDRESS as Address,
+          abi: ARCSIGNAL_ABI,
+          functionName: 'getMarketCount',
+        }) as Promise<bigint>
+      );
 
-    const idResults = await mapWithConcurrency(
-      indexes,
-      MARKET_READ_CONCURRENCY,
-      (index) => fetchMarketIdByIndex(index)
-    );
-    const targetIds = idResults
-      .filter((res): res is PromiseFulfilledResult<string> => res.status === 'fulfilled')
-      .map((res) => res.value);
+      const startIndex = Number(marketCount) - 1 - offset;
+      if (startIndex < 0) return [];
+
+      const indexes = Array.from(
+        { length: Math.min(limit, startIndex + 1) },
+        (_, i) => BigInt(startIndex - i)
+      );
+      const idResults = await mapWithConcurrency(
+        indexes,
+        MARKET_READ_CONCURRENCY,
+        (index) => fetchMarketIdByIndex(index)
+      );
+      targetIds = idResults
+        .filter((res): res is PromiseFulfilledResult<string> => res.status === 'fulfilled')
+        .map((res) => res.value);
+    }
+
     const markets: Market[] = [];
 
     const marketResults = await mapWithConcurrency(

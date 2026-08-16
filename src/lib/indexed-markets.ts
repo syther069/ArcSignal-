@@ -1,6 +1,8 @@
 import { getSql } from './db';
 import type { Market } from './types';
 
+const MARKET_INDEX_TIMEOUT_MS = 6_000;
+
 function parseAnalysis(value: unknown) {
   if (!value) return undefined;
   if (typeof value === 'object') return value as Market['analysis'];
@@ -29,13 +31,22 @@ function mapStatus(row: Record<string, unknown>, nowUnix: number): Market['statu
 
 export async function getIndexedMarkets(limit: number, offset: number): Promise<Market[]> {
   const sql = getSql();
-  const rows = await sql`
+  const query = sql`
     select market_id, category, question, analysis_json, resolution_time,
            follow_pool, fade_pool, resolved, outcome, status
     from markets_index
     order by resolution_time desc
     limit ${limit} offset ${offset}
   `;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`Market index query timed out after ${MARKET_INDEX_TIMEOUT_MS}ms`)),
+        MARKET_INDEX_TIMEOUT_MS,
+      );
+    });
+    const rows = await Promise.race([query, timeout]);
   const nowUnix = Math.floor(Date.now() / 1000);
 
   return rows.map((row) => {
@@ -54,7 +65,10 @@ export async function getIndexedMarkets(limit: number, offset: number): Promise<
       analysis: parseAnalysis(row.analysis_json),
       resolutionReason: resolved
         ? outcome === 0 ? 'Market voided; eligible stakes may be refunded.' : 'Resolved on-chain.'
-        : undefined,
+      : undefined,
     };
   });
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
