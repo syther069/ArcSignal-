@@ -14,7 +14,7 @@ export const runtime = 'nodejs';
 const CONTRACT_ADDRESS = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as Address;
 
 // Use env RPC or fallback
-const RPC_URL = process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network';
+const RPC_URL = process.env.ARC_RPC_URL ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network';
 
 const resolvePublicClient = createPublicClient({
   chain: arcTestnet,

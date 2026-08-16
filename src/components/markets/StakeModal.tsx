@@ -292,7 +292,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         throw new Error('Stake transaction failed on-chain. The market may be closed or you may have insufficient USDC.');
       }
 
-      await fetch(`/api/markets/${market.marketId}/vote`, {
+      const voteResponse = await fetch(`/api/markets/${market.marketId}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -302,6 +302,23 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
           txHash: stakeHash,
         }),
       });
+
+      // Keep the confirmed transaction available to PortfolioClient for an
+      // immediate receipt-based read while the database index catches up.
+      try {
+        const pending = JSON.parse(localStorage.getItem('arcsignal:portfolio:pending-stakes') ?? '[]') as Array<Record<string, string>>;
+        const next = [
+          ...pending.filter((item) => item.txHash !== stakeHash),
+          { address: address.toLowerCase(), marketId: market.marketId, txHash: stakeHash, createdAt: String(Date.now()) },
+        ].slice(-5);
+        localStorage.setItem('arcsignal:portfolio:pending-stakes', JSON.stringify(next));
+      } catch {
+        // Local storage is an optimization; the on-chain transaction remains authoritative.
+      }
+
+      if (!voteResponse.ok) {
+        console.warn('Immediate portfolio indexing response was not successful:', await voteResponse.text());
+      }
 
       clearMarketCache();
       setTxHash(stakeHash);

@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const RPC_URL = process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network';
+const RPC_URL = process.env.ARC_RPC_URL ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network';
 // Keep each request moderate for ARC RPC, while allowing the external cron to
 // make useful progress during the initial historical catch-up.
 const CHUNK_SIZE = BigInt(process.env.INDEX_CHUNK_SIZE ?? '2000');

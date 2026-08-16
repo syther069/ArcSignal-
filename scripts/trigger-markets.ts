@@ -9,7 +9,7 @@ import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '../src/lib/contrac
 import { fetchCryptoMarkets } from '../src/lib/coingecko';
 import { generateCryptoAnalysis } from '../src/lib/gemini';
 
-const RPC_URL = process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network';
+const RPC_URL = process.env.ARC_RPC_URL ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network';
 const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDRESS || ARCSIGNAL_ADDRESS) as Address;
 
 const publicClient = createPublicClient({

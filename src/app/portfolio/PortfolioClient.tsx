@@ -45,6 +45,8 @@ const BLOCK_CACHE_PREFIX = 'arcsignal:portfolio:last-block:';
 const CONTRACT_DEPLOY_BLOCK = 50_012_000n;
 const LOG_CHUNK_SIZE = 2_000n;
 const MAX_FALLBACK_BLOCKS = 100_000n;
+const PENDING_STAKES_KEY = 'arcsignal:portfolio:pending-stakes';
+type PendingStake = { address: string; marketId: string; txHash: string; createdAt: string };
 
 function cachedMarketIds(address: string): string[] {
   try {
@@ -100,11 +102,32 @@ export default function PortfolioClient() {
       return;
     }
 
-    // Neon is the fast read model. Server-side API also has instant on-chain fallback.
+    let pendingStake: PendingStake | null = null;
     try {
-      const indexedResponse = await fetch(`/api/portfolio?address=${address}`, { cache: 'no-store' });
+      const pending = JSON.parse(localStorage.getItem(PENDING_STAKES_KEY) ?? '[]') as Array<Partial<PendingStake>>;
+      const candidate = pending.find((item): item is PendingStake =>
+        typeof item.address === 'string'
+        && item.address.toLowerCase() === address.toLowerCase()
+        && typeof item.marketId === 'string'
+        && typeof item.txHash === 'string'
+        && typeof item.createdAt === 'string'
+        && Date.now() - Number(item.createdAt) < 30 * 60 * 1000
+      );
+      pendingStake = candidate ?? null;
+    } catch {
+      pendingStake = null;
+    }
+
+    // Neon is the fast read model. A pending transaction uses the confirmed
+    // receipt directly so the UI does not wait for the background indexer.
+    try {
+      const query = new URLSearchParams({ address });
+      if (pendingStake?.txHash) query.set('txHash', pendingStake.txHash);
+      const indexedResponse = await fetch(`/api/portfolio?${query.toString()}`, { cache: 'no-store' });
       if (indexedResponse.ok) {
         const indexed = (await indexedResponse.json()) as {
+          source?: string;
+          complete?: boolean;
           positions?: Array<{
             marketId: string;
             side: 0 | 1;
@@ -131,8 +154,7 @@ export default function PortfolioClient() {
         };
 
         if (Array.isArray(indexed.positions)) {
-          setPositions(
-            indexed.positions.map((position) => ({
+          const mappedPositions = indexed.positions.map((position) => ({
               ...position,
               stakeRaw: BigInt(position.stakeRaw),
               market: {
@@ -144,9 +166,37 @@ export default function PortfolioClient() {
                 status: position.market.resolved ? (position.market.outcome === 0 ? 'CANCELLED' : 'RESOLVED') : 'OPEN',
               },
               isCancelled: position.isResolved && position.outcome === 0,
-            } as Position))
-          );
-          hasLoadedRef.current = true;
+            } as Position));
+
+          if (pendingStake && mappedPositions.some((position) => position.market.marketId === pendingStake?.marketId)) {
+            try {
+              const pending = JSON.parse(localStorage.getItem(PENDING_STAKES_KEY) ?? '[]') as Array<{ txHash?: string }>;
+              localStorage.setItem(PENDING_STAKES_KEY, JSON.stringify(pending.filter((item) => item.txHash !== pendingStake?.txHash)));
+            } catch {
+              // Ignore storage cleanup failures.
+            }
+          }
+
+          // An explicitly complete empty response is authoritative. If the
+          // server reports an incomplete chain scan, preserve the current view
+          // and let the polling effect retry instead of displaying false zeroes.
+          if (mappedPositions.length > 0 || indexed.complete !== false || indexed.source === 'neon') {
+            setPositions(mappedPositions);
+            hasLoadedRef.current = true;
+            setLoading(false);
+            return;
+          }
+
+          // Keep the current view while the server retries an incomplete read.
+          // The polling effect below will retry without launching a large
+          // client-side scan across every market.
+          setLoading(false);
+          return;
+        }
+
+        if (pendingStake) {
+          // The transaction may still be propagating to the server RPC.
+          // Retry with the same receipt on the next polling cycle.
           setLoading(false);
           return;
         }
@@ -244,6 +294,13 @@ export default function PortfolioClient() {
 
   useEffect(() => {
     fetchPortfolio();
+  }, [fetchPortfolio]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void fetchPortfolio();
+    }, 10_000);
+    return () => window.clearInterval(timer);
   }, [fetchPortfolio]);
 
   useEffect(() => {

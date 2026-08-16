@@ -7,7 +7,7 @@ dotenv.config({ path: '.env.local' });
 const OLD_CONTRACT = '0x1321B81F0608A7166062d6AcABC2b64646D80bC1' as Address;
 const NEW_CONTRACT = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as Address;
 
-const RPC_URL = process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network';
+const RPC_URL = process.env.ARC_RPC_URL ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network';
 const privateKey = process.env.RESOLVER_PRIVATE_KEY;
 
 if (!privateKey) {

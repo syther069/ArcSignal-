@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
 import { publicClient, ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
 import { getMarketsFromChain } from '@/lib/markets';
-import { formatUnits } from 'viem';
+import { decodeEventLog, formatUnits, type Address } from 'viem';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,9 +10,133 @@ function isAddress(value: string) {
   return /^0x[a-fA-F0-9]{40}$/.test(value);
 }
 
+type ChainMarket = {
+  marketId: string;
+  category: string;
+  question: string;
+  resolutionTime: bigint;
+  followPool: bigint;
+  fadePool: bigint;
+  resolved: boolean;
+  outcome: number;
+};
+
+function positionFromChain(
+  market: ChainMarket,
+  side: 0 | 1,
+  stakeRaw: bigint,
+  claimed: boolean,
+) {
+  const outcome = Number(market.outcome);
+  const winningSide = outcome === 1 ? 0 : outcome === 2 ? 1 : -1;
+  const stakeUsdc = Number(formatUnits(stakeRaw, 6));
+  const userWon = market.resolved && winningSide >= 0 ? side === winningSide : null;
+  let payout = 0;
+  let netPnl = 0;
+
+  if (market.resolved && userWon) {
+    const winPool = winningSide === 0 ? market.followPool : market.fadePool;
+    const losePool = winningSide === 0 ? market.fadePool : market.followPool;
+    payout = stakeUsdc + (stakeUsdc * Number(losePool)) / Number(winPool || 1n);
+    netPnl = payout - stakeUsdc;
+  } else if (market.resolved && userWon === false) {
+    netPnl = -stakeUsdc;
+  }
+
+  const status = market.resolved
+    ? outcome === 0 ? 'VOIDED' : 'RESOLVED'
+    : 'OPEN';
+
+  return {
+    marketId: market.marketId,
+    side,
+    stakeRaw: String(stakeRaw),
+    stakeUsdc,
+    claimed,
+    isResolved: market.resolved,
+    outcome,
+    status,
+    userWon,
+    payout,
+    netPnl,
+    market: {
+      marketId: market.marketId,
+      category: market.category === 'FOOTBALL' ? 'FOOTBALL' : 'CRYPTO',
+      question: market.question,
+      resolutionTime: Number(market.resolutionTime),
+      followPool: String(market.followPool),
+      fadePool: String(market.fadePool),
+      resolved: market.resolved,
+      outcome,
+      status,
+    },
+  };
+}
+
+async function readPositionFromTransaction(txHash: string, address: string) {
+  const receipt = await publicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
+  if (receipt.status !== 'success' || receipt.to?.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) {
+    throw new Error('The stake transaction is not confirmed successfully on the ArcSignal contract.');
+  }
+
+  const stakedLog = receipt.logs.find((log) => {
+    try {
+      const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: log.data, topics: log.topics });
+      if (decoded.eventName !== 'Staked') return false;
+      const args = decoded.args as { marketId?: string; user?: string };
+      return args.user?.toLowerCase() === address.toLowerCase();
+    } catch {
+      return false;
+    }
+  });
+
+  if (!stakedLog) throw new Error('No matching stake event was found in the transaction.');
+
+  const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: stakedLog.data, topics: stakedLog.topics });
+  const args = decoded.args as { marketId: string; user: Address; side: number; amount: bigint };
+  const market = await publicClient.readContract({
+    address: ARCSIGNAL_ADDRESS,
+    abi: ARCSIGNAL_ABI,
+    functionName: 'getMarket',
+    args: [args.marketId],
+  }) as ChainMarket;
+  const side = Number(args.side) as 0 | 1;
+  const claimed = market.resolved
+    ? await publicClient.readContract({
+        address: ARCSIGNAL_ADDRESS,
+        abi: ARCSIGNAL_ABI,
+        functionName: 'claimed',
+        args: [args.marketId, address as Address],
+      }) as boolean
+    : false;
+
+  return positionFromChain(market, side, args.amount, claimed);
+}
+
 export async function GET(req: Request) {
-  const address = new URL(req.url).searchParams.get('address') ?? '';
+  const url = new URL(req.url);
+  const address = url.searchParams.get('address') ?? '';
   if (!isAddress(address)) return NextResponse.json({ error: 'Valid wallet address is required' }, { status: 400 });
+
+  // A freshly confirmed trade can arrive before Neon/background indexing. Read
+  // the receipt directly when the client supplies the transaction hash so the
+  // portfolio does not briefly show a false empty state.
+  const txHash = url.searchParams.get('txHash')?.trim();
+  if (txHash) {
+    if (!/^0x[a-fA-F0-9]{64}$/.test(txHash)) {
+      return NextResponse.json({ error: 'Valid transaction hash is required' }, { status: 400 });
+    }
+    try {
+      const position = await readPositionFromTransaction(txHash, address);
+      return NextResponse.json({ source: 'onchain', complete: true, positions: [position], txHash });
+    } catch (error) {
+      return NextResponse.json({
+        source: 'onchain',
+        complete: false,
+        error: error instanceof Error ? error.message : 'Trade is not available yet',
+      }, { status: 409 });
+    }
+  }
 
   // 1. Try Neon DB index first
   try {
@@ -90,9 +214,15 @@ export async function GET(req: Request) {
   try {
     const chainMarkets = await getMarketsFromChain();
     if (!chainMarkets || chainMarkets.length === 0) {
-      return NextResponse.json({ source: 'chain', positions: [] });
+      return NextResponse.json({
+        source: 'chain',
+        complete: false,
+        positions: [],
+        error: 'No chain markets were available for this read',
+      });
     }
 
+    let failedReads = 0;
     const stakeReads = await Promise.all(
       chainMarkets.map(async (m) => {
         try {
@@ -175,15 +305,26 @@ export async function GET(req: Request) {
 
           return positionsForMarket;
         } catch {
+          failedReads += 1;
           return null;
         }
       })
     );
 
     const flatPositions = stakeReads.filter(Boolean).flat();
-    return NextResponse.json({ source: 'chain', positions: flatPositions });
+    return NextResponse.json({
+      source: 'chain',
+      complete: failedReads === 0,
+      failedReads,
+      positions: flatPositions,
+    });
   } catch (chainErr) {
     console.error('Server-side chain portfolio query failed:', chainErr);
-    return NextResponse.json({ source: 'fallback', positions: [] });
+    return NextResponse.json({
+      source: 'fallback',
+      complete: false,
+      positions: [],
+      error: 'Portfolio chain read is temporarily unavailable',
+    }, { status: 503 });
   }
 }

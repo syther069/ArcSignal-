@@ -1,6 +1,12 @@
 import { createPublicClient, http, parseAbi } from 'viem';
 
 const fallbackArcChainId = 5042002;
+const browserRpcUrl =
+  process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ??
+  'https://rpc.testnet.arc.network';
+const serverRpcUrl =
+  process.env.ARC_RPC_URL ??
+  browserRpcUrl;
 
 export const arcTestnet = {
   id: Number(process.env.NEXT_PUBLIC_ARC_TESTNET_CHAIN_ID ?? fallbackArcChainId),
@@ -8,8 +14,8 @@ export const arcTestnet = {
   network: 'arc-testnet',
   nativeCurrency: { name: 'ARC', symbol: 'ARC', decimals: 18 },
   rpcUrls: {
-    default: { http: [process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network'] },
-    public: { http: [process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network'] },
+    default: { http: [browserRpcUrl] },
+    public: { http: [browserRpcUrl] },
   },
   blockExplorers: {
     default: { name: 'ARC Explorer', url: 'https://testnet.arcscan.app' },
@@ -19,7 +25,7 @@ export const arcTestnet = {
 
 export const publicClient = createPublicClient({
   chain: arcTestnet,
-  transport: http(process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network', {
+  transport: http(serverRpcUrl, {
     retryCount: 2,
     retryDelay: 200,
     fetchOptions: {
