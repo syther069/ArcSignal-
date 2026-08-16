@@ -268,20 +268,19 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
     const localUrl = URL.createObjectURL(file);
     setAvatarPreview(localUrl);
 
-    // Upload to imgbb for a permanent public URL
+    // Upload via server proxy endpoint
     setIsUploading(true);
     try {
       const formData = new FormData();
       formData.append('image', file);
-      // Public free imgbb API key (no account required for basic uploads)
-      const res = await fetch('https://api.imgbb.com/1/upload?key=2c45e0f5e98e44a1de5d7c1c2e7fc870', {
+      const res = await fetch('/api/profile/upload', {
         method: 'POST',
         body: formData,
       });
       const json = await res.json();
-      if (json.success) {
-        setEditForm(f => ({ ...f, avatarUrl: json.data.url }));
-        setAvatarPreview(json.data.url);
+      if (json.success && json.url) {
+        setEditForm(f => ({ ...f, avatarUrl: json.url }));
+        setAvatarPreview(json.url);
       }
     } catch (err) {
       console.error('Upload failed, keeping local preview', err);

@@ -75,9 +75,12 @@ export default function WorldCupClient({ upcomingFixtures, liveMatches, football
             UPCOMING FIXTURES
           </h2>
           {upcomingFixtures.length === 0 ? (
-            <div className="glass-card p-8 text-center">
-              <span className="material-symbols-outlined text-4xl text-slate-600 block mb-3">sports_soccer</span>
-              <p className="font-mono text-slate-500 text-sm">No upcoming fixtures available. Configure API_FOOTBALL_KEY to fetch live World Cup data.</p>
+            <div className="glass-card p-8 text-center border-sky-500/10 bg-sky-950/10">
+              <span className="material-symbols-outlined text-4xl text-[#38bdf8] block mb-3">sports_soccer</span>
+              <h3 className="font-bold text-white text-base mb-1">World Cup Tournament Markets Open June 2026</h3>
+              <p className="font-mono text-slate-400 text-xs max-w-md mx-auto">
+                AI sports forecasting engine monitors global international fixtures and major European tournament qualifiers. Fixture feeds populate automatically when matches are active.
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

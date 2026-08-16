@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { Market, Stake } from '@/types';
 
@@ -15,27 +15,93 @@ export default function LiveActivityPanel() {
   const [recentActivity, setRecentActivity] = useState<Stake[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-
-      try {
-        const response = await fetch('/api/markets');
-        const payload = await response.json();
+  const fetchData = useCallback(async () => {
+    try {
+      // 1. Fetch Market Pulse
+      const marketRes = await fetch('/api/markets');
+      if (marketRes.ok) {
+        const payload = await marketRes.json();
         setMarketPulse((payload.markets ?? []).slice(0, 3));
-        setPositions([]);
-        setRecentActivity([]);
-      } catch (err) {
-        console.error('Error fetching activity panel data', err);
-      } finally {
-        setLoading(false);
       }
-    }
 
+      // 2. Fetch User Positions if connected
+      if (isConnected && address) {
+        try {
+          const portfolioRes = await fetch(`/api/portfolio?address=${address}`);
+          if (portfolioRes.ok) {
+            const portfolioData = await portfolioRes.json();
+            if (portfolioData.positions) {
+              const mappedPositions: PositionWithMarket[] = portfolioData.positions.map((p: any) => ({
+                id: `${p.marketId}-${p.side}`,
+                marketId: p.marketId,
+                walletAddress: address,
+                side: p.side,
+                amountUsdc: p.stakeUsdc,
+                timestamp: Math.floor(Date.now() / 1000),
+                claimed: p.claimed,
+                pnl: p.netPnl,
+                market: {
+                  marketId: p.market?.marketId || p.marketId,
+                  title: p.market?.question || p.marketId,
+                  category: p.market?.category || 'CRYPTO',
+                  question: p.market?.question || p.marketId,
+                  analysis: {
+                    recommendation: 'FOLLOW',
+                    confidenceScore: 75,
+                    reasoning: '',
+                    summary: '',
+                    keyDrivers: [],
+                  },
+                  resolutionTime: p.market?.resolutionTime || 0,
+                  followPool: Number(p.market?.followPool ?? 0) / 1e6,
+                  fadePool: Number(p.market?.fadePool ?? 0) / 1e6,
+                  resolved: Boolean(p.market?.resolved),
+                  outcome: p.market?.outcome === 1 ? 'FOLLOW' : p.market?.outcome === 2 ? 'FADE' : undefined,
+                  status: p.market?.status || 'OPEN',
+                },
+              }));
+              setPositions(mappedPositions);
+            }
+          }
+        } catch (portErr) {
+          console.error('Failed to fetch portfolio for activity panel:', portErr);
+        }
+      } else {
+        setPositions([]);
+      }
+
+      // 3. Fetch Recent Activity Feed
+      try {
+        const actRes = await fetch('/api/activity');
+        if (actRes.ok) {
+          const actData = await actRes.json();
+          if (actData.activities) {
+            const mappedActivity: Stake[] = actData.activities.map((a: any) => ({
+              id: a.id,
+              marketId: a.marketId,
+              walletAddress: a.walletAddress,
+              side: a.side,
+              amountUsdc: a.amountUsdc,
+              timestamp: a.timestamp || Math.floor(Date.now() / 1000),
+            }));
+            setRecentActivity(mappedActivity);
+          }
+        }
+      } catch (actErr) {
+        console.error('Failed to fetch recent activity:', actErr);
+      }
+    } catch (err) {
+      console.error('Error fetching activity panel data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [address, isConnected]);
+
+  useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 10000);
     return () => clearInterval(interval);
-  }, [isConnected, address]);
+  }, [fetchData]);
 
   return (
     <aside className="w-[380px] shrink-0 sticky top-24 h-[calc(100vh-96px)] overflow-y-auto pr-4 pb-8 space-y-6 hidden xl:block custom-scrollbar">

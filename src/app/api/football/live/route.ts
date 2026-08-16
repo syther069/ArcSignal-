@@ -8,6 +8,9 @@ export async function GET() {
     const liveMatches = await fetchLiveMatches();
     return NextResponse.json({ matches: liveMatches });
   } catch (err) {
-    return NextResponse.json({ matches: [] });
+    return NextResponse.json(
+      { error: 'Failed to fetch live matches', matches: [], fallback: true },
+      { status: 503 }
+    );
   }
 }

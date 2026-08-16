@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
     "trigger": "npx tsx scripts/trigger-markets.ts",
     "generate": "npx tsx scripts/trigger-markets.ts",
     "resolve": "npx tsx scripts/run-resolve.ts",
@@ -43,6 +44,7 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.35",
     "postcss": "8.4.39",
-    "solc": "^0.8.35"
+    "solc": "^0.8.35",
+    "vitest": "^4.1.10"
   }
 }

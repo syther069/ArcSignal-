@@ -75,7 +75,7 @@ export default async function LeaderboardPage() {
         if (a.totalPredictions > 0 && b.totalPredictions > 0) {
           if (b.winRate !== a.winRate) return b.winRate - a.winRate;
         }
-        return b.totalStaked > a.totalStaked ? 1 : -1;
+        return b.totalStaked > a.totalStaked ? -1 : b.totalStaked < a.totalStaked ? 1 : 0;
       })
       .slice(0, 20);
   } catch (error) {

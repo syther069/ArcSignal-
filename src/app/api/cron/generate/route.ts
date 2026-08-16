@@ -54,15 +54,8 @@ export async function POST(req: Request) {
     try {
       cryptoMarkets = await fetchCryptoMarkets();
     } catch (e) {
-      console.warn('CoinGecko fetch failed, using fallback live market prices', e);
-      cryptoMarkets = [
-        { id: 'bitcoin', symbol: 'btc', current_price: 64400, price_change_percentage_24h: 1.2, market_cap: 1200000000000, total_volume: 25000000000, high_24h: 65000, low_24h: 63800 },
-        { id: 'ethereum', symbol: 'eth', current_price: 1905, price_change_percentage_24h: 0.8, market_cap: 230000000000, total_volume: 12000000000, high_24h: 1930, low_24h: 1880 },
-        { id: 'solana', symbol: 'sol', current_price: 73.2, price_change_percentage_24h: 2.1, market_cap: 34000000000, total_volume: 2100000000, high_24h: 75, low_24h: 71.5 },
-        { id: 'ripple', symbol: 'xrp', current_price: 1.05, price_change_percentage_24h: -0.5, market_cap: 58000000000, total_volume: 1800000000, high_24h: 1.08, low_24h: 1.02 },
-        { id: 'sui', symbol: 'sui', current_price: 0.675, price_change_percentage_24h: 3.4, market_cap: 1800000000, total_volume: 450000000, high_24h: 0.71, low_24h: 0.65 },
-        { id: 'avalanche-2', symbol: 'avax', current_price: 6.42, price_change_percentage_24h: 1.1, market_cap: 2600000000, total_volume: 280000000, high_24h: 6.7, low_24h: 6.2 },
-      ];
+      console.error('All live crypto price feeds failed:', e);
+      throw new Error(`Live price feeds unavailable across all providers: ${e instanceof Error ? e.message : String(e)}`);
     }
 
     const marketsBySymbol = new Map(
@@ -229,56 +222,56 @@ export async function POST(req: Request) {
       }
     }
   } catch (err) {
-    errors.push(`[CRYPTO] CoinGecko fetch failed: ${err instanceof Error ? err.message : String(err)}`);
+    errors.push(`[CRYPTO] Price fetch failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   // FOOTBALL MARKETS
-  /*
   try {
-    const wcFixtures = await fetchUpcomingFixtures([1], 2026);
-    const fixtures = wcFixtures.length >= 3 ? wcFixtures : await fetchUpcomingFixtures();
-    const selected = fixtures.slice(0, 6);
+    if (process.env.API_FOOTBALL_KEY) {
+      const wcFixtures = await fetchUpcomingFixtures([1], 2026).catch(() => []);
+      const fixtures = wcFixtures.length >= 3 ? wcFixtures : await fetchUpcomingFixtures().catch(() => []);
+      const selected = fixtures.slice(0, 4);
 
-    for (const fixture of selected) {
-      const resolutionUnix = fixture.kickoffTime + 9000;
-      const hoursFromNow = Math.max(1, Math.ceil((resolutionUnix - Date.now() / 1000) / 3600));
-      const resolutionTime = resolutionTimestamp(hoursFromNow);
-      const kickoffLabel = new Date(fixture.kickoffTime * 1000).toUTCString();
-      const question = `Will ${fixture.homeTeam} beat ${fixture.awayTeam} on ${kickoffLabel}?`;
-      const marketId = `MATCH-${fixture.fixtureId}-${now}`;
+      for (const fixture of selected) {
+        const resolutionUnix = fixture.kickoffTime + 9000;
+        const hoursFromNow = Math.max(1, Math.ceil((resolutionUnix - Date.now() / 1000) / 3600));
+        const resolutionTime = resolutionTimestamp(hoursFromNow);
+        const kickoffLabel = new Date(fixture.kickoffTime * 1000).toUTCString();
+        const question = `Will ${fixture.homeTeam} beat ${fixture.awayTeam} on ${kickoffLabel}?`;
+        const marketId = `MATCH-${fixture.fixtureId}-${now}`;
 
-      try {
-        const analysis = await generateFootballAnalysis({
-          question,
-          resolutionCriteria: `Resolves YES if ${fixture.homeTeam} wins at full time. Resolves NO if draw or ${fixture.awayTeam} wins.`,
-          matchTime: kickoffLabel,
-          fixtureData: {
-            fixtureId: fixture.fixtureId,
-            homeTeam: fixture.homeTeam,
-            awayTeam: fixture.awayTeam,
-            kickoffTime: kickoffLabel,
-            round: fixture.round,
-            leagueName: fixture.leagueName,
-          },
-        });
+        try {
+          const analysis = await generateFootballAnalysis({
+            question,
+            resolutionCriteria: `Resolves YES if ${fixture.homeTeam} wins at full time. Resolves NO if draw or ${fixture.awayTeam} wins.`,
+            matchTime: kickoffLabel,
+            fixtureData: {
+              fixtureId: fixture.fixtureId,
+              homeTeam: fixture.homeTeam,
+              awayTeam: fixture.awayTeam,
+              kickoffTime: kickoffLabel,
+              round: fixture.round,
+              leagueName: fixture.leagueName,
+            },
+          });
 
-        const hash = await walletClient.writeContract({
-          address: CONTRACT_ADDRESS,
-          abi: ARCSIGNAL_ABI,
-          functionName: 'createMarket',
-          args: [marketId, 'FOOTBALL', question, JSON.stringify(analysis), resolutionTime],
-        });
+          const hash = await walletClient.writeContract({
+            address: CONTRACT_ADDRESS,
+            abi: ARCSIGNAL_ABI,
+            functionName: 'createMarket',
+            args: [marketId, 'FOOTBALL', question, JSON.stringify(analysis), resolutionTime],
+          });
 
-        await publicClient.waitForTransactionReceipt({ hash });
-        created.push(`[FOOTBALL] ${question}`);
-      } catch (err) {
-        errors.push(`[FOOTBALL] ${fixture.homeTeam} vs ${fixture.awayTeam}: ${err instanceof Error ? err.message : String(err)}`);
+          await publicClient.waitForTransactionReceipt({ hash });
+          created.push(`[FOOTBALL] ${question}`);
+        } catch (err) {
+          errors.push(`[FOOTBALL] ${fixture.homeTeam} vs ${fixture.awayTeam}: ${err instanceof Error ? err.message : String(err)}`);
+        }
       }
     }
   } catch (err) {
-    errors.push(`[FOOTBALL] Fixtures fetch failed: ${err instanceof Error ? err.message : String(err)}`);
+    errors.push(`[FOOTBALL] Fixtures generation skipped/failed: ${err instanceof Error ? err.message : String(err)}`);
   }
-  */
 
   return NextResponse.json({
     created,

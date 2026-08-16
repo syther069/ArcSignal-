@@ -500,7 +500,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                               {ARCSIGNAL_ADDRESS}
                             </span>
                             <a
-                              href={`https://arbiscan.io/address/${ARCSIGNAL_ADDRESS}`}
+                              href={`https://testnet.arcscan.app/address/${ARCSIGNAL_ADDRESS}`}
                               target="_blank"
                               rel="noreferrer"
                               className="text-[#ddb7ff] hover:underline"

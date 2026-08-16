@@ -127,7 +127,7 @@ export default function LandingPage() {
             <p className="text-sm text-on-surface-variant mb-8 leading-relaxed">
               Access deep-tech data streams and AI-aggregated sentiment analysis. Our engine processes petabytes of historical data to highlight statistically significant market anomalies.
             </p>
-            <Link href="/docs/engine" className="text-xs font-bold text-on-surface-variant hover:text-primary uppercase tracking-widest flex justify-between items-center">
+            <Link href="/docs" className="text-xs font-bold text-on-surface-variant hover:text-primary uppercase tracking-widest flex justify-between items-center">
               View Engine Docs <span>→</span>
             </Link>
           </div>
@@ -140,7 +140,7 @@ export default function LandingPage() {
             <p className="text-sm text-on-surface-variant mb-8 leading-relaxed">
               Deploy capital into high-conviction pools with automated risk mitigation. Our smart contracts ensure transparent settlement and non-custodial asset management.
             </p>
-            <Link href="/docs/staking" className="text-xs font-bold text-tertiary hover:text-tertiary-fixed uppercase tracking-widest flex justify-between items-center">
+            <Link href="/docs" className="text-xs font-bold text-tertiary hover:text-tertiary-fixed uppercase tracking-widest flex justify-between items-center">
               Staking Rewards <span>→</span>
             </Link>
           </div>

@@ -63,26 +63,85 @@ function assertCryptoData(value: unknown): CryptoData[] {
   });
 }
 
+async function fetchBinanceFallback(): Promise<CryptoData[]> {
+  const symbols = [
+    { id: 'bitcoin', symbol: 'btc', pair: 'BTCUSDT' },
+    { id: 'ethereum', symbol: 'eth', pair: 'ETHUSDT' },
+    { id: 'solana', symbol: 'sol', pair: 'SOLUSDT' },
+    { id: 'ripple', symbol: 'xrp', pair: 'XRPUSDT' },
+    { id: 'sui', symbol: 'sui', pair: 'SUIUSDT' },
+    { id: 'avalanche-2', symbol: 'avax', pair: 'AVAXUSDT' },
+  ];
+
+  const pairsParam = JSON.stringify(symbols.map((s) => s.pair));
+  const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbols=${encodeURIComponent(pairsParam)}`, {
+    next: { revalidate: 60 },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Binance fallback failed with status ${res.status}`);
+  }
+
+  const data = (await res.json()) as Array<{
+    symbol: string;
+    lastPrice: string;
+    priceChangePercent: string;
+    quoteVolume: string;
+    highPrice: string;
+    lowPrice: string;
+  }>;
+
+  if (!Array.isArray(data)) {
+    throw new Error('Invalid Binance ticker response');
+  }
+
+  const tickerMap = new Map(data.map((t) => [t.symbol, t]));
+
+  return symbols.map((s, idx) => {
+    const t = tickerMap.get(s.pair);
+    if (!t) throw new Error(`Missing ticker data for ${s.pair}`);
+    return {
+      id: s.id,
+      symbol: s.symbol,
+      current_price: parseFloat(t.lastPrice),
+      price_change_percentage_24h: parseFloat(t.priceChangePercent),
+      market_cap: 0,
+      market_cap_rank: idx + 1,
+      total_volume: parseFloat(t.quoteVolume),
+      high_24h: parseFloat(t.highPrice),
+      low_24h: parseFloat(t.lowPrice),
+    };
+  });
+}
+
 export async function fetchCryptoMarkets(): Promise<CryptoData[]> {
   const now = Date.now();
   if (cachedCryptoData && now - cachedAt < CACHE_TTL_MS) {
     return cachedCryptoData;
   }
 
-  const url = `${BASE_URL}/coins/markets?vs_currency=usd&ids=${MARKET_IDS}`;
-  const response = await fetch(url, {
-    headers: getHeaders(),
-    next: { revalidate: 60 },
-  });
+  try {
+    const url = `${BASE_URL}/coins/markets?vs_currency=usd&ids=${MARKET_IDS}`;
+    const response = await fetch(url, {
+      headers: getHeaders(),
+      next: { revalidate: 60 },
+    });
 
-  if (!response.ok) {
-    throw new Error(`CoinGecko fetch failed with status ${response.status}`);
+    if (response.ok) {
+      const data = assertCryptoData(await response.json());
+      cachedCryptoData = data;
+      cachedAt = now;
+      return data;
+    }
+  } catch (cgError) {
+    console.warn('CoinGecko fetch failed; attempting Binance fallback:', cgError);
   }
 
-  const data = assertCryptoData(await response.json());
-  cachedCryptoData = data;
+  // Secondary fallback provider: Binance public ticker
+  const fallbackData = await fetchBinanceFallback();
+  cachedCryptoData = fallbackData;
   cachedAt = now;
-  return data;
+  return fallbackData;
 }
 
 export async function fetchTickerPrices(): Promise<TickerPrice[]> {
