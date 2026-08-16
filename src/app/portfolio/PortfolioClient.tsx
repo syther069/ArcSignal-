@@ -94,6 +94,7 @@ export default function PortfolioClient() {
   const [claiming, setClaiming] = useState<Record<string, boolean>>({});
   const [claimTxHashes, setClaimTxHashes] = useState<Record<string, string>>({});
   const hasLoadedRef = useRef(false);
+  const confirmedPositionsRef = useRef<Record<string, Position>>({});
 
   // ─── Fetch this wallet's positions with a cache and authoritative reads ────
   const fetchPortfolio = useCallback(async () => {
@@ -111,7 +112,7 @@ export default function PortfolioClient() {
         && typeof item.marketId === 'string'
         && typeof item.txHash === 'string'
         && typeof item.createdAt === 'string'
-        && Date.now() - Number(item.createdAt) < 30 * 60 * 1000
+        && Date.now() - Number(item.createdAt) < 24 * 60 * 60 * 1000
       );
       pendingStake = candidate ?? null;
     } catch {
@@ -122,7 +123,10 @@ export default function PortfolioClient() {
     // receipt directly so the UI does not wait for the background indexer.
     try {
       const query = new URLSearchParams({ address });
-      if (pendingStake?.txHash) query.set('txHash', pendingStake.txHash);
+      const alreadyConfirmed = pendingStake
+        ? confirmedPositionsRef.current[pendingStake.marketId]
+        : undefined;
+      if (pendingStake?.txHash && !alreadyConfirmed) query.set('txHash', pendingStake.txHash);
       const indexedResponse = await fetch(`/api/portfolio?${query.toString()}`, { cache: 'no-store' });
       if (indexedResponse.ok) {
         const indexed = (await indexedResponse.json()) as {
@@ -168,20 +172,50 @@ export default function PortfolioClient() {
               isCancelled: position.isResolved && position.outcome === 0,
             } as Position));
 
-          if (pendingStake && mappedPositions.some((position) => position.market.marketId === pendingStake?.marketId)) {
+          // Keep a confirmed on-chain position in memory while Neon/background
+          // indexing catches up. A stale database response must not erase it.
+          if (indexed.source === 'onchain' && pendingStake && mappedPositions.length > 0) {
+            const confirmed = mappedPositions.find(
+              (position) => position.market.marketId === pendingStake?.marketId,
+            );
+            if (confirmed) confirmedPositionsRef.current[confirmed.market.marketId] = confirmed;
+          }
+
+          const pendingPositions = Object.values(confirmedPositionsRef.current);
+          const serverMarketIds = new Set(mappedPositions.map((position) => position.market.marketId));
+          const serverHasConfirmedPosition = pendingPositions.some((position) => serverMarketIds.has(position.market.marketId));
+
+          if (indexed.source !== 'onchain' && serverHasConfirmedPosition) {
+            for (const position of pendingPositions) {
+              if (serverMarketIds.has(position.market.marketId)) {
+                delete confirmedPositionsRef.current[position.market.marketId];
+              }
+            }
             try {
-              const pending = JSON.parse(localStorage.getItem(PENDING_STAKES_KEY) ?? '[]') as Array<{ txHash?: string }>;
-              localStorage.setItem(PENDING_STAKES_KEY, JSON.stringify(pending.filter((item) => item.txHash !== pendingStake?.txHash)));
+              const pending = JSON.parse(localStorage.getItem(PENDING_STAKES_KEY) ?? '[]') as Array<{ marketId?: string }>;
+              localStorage.setItem(
+                PENDING_STAKES_KEY,
+                JSON.stringify(pending.filter((item) => !item.marketId || !serverMarketIds.has(item.marketId))),
+              );
             } catch {
               // Ignore storage cleanup failures.
             }
           }
 
+          const positionsToShow = indexed.source === 'onchain'
+            ? mappedPositions
+            : [
+                ...mappedPositions,
+                ...Object.values(confirmedPositionsRef.current).filter(
+                  (position) => !serverMarketIds.has(position.market.marketId),
+                ),
+              ];
+
           // An explicitly complete empty response is authoritative. If the
           // server reports an incomplete chain scan, preserve the current view
           // and let the polling effect retry instead of displaying false zeroes.
-          if (mappedPositions.length > 0 || indexed.complete !== false || indexed.source === 'neon') {
-            setPositions(mappedPositions);
+          if (positionsToShow.length > 0 || indexed.complete !== false || indexed.source === 'neon') {
+            setPositions(positionsToShow);
             hasLoadedRef.current = true;
             setLoading(false);
             return;
