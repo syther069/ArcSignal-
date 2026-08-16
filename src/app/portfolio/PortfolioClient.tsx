@@ -100,43 +100,62 @@ export default function PortfolioClient() {
       return;
     }
 
-    // Neon is the fast read model. Keep the chain reader below as a fallback
-    // while the indexer is being installed or catching up.
+    // Neon is the fast read model. Server-side API also has instant on-chain fallback.
     try {
       const indexedResponse = await fetch(`/api/portfolio?address=${address}`, { cache: 'no-store' });
       if (indexedResponse.ok) {
-        const indexed = await indexedResponse.json() as { positions: Array<{
-          marketId: string; side: 0 | 1; stakeRaw: string; stakeUsdc: number; claimed: boolean;
-          isResolved: boolean; outcome: number; userWon: boolean | null; payout: number; netPnl: number;
-          market: { marketId: string; category: string; question: string; resolutionTime: number; followPool: string; fadePool: string; resolved: boolean; outcome: number; status?: string };
-        }> };
-        if (indexed.positions.length > 0) {
-          setPositions(indexed.positions.map((position) => ({
-            ...position,
-            stakeRaw: BigInt(position.stakeRaw),
+        const indexed = (await indexedResponse.json()) as {
+          positions?: Array<{
+            marketId: string;
+            side: 0 | 1;
+            stakeRaw: string;
+            stakeUsdc: number;
+            claimed: boolean;
+            isResolved: boolean;
+            outcome: number;
+            userWon: boolean | null;
+            payout: number;
+            netPnl: number;
             market: {
-              ...position.market,
-              category: position.market.category === 'FOOTBALL' ? 'FOOTBALL' : 'CRYPTO',
-              followPool: BigInt(position.market.followPool),
-              fadePool: BigInt(position.market.fadePool),
-              outcome: position.market.outcome === 1 ? 'FOLLOW' : position.market.outcome === 2 ? 'FADE' : 'PENDING',
-            status: position.market.resolved ? (position.market.outcome === 0 ? 'CANCELLED' : 'RESOLVED') : 'OPEN',
-          },
-          isCancelled: position.isResolved && position.outcome === 0,
-          } as Position)));
+              marketId: string;
+              category: string;
+              question: string;
+              resolutionTime: number;
+              followPool: string;
+              fadePool: string;
+              resolved: boolean;
+              outcome: number;
+              status?: string;
+            };
+          }>;
+        };
+
+        if (Array.isArray(indexed.positions)) {
+          setPositions(
+            indexed.positions.map((position) => ({
+              ...position,
+              stakeRaw: BigInt(position.stakeRaw),
+              market: {
+                ...position.market,
+                category: position.market.category === 'FOOTBALL' ? 'FOOTBALL' : 'CRYPTO',
+                followPool: BigInt(position.market.followPool),
+                fadePool: BigInt(position.market.fadePool),
+                outcome: position.market.outcome === 1 ? 'FOLLOW' : position.market.outcome === 2 ? 'FADE' : 'PENDING',
+                status: position.market.resolved ? (position.market.outcome === 0 ? 'CANCELLED' : 'RESOLVED') : 'OPEN',
+              },
+              isCancelled: position.isResolved && position.outcome === 0,
+            } as Position))
+          );
           hasLoadedRef.current = true;
           setLoading(false);
           return;
         }
       }
     } catch (error) {
-      console.warn('Indexed portfolio unavailable; using chain fallback.', error);
+      console.warn('Indexed portfolio API unavailable; using client fallback.', error);
     }
 
-    const cachedIds = cachedMarketIds(address);
-    // Do not blank already-loaded data during background refreshes.
-    if (!hasLoadedRef.current) setLoading(true);
-
+    // Client-side fallback: check active markets directly
     const readPositions = async (marketIds: string[]) => {
       const uniqueIds = [...new Set(marketIds)];
       const readOne = async (marketId: string) => {
@@ -152,8 +171,8 @@ export default function PortfolioClient() {
       };
 
       const results: PromiseSettledResult<Awaited<ReturnType<typeof readOne>>>[] = [];
-      for (let i = 0; i < uniqueIds.length; i += 2) {
-        results.push(...await Promise.allSettled(uniqueIds.slice(i, i + 2).map(readOne)));
+      for (let i = 0; i < uniqueIds.length; i += 4) {
+        results.push(...await Promise.allSettled(uniqueIds.slice(i, i + 4).map(readOne)));
       }
 
       const newPositions: Position[] = [];
@@ -196,6 +215,7 @@ export default function PortfolioClient() {
     };
 
     try {
+      const cachedIds = cachedMarketIds(address);
       if (cachedIds.length > 0) {
         const cachedPositions = await readPositions(cachedIds);
         setPositions(cachedPositions);
@@ -203,35 +223,21 @@ export default function PortfolioClient() {
         setLoading(false);
       }
 
-      const latestBlock = await publicClient.getBlockNumber();
-      const lastBlock = cachedLastBlock(address);
-      let fromBlock = lastBlock === null
-        ? (latestBlock > MAX_FALLBACK_BLOCKS ? latestBlock - MAX_FALLBACK_BLOCKS + 1n : CONTRACT_DEPLOY_BLOCK)
-        : lastBlock + 1n;
-      if (fromBlock < CONTRACT_DEPLOY_BLOCK) fromBlock = CONTRACT_DEPLOY_BLOCK;
-
-      if (fromBlock <= latestBlock) {
-        const discovered = new Set(cachedIds);
-        for (let start = fromBlock; start <= latestBlock; start += LOG_CHUNK_SIZE) {
-          const end = start + LOG_CHUNK_SIZE - 1n < latestBlock ? start + LOG_CHUNK_SIZE - 1n : latestBlock;
-          const logs = await publicClient.getLogs({ address: ARCSIGNAL_ADDRESS, event: STAKED_EVENT, fromBlock: start, toBlock: end });
-          for (const log of logs) {
-            const args = log.args as { marketId?: string; user?: string };
-            if (args.user?.toLowerCase() === address.toLowerCase() && args.marketId) discovered.add(args.marketId);
-          }
-          saveLastBlock(address, end);
-          await new Promise((resolve) => setTimeout(resolve, 75));
+      const marketsRes = await fetch('/api/markets');
+      if (marketsRes.ok) {
+        const payload = await marketsRes.json();
+        const marketIds = (payload.markets ?? []).map((m: any) => m.marketId);
+        if (marketIds.length > 0) {
+          saveMarketIds(address, marketIds);
+          const freshPositions = await readPositions(marketIds);
+          setPositions(freshPositions);
+          hasLoadedRef.current = true;
         }
-        const ids = [...discovered];
-        saveMarketIds(address, ids);
-        const freshPositions = await readPositions(ids);
-        setPositions(freshPositions);
-        hasLoadedRef.current = true;
       }
     } catch (err) {
-      console.error('Portfolio fetch failed:', err);
-      if (!hasLoadedRef.current) toast.error('Unable to load on-chain positions right now');
+      console.error('Portfolio client fallback failed:', err);
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
     }
   }, [address, publicClient]);
