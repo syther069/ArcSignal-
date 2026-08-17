@@ -11,6 +11,7 @@ export class AIAnalysisError extends Error {
 }
 
 const retryDelays = [1000, 2000, 4000];
+const groqModel = process.env.GROQ_MODEL ?? 'openai/gpt-oss-120b';
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -106,7 +107,7 @@ async function generateAnalysis(prompt: string): Promise<AIAnalysis> {
       try {
         const groq = new Groq({ apiKey: groqKey });
         const completion = await groq.chat.completions.create({
-          model: 'llama-3.3-70b-versatile',
+          model: groqModel,
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.4,
           max_tokens: 1000,
