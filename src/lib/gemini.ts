@@ -11,7 +11,27 @@ export class AIAnalysisError extends Error {
 }
 
 const retryDelays = [1000, 2000, 4000];
-const groqModel = process.env.GROQ_MODEL ?? 'openai/gpt-oss-120b';
+export const DEFAULT_GROQ_MODEL = 'openai/gpt-oss-120b';
+
+export const DEPRECATED_GROQ_MODELS = new Set([
+  'llama-3.3-70b-versatile',
+  'llama-3.3-70b-specdec',
+  'llama-3.1-70b-versatile',
+  'llama-3.1-8b-instant',
+  'llama3-70b-8192',
+  'llama3-8b-8192',
+  'mixtral-8x7b-32768',
+  'gemma-7b-it',
+  'gemma2-9b-it',
+]);
+
+export function resolveGroqModel(envModel?: string): string {
+  const model = (envModel ?? process.env.GROQ_MODEL)?.trim();
+  if (!model || DEPRECATED_GROQ_MODELS.has(model.toLowerCase())) {
+    return DEFAULT_GROQ_MODEL;
+  }
+  return model;
+}
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -103,11 +123,12 @@ async function generateAnalysis(prompt: string): Promise<AIAnalysis> {
 
   // Fallback / primary Groq provider
   if (groqKey) {
+    const selectedModel = resolveGroqModel();
     for (let attempt = 0; attempt < retryDelays.length; attempt++) {
       try {
         const groq = new Groq({ apiKey: groqKey });
         const completion = await groq.chat.completions.create({
-          model: groqModel,
+          model: selectedModel,
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.4,
           max_tokens: 1000,
