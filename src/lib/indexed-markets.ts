@@ -1,5 +1,6 @@
 import { getSql } from './db';
 import type { Market } from './types';
+import { deriveMarketStatus, mapOutcome, mapCategory } from './parimutuel-math';
 
 const MARKET_INDEX_TIMEOUT_MS = 6_000;
 
@@ -11,22 +12,6 @@ function parseAnalysis(value: unknown) {
   } catch {
     return undefined;
   }
-}
-
-function mapOutcome(outcome: number, resolved: boolean): Market['outcome'] {
-  if (!resolved) return 'PENDING';
-  if (outcome === 1) return 'FOLLOW';
-  if (outcome === 2) return 'FADE';
-  return 'CANCELLED';
-}
-
-function mapStatus(row: Record<string, unknown>, nowUnix: number): Market['status'] {
-  const status = String(row.status ?? '');
-  if (status === 'VOIDED' || (Boolean(row.resolved) && Number(row.outcome) === 0)) return 'VOIDED';
-  if (status === 'RESOLVED' || Boolean(row.resolved)) return 'RESOLVED';
-  if (status === 'CLOSED') return 'CLOSED';
-  if (status === 'PENDING_RESOLUTION') return 'PENDING_RESOLUTION';
-  return Number(row.resolution_time) <= nowUnix ? 'PENDING_RESOLUTION' : 'OPEN';
 }
 
 export async function getIndexedMarkets(limit: number, offset: number): Promise<Market[]> {
@@ -47,27 +32,35 @@ export async function getIndexedMarkets(limit: number, offset: number): Promise<
       );
     });
     const rows = await Promise.race([query, timeout]);
-  const nowUnix = Math.floor(Date.now() / 1000);
+    const nowUnix = Math.floor(Date.now() / 1000);
 
-  return rows.map((row) => {
-    const resolved = Boolean(row.resolved);
-    const outcome = Number(row.outcome ?? 0);
-    return {
-      marketId: String(row.market_id),
-      category: String(row.category).toUpperCase() === 'FOOTBALL' ? 'FOOTBALL' : 'CRYPTO',
-      question: String(row.question),
-      resolutionTime: Number(row.resolution_time),
-      followPool: BigInt(String(row.follow_pool ?? 0)),
-      fadePool: BigInt(String(row.fade_pool ?? 0)),
-      resolved,
-      outcome: mapOutcome(outcome, resolved),
-      status: mapStatus(row, nowUnix),
-      analysis: parseAnalysis(row.analysis_json),
-      resolutionReason: resolved
-        ? outcome === 0 ? 'Market voided; eligible stakes may be refunded.' : 'Resolved on-chain.'
-      : undefined,
-    };
-  });
+    return rows.map((row) => {
+      const resolved = Boolean(row.resolved);
+      const outcome = Number(row.outcome ?? 0);
+      const resolutionTime = Number(row.resolution_time);
+
+      return {
+        marketId: String(row.market_id),
+        category: mapCategory(String(row.category)),
+        question: String(row.question),
+        resolutionTime,
+        followPool: BigInt(String(row.follow_pool ?? 0)),
+        fadePool: BigInt(String(row.fade_pool ?? 0)),
+        resolved,
+        outcome: mapOutcome(resolved, outcome),
+        status: deriveMarketStatus({
+          resolved,
+          outcome,
+          statusString: String(row.status ?? ''),
+          resolutionTime,
+          nowUnix,
+        }),
+        analysis: parseAnalysis(row.analysis_json),
+        resolutionReason: resolved
+          ? outcome === 0 ? 'Market voided; eligible stakes may be refunded.' : 'Resolved on-chain.'
+          : undefined,
+      };
+    });
   } finally {
     if (timer) clearTimeout(timer);
   }

@@ -1,17 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createWalletClient, http, createPublicClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { arcTestnet, ARCSIGNAL_ABI } from '@/lib/contracts';
+import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchCompletedFixtures } from '@/lib/apifootball';
 import { getSql } from '@/lib/db';
-import type { Address } from 'viem';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Always use the hardcoded correct deployed contract address
-const CONTRACT_ADDRESS = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as Address;
+const CONTRACT_ADDRESS = ARCSIGNAL_ADDRESS;
 
 // Use env RPC or fallback
 const RPC_URL = process.env.ARC_RPC_URL ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network';

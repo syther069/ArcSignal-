@@ -1,12 +1,13 @@
 import { getSql } from './db';
 
-export async function getIndexedAnalytics() {
+export async function getIndexedAnalytics(limit = 500) {
   const sql = getSql();
   const rows = await sql`
     select market_id, category, question, resolution_time, follow_pool, fade_pool,
            resolved, outcome, analysis_json
     from markets_index
     order by resolution_time desc
+    limit ${limit}
   `;
   if (rows.length === 0) return null;
 
@@ -40,17 +41,29 @@ export async function getIndexedAnalytics() {
   const footballResolved = resolved.filter((market) => market.category === 'FOOTBALL');
   const cryptoCorrect = cryptoResolved.filter((market) => market.outcome === 'FOLLOW').length;
   const footballCorrect = footballResolved.filter((market) => market.outcome === 'FOLLOW').length;
-  const resolvedWithAccuracy = resolved.map((market, index) => {
-    const cryptoResolvedBefore = resolved.slice(0, index + 1).filter((item) => item.category === 'CRYPTO');
-    const footballResolvedBefore = resolved.slice(0, index + 1).filter((item) => item.category === 'FOOTBALL');
+
+  let runningCryptoTotal = 0;
+  let runningCryptoCorrect = 0;
+  let runningFootballTotal = 0;
+  let runningFootballCorrect = 0;
+
+  const resolvedWithAccuracy = resolved.map((market) => {
+    if (market.category === 'CRYPTO') {
+      runningCryptoTotal += 1;
+      if (market.outcome === 'FOLLOW') runningCryptoCorrect += 1;
+    } else if (market.category === 'FOOTBALL') {
+      runningFootballTotal += 1;
+      if (market.outcome === 'FOLLOW') runningFootballCorrect += 1;
+    }
+
     return {
       ...market,
       resolutionDate: new Date(market.resolutionTime * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      cryptoAccuracy: cryptoResolvedBefore.length
-        ? Math.round((cryptoResolvedBefore.filter((item) => item.outcome === 'FOLLOW').length / cryptoResolvedBefore.length) * 100)
+      cryptoAccuracy: runningCryptoTotal > 0
+        ? Math.round((runningCryptoCorrect / runningCryptoTotal) * 100)
         : null,
-      footballAccuracy: footballResolvedBefore.length
-        ? Math.round((footballResolvedBefore.filter((item) => item.outcome === 'FOLLOW').length / footballResolvedBefore.length) * 100)
+      footballAccuracy: runningFootballTotal > 0
+        ? Math.round((runningFootballCorrect / runningFootballTotal) * 100)
         : null,
     };
   });

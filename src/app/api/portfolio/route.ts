@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
 import { publicClient, ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
 import { getMarketsFromChain } from '@/lib/markets';
-import { decodeEventLog, formatUnits, type Address } from 'viem';
+import { decodeEventLog, type Address } from 'viem';
+import { calculateParimutuelPnL, deriveMarketStatus, mapCategory } from '@/lib/parimutuel-math';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,40 +29,36 @@ function positionFromChain(
   claimed: boolean,
 ) {
   const outcome = Number(market.outcome);
-  const winningSide = outcome === 1 ? 0 : outcome === 2 ? 1 : -1;
-  const stakeUsdc = Number(formatUnits(stakeRaw, 6));
-  const userWon = market.resolved && winningSide >= 0 ? side === winningSide : null;
-  let payout = 0;
-  let netPnl = 0;
+  const pnl = calculateParimutuelPnL({
+    side,
+    stakeRaw,
+    resolved: market.resolved,
+    outcome,
+    followPool: market.followPool,
+    fadePool: market.fadePool,
+  });
 
-  if (market.resolved && userWon) {
-    const winPool = winningSide === 0 ? market.followPool : market.fadePool;
-    const losePool = winningSide === 0 ? market.fadePool : market.followPool;
-    payout = stakeUsdc + (stakeUsdc * Number(losePool)) / Number(winPool || 1n);
-    netPnl = payout - stakeUsdc;
-  } else if (market.resolved && userWon === false) {
-    netPnl = -stakeUsdc;
-  }
-
-  const status = market.resolved
-    ? outcome === 0 ? 'VOIDED' : 'RESOLVED'
-    : 'OPEN';
+  const status = deriveMarketStatus({
+    resolved: market.resolved,
+    outcome,
+    resolutionTime: Number(market.resolutionTime),
+  });
 
   return {
     marketId: market.marketId,
     side,
     stakeRaw: String(stakeRaw),
-    stakeUsdc,
+    stakeUsdc: pnl.stakeUsdc,
     claimed,
     isResolved: market.resolved,
     outcome,
     status,
-    userWon,
-    payout,
-    netPnl,
+    userWon: pnl.userWon,
+    payout: pnl.payout,
+    netPnl: pnl.netPnl,
     market: {
       marketId: market.marketId,
-      category: market.category === 'FOOTBALL' ? 'FOOTBALL' : 'CRYPTO',
+      category: mapCategory(market.category),
       question: market.question,
       resolutionTime: Number(market.resolutionTime),
       followPool: String(market.followPool),
@@ -171,36 +168,47 @@ export async function GET(req: Request) {
           const stakeRaw = BigInt(String(row.amount));
           const resolved = Boolean(row.resolved);
           const outcome = Number(row.outcome);
-          const winningSide = outcome === 1 ? 0 : outcome === 2 ? 1 : -1;
-          const userWon = resolved && winningSide >= 0 ? side === winningSide : null;
-          const winPool = winningSide === 0 ? BigInt(String(row.follow_pool)) : BigInt(String(row.fade_pool));
-          const losePool = winningSide === 0 ? BigInt(String(row.fade_pool)) : BigInt(String(row.follow_pool));
-          const stakeUsdc = Number(stakeRaw) / 1e6;
-          const payout = resolved && userWon ? stakeUsdc + Number((stakeRaw * losePool) / (winPool || 1n)) / 1e6 : 0;
-          const netPnl = resolved && userWon === true ? payout - stakeUsdc : resolved ? -stakeUsdc : 0;
+          const followPool = BigInt(String(row.follow_pool ?? 0));
+          const fadePool = BigInt(String(row.fade_pool ?? 0));
+
+          const pnl = calculateParimutuelPnL({
+            side,
+            stakeRaw,
+            resolved,
+            outcome,
+            followPool,
+            fadePool,
+          });
+
+          const status = deriveMarketStatus({
+            resolved,
+            outcome,
+            statusString: String(row.status ?? ''),
+            resolutionTime: Number(row.resolution_time),
+          });
 
           return {
             marketId: row.market_id,
             side,
             stakeRaw: String(stakeRaw),
-            stakeUsdc,
+            stakeUsdc: pnl.stakeUsdc,
             claimed: Boolean(row.claimed),
             isResolved: resolved,
             outcome,
-            status: row.status,
-            userWon,
-            payout,
-            netPnl,
+            status,
+            userWon: pnl.userWon,
+            payout: pnl.payout,
+            netPnl: pnl.netPnl,
             market: {
               marketId: row.market_id,
-              category: row.category === 'FOOTBALL' ? 'FOOTBALL' : 'CRYPTO',
+              category: mapCategory(String(row.category)),
               question: row.question,
               resolutionTime: Number(row.resolution_time),
-              followPool: String(row.follow_pool),
-              fadePool: String(row.fade_pool),
+              followPool: String(followPool),
+              fadePool: String(fadePool),
               resolved,
               outcome,
-              status: row.status,
+              status,
             },
           };
         }),
@@ -256,42 +264,36 @@ export async function GET(req: Request) {
 
           const positionsForMarket = [];
           const rawOutcome = m.outcome === 'FOLLOW' ? 1 : m.outcome === 'FADE' ? 2 : 0;
-          const winningSide = rawOutcome === 1 ? 0 : rawOutcome === 2 ? 1 : -1;
 
           for (const [side, stakeRaw] of [
             [0, followRaw],
             [1, fadeRaw],
           ] as Array<[0 | 1, bigint]>) {
             if (stakeRaw === 0n) continue;
-            const stakeUsdc = Number(formatUnits(stakeRaw, 6));
-            const userWon = m.resolved && winningSide >= 0 ? side === winningSide : null;
-            let payout = 0;
-            let netPnl = 0;
-
-            if (m.resolved && userWon) {
-              const winPool = winningSide === 0 ? m.followPool : m.fadePool;
-              const losePool = winningSide === 0 ? m.fadePool : m.followPool;
-              payout = stakeUsdc + (stakeUsdc * Number(losePool)) / Number(winPool || 1n);
-              netPnl = payout - stakeUsdc;
-            } else if (m.resolved && userWon === false) {
-              netPnl = -stakeUsdc;
-            }
+            const pnl = calculateParimutuelPnL({
+              side,
+              stakeRaw,
+              resolved: m.resolved,
+              outcome: rawOutcome,
+              followPool: m.followPool,
+              fadePool: m.fadePool,
+            });
 
             positionsForMarket.push({
               marketId: m.marketId,
               side,
               stakeRaw: String(stakeRaw),
-              stakeUsdc,
+              stakeUsdc: pnl.stakeUsdc,
               claimed,
               isResolved: m.resolved,
               outcome: rawOutcome,
               status: m.status,
-              userWon,
-              payout,
-              netPnl,
+              userWon: pnl.userWon,
+              payout: pnl.payout,
+              netPnl: pnl.netPnl,
               market: {
                 marketId: m.marketId,
-                category: m.category,
+                category: mapCategory(m.category),
                 question: m.question ?? m.marketId,
                 resolutionTime: m.resolutionTime,
                 followPool: String(m.followPool),

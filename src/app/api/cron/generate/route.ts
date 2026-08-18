@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createWalletClient, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { arcTestnet, publicClient, ARCSIGNAL_ABI } from '@/lib/contracts';
+import { arcTestnet, publicClient, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchUpcomingFixtures } from '@/lib/apifootball';
 import { generateCryptoAnalysis, generateFootballAnalysis } from '@/lib/gemini';
-import type { Address, Hash } from 'viem';
+import type { Hash } from 'viem';
 
-// Always use the hardcoded correct deployed contract address
-const CONTRACT_ADDRESS = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as Address;
+const CONTRACT_ADDRESS = ARCSIGNAL_ADDRESS;
 
 
 export const maxDuration = 60;

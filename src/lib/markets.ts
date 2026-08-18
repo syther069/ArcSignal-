@@ -1,20 +1,9 @@
 import type { Address } from 'viem';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS, publicClient } from './contracts';
-import type { AIAnalysis, Market, MarketCategory, MarketOutcome, SerializableMarket } from './types';
+import type { AIAnalysis, Market, SerializableMarket } from './types';
+import { deriveMarketStatus, mapOutcome, mapCategory } from './parimutuel-math';
 
 export type { SerializableMarket };
-
-function mapOutcome(resolved: boolean, outcome: number): MarketOutcome {
-  if (!resolved) return 'PENDING';
-  if (outcome === 1) return 'FOLLOW';
-  if (outcome === 2) return 'FADE';
-  return 'CANCELLED';
-}
-
-function mapCategory(category: string): MarketCategory {
-  if (category === 'CRYPTO' || category === 'FOOTBALL') return category;
-  return 'CRYPTO';
-}
 
 function safeParseAnalysis(json: string): AIAnalysis | undefined {
   try {
@@ -71,14 +60,6 @@ type ChainMarket = {
   closedAt?: bigint;
   resolvedAt?: bigint;
 };
-
-function mapMarketStatus(data: ChainMarket, nowUnix: number): Market['status'] {
-  if (data.status === 4 || (data.resolved && data.outcome === 0)) return 'VOIDED';
-  if (data.status === 3 || data.resolved) return 'RESOLVED';
-  if (data.status === 2) return 'PENDING_RESOLUTION';
-  if (data.status === 1) return 'CLOSED';
-  return Number(data.resolutionTime) <= nowUnix ? 'PENDING_RESOLUTION' : 'OPEN';
-}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -258,7 +239,12 @@ export async function getMarketsFromChain(
           fadePool: data.fadePool,
           resolved: data.resolved,
           outcome: mapOutcome(data.resolved, data.outcome),
-          status: mapMarketStatus(data, nowUnix),
+          status: deriveMarketStatus({
+            resolved: data.resolved,
+            outcome: data.outcome,
+            resolutionTime: Number(data.resolutionTime),
+            nowUnix,
+          }),
           resolvedAt: data.resolvedAt && data.resolvedAt > 0n
             ? Number(data.resolvedAt)
             : undefined,
