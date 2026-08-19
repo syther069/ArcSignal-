@@ -98,10 +98,27 @@ export default function LiveActivityPanel() {
   }, [address, isConnected]);
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 10000);
-    return () => clearInterval(interval);
+    const handleFetch = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchData();
+    };
+
+    handleFetch();
+    const interval = setInterval(handleFetch, 25000);
+
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        fetchData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [fetchData]);
+
 
   return (
     <aside className="w-[380px] shrink-0 sticky top-24 h-[calc(100vh-96px)] overflow-y-auto pr-4 pb-8 space-y-6 hidden xl:block custom-scrollbar">

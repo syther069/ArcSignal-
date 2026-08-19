@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import Sidebar from '@/components/layout/Sidebar';
 import { MarketRow } from '@/components/markets/MarketRow';
-import { MarketFiltersDrawer, type MarketView, type MarketSort } from '@/components/markets/MarketFiltersDrawer';
-import { StakeModal } from '@/components/markets/StakeModal';
+import type { MarketView, MarketSort } from '@/components/markets/MarketFiltersDrawer';
 import { Market, StakeSide } from '@/types';
 import type { SerializableMarket } from '@/lib/markets';
 import { toUiMarket } from '@/lib/ui-market';
+import { useDebounce } from '@/hooks/useDebounce';
+import { useGlobalTime } from '@/hooks/useGlobalTime';
 import {
   RotateCw,
   Search,
@@ -20,26 +22,25 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+// Dynamically load heavy interactive modals to reduce initial bundle size
+const StakeModal = dynamic(() => import('@/components/markets/StakeModal').then((mod) => mod.StakeModal), {
+  ssr: false,
+});
+const MarketFiltersDrawer = dynamic(
+  () => import('@/components/markets/MarketFiltersDrawer').then((mod) => mod.MarketFiltersDrawer),
+  { ssr: false }
+);
+
 interface MarketsClientProps {
   markets: SerializableMarket[];
 }
 
 const TIMEFRAMES = ['5m', '15m', '1h', '4h', '24h'];
 
-function getTotalLiquidity(market: SerializableMarket): bigint {
-  try {
-    return BigInt(market.followPool) + BigInt(market.fadePool);
-  } catch {
-    return 0n;
-  }
-}
-
-function getFollowShare(market: SerializableMarket): number {
-  const follow = BigInt(market.followPool || '0');
-  const fade = BigInt(market.fadePool || '0');
-  const total = follow + fade;
-  if (total === 0n) return 50;
-  return Number((follow * 1000n) / total) / 10;
+interface EnrichedMarket extends SerializableMarket {
+  totalLiquidityNum: number;
+  followShareNum: number;
+  searchString: string;
 }
 
 export default function MarketsClient({ markets }: MarketsClientProps) {
@@ -48,6 +49,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
   const [selectedView, setSelectedView] = useState<MarketView>('live');
   const [sortBy, setSortBy] = useState<MarketSort>('closingSoon');
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 150);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [stakeModal, setStakeModal] = useState<{
@@ -55,41 +57,77 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
     side: StakeSide;
   } | null>(null);
 
-  const nowUnix = Math.floor(Date.now() / 1000);
+  const nowUnix = useGlobalTime();
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
     window.location.reload();
-  };
+  }, []);
 
-  const handleResetFilters = () => {
+  const handleResetFilters = useCallback(() => {
     setSelectedCategory('All Markets');
     setSelectedTimeframe(null);
     setSelectedView('live');
     setSortBy('closingSoon');
     setSearchQuery('');
-  };
+  }, []);
+
+  // Pre-calculate numeric liquidity and share metrics once to avoid BigInt churn in loops
+  const enrichedMarkets: EnrichedMarket[] = useMemo(() => {
+    return markets.map((m) => {
+      let follow = 0;
+      let fade = 0;
+      try {
+        follow = Number(BigInt(m.followPool || '0')) / 1e6;
+        fade = Number(BigInt(m.fadePool || '0')) / 1e6;
+      } catch {
+        follow = 0;
+        fade = 0;
+      }
+      const total = follow + fade;
+      const followShareNum = total > 0 ? (follow * 100) / total : 50;
+
+      return {
+        ...m,
+        totalLiquidityNum: total,
+        followShareNum,
+        searchString: `${m.question || ''} ${m.marketId} ${m.category}`.toLowerCase(),
+      };
+    });
+  }, [markets]);
 
   // Counts for tabs & drawers
   const counts = useMemo(() => {
-    const live = markets.filter(
-      (m) => !m.resolved && m.status !== 'RESOLVED' && m.status !== 'CLOSED' && m.resolutionTime > nowUnix
-    ).length;
-    const closingSoon = markets.filter(
-      (m) => !m.resolved && m.resolutionTime > nowUnix && m.resolutionTime - nowUnix <= 3600
-    ).length;
-    const resolved = markets.filter((m) => m.resolved || m.status === 'RESOLVED').length;
+    let live = 0;
+    let closingSoon = 0;
+    let resolved = 0;
+
+    for (let i = 0; i < enrichedMarkets.length; i++) {
+      const m = enrichedMarkets[i];
+      const isRes = m.resolved || m.status === 'RESOLVED';
+      if (isRes) {
+        resolved++;
+      } else if (m.status !== 'CLOSED' && m.resolutionTime > nowUnix) {
+        live++;
+        if (m.resolutionTime - nowUnix <= 3600) {
+          closingSoon++;
+        }
+      }
+    }
+
     return {
       live,
       closingSoon,
       resolved,
-      all: markets.length,
+      all: enrichedMarkets.length,
     };
-  }, [markets, nowUnix]);
+  }, [enrichedMarkets, nowUnix]);
 
   // Primary filtering logic
   const filteredMarkets = useMemo(() => {
-    return markets.filter((m) => {
+    const q = debouncedSearchQuery.trim().toLowerCase();
+
+    return enrichedMarkets.filter((m) => {
       const isResolved = m.resolved || m.status === 'RESOLVED';
       const isPending = !isResolved && (m.status === 'PENDING_RESOLUTION' || m.resolutionTime <= nowUnix);
       const isOpen = !isResolved && !isPending && m.status !== 'CLOSED';
@@ -107,30 +145,23 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
       // 3. Timeframe Filter
       if (selectedTimeframe && !m.marketId.includes(`-PRICE-${selectedTimeframe}-`)) return false;
 
-      // 4. Search Filter
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchesQuestion = (m.question || '').toLowerCase().includes(q);
-        const matchesId = m.marketId.toLowerCase().includes(q);
-        const matchesCat = m.category.toLowerCase().includes(q);
-        if (!matchesQuestion && !matchesId && !matchesCat) return false;
-      }
+      // 4. Fast Debounced Search Filter
+      if (q && !m.searchString.includes(q)) return false;
 
       return true;
     });
-  }, [markets, selectedView, selectedCategory, selectedTimeframe, searchQuery, nowUnix]);
+  }, [enrichedMarkets, selectedView, selectedCategory, selectedTimeframe, debouncedSearchQuery, nowUnix]);
 
-  // Sorting logic implementing all 7 financial sort modes
+  // Fast O(1) float sorting
   const sortedMarkets = useMemo(() => {
     return [...filteredMarkets].sort((a, b) => {
       if (sortBy === 'liquidity') {
-        const diff = getTotalLiquidity(b) - getTotalLiquidity(a);
-        return diff > 0n ? 1 : diff < 0n ? -1 : 0;
+        return b.totalLiquidityNum - a.totalLiquidityNum;
       }
 
       if (sortBy === 'active') {
-        const diff = getTotalLiquidity(b) - getTotalLiquidity(a);
-        if (diff !== 0n) return diff > 0n ? 1 : -1;
+        const diff = b.totalLiquidityNum - a.totalLiquidityNum;
+        if (diff !== 0) return diff;
         return (b.analysis?.confidence ?? 0) - (a.analysis?.confidence ?? 0);
       }
 
@@ -143,20 +174,16 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
       }
 
       if (sortBy === 'disagreement') {
-        const followA = getFollowShare(a);
-        const followB = getFollowShare(b);
         const aiConfA = a.analysis?.confidence ?? 50;
         const aiConfB = b.analysis?.confidence ?? 50;
-        const disA = Math.abs(aiConfA - followA);
-        const disB = Math.abs(aiConfB - followB);
+        const disA = Math.abs(aiConfA - a.followShareNum);
+        const disB = Math.abs(aiConfB - b.followShareNum);
         return disB - disA;
       }
 
       if (sortBy === 'imbalance') {
-        const followA = getFollowShare(a);
-        const followB = getFollowShare(b);
-        const imbA = Math.abs(followA - (100 - followA));
-        const imbB = Math.abs(followB - (100 - followB));
+        const imbA = Math.abs(a.followShareNum - (100 - a.followShareNum));
+        const imbB = Math.abs(b.followShareNum - (100 - b.followShareNum));
         return imbB - imbA;
       }
 
@@ -167,19 +194,19 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
 
   // Featured / Trending markets (Top 2 high conviction or active markets)
   const trendingMarkets = useMemo(() => {
-    return markets
+    return enrichedMarkets
       .filter((m) => !m.resolved && m.resolutionTime > nowUnix)
       .sort((a, b) => {
-        const diff = getTotalLiquidity(b) - getTotalLiquidity(a);
-        if (diff !== 0n) return diff > 0n ? 1 : -1;
+        const diff = b.totalLiquidityNum - a.totalLiquidityNum;
+        if (diff !== 0) return diff;
         return (b.analysis?.confidence ?? 0) - (a.analysis?.confidence ?? 0);
       })
       .slice(0, 2);
-  }, [markets, nowUnix]);
+  }, [enrichedMarkets, nowUnix]);
 
   // Contextual empty state message
   const emptyStateContent = useMemo(() => {
-    if (searchQuery.trim() || selectedTimeframe || selectedCategory !== 'All Markets') {
+    if (debouncedSearchQuery.trim() || selectedTimeframe || selectedCategory !== 'All Markets') {
       return {
         title: 'No markets found',
         message: 'No markets match your active filters or search query — try changing your filters.',
@@ -207,7 +234,8 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
       title: 'No markets available',
       message: 'AI agents are generating markets. Check back shortly.',
     };
-  }, [searchQuery, selectedTimeframe, selectedCategory, selectedView]);
+  }, [debouncedSearchQuery, selectedTimeframe, selectedCategory, selectedView]);
+
 
   return (
     <div className="flex min-h-screen bg-[#121212] text-[#e5e2e1]">
@@ -263,9 +291,8 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {trendingMarkets.map((m) => {
-                  const follow = getFollowShare(m);
-                  const total = getTotalLiquidity(m);
-                  const totalFormatted = (Number(total) / 1_000_000).toFixed(2);
+                  const follow = m.followShareNum;
+                  const totalFormatted = m.totalLiquidityNum.toFixed(2);
                   return (
                     <Link
                       key={m.marketId}

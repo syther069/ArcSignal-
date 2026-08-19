@@ -46,7 +46,14 @@ export async function GET() {
         category: row.category,
       }));
 
-      return NextResponse.json({ activities, source: 'neon' });
+      return NextResponse.json(
+        { activities, source: 'neon' },
+        {
+          headers: {
+            'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=40',
+          },
+        }
+      );
     }
   } catch {
     // Neon not configured or empty; continue to on-chain fallback
@@ -54,7 +61,7 @@ export async function GET() {
 
   // 2. Fallback: generate dynamic activity from active chain markets
   try {
-    const chainMarkets = await getMarketsFromChain();
+    const chainMarkets = await getMarketsFromChain(false, { limit: 12, offset: 0 });
     const serialized = chainMarkets.map(serializeMarket);
     
     // Pick active markets with stakes or recent markets
@@ -80,7 +87,14 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ activities, source: 'chain' });
+    return NextResponse.json(
+      { activities, source: 'chain' },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=40',
+        },
+      }
+    );
   } catch (err) {
     console.error('Failed to get activity feed:', err);
     return NextResponse.json({ activities: [], fallback: true }, { status: 503 });

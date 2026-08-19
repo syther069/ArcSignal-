@@ -1,40 +1,32 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React from 'react';
+import { useGlobalTime } from '@/hooks/useGlobalTime';
 
-export function CountdownTimer({
-  resolutionTime,
-  resolved = false,
-}: {
+interface CountdownTimerProps {
   resolutionTime: number;
   resolved?: boolean;
-}) {
-  const [timeLeft, setTimeLeft] = useState<string | null>(null);
-
-  useEffect(() => {
-    function update() {
-      if (resolved) {
-        setTimeLeft('Resolved');
-        return;
-      }
-
-      const diff = resolutionTime * 1000 - Date.now();
-      if (diff <= 0) {
-        setTimeLeft('Pending resolution');
-        return;
-      }
-
-      const h = Math.floor(diff / 3_600_000);
-      const m = Math.floor((diff % 3_600_000) / 60_000);
-      const s = Math.floor((diff % 60_000) / 1000);
-      setTimeLeft(`${h}h ${m}m ${s}s`);
-    }
-
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [resolutionTime, resolved]);
-
-  if (timeLeft === null) return <span className="opacity-0 tabular-nums" suppressHydrationWarning>--:--:--</span>;
-  return <span className="tabular-nums" suppressHydrationWarning>{timeLeft}</span>;
 }
+
+function formatCountdown(resolutionTime: number, nowSec: number, resolved: boolean): string {
+  if (resolved) return 'Resolved';
+
+  const diffSec = resolutionTime - nowSec;
+  if (diffSec <= 0) return 'Pending resolution';
+
+  const h = Math.floor(diffSec / 3600);
+  const m = Math.floor((diffSec % 3600) / 60);
+  const s = diffSec % 60;
+  return `${h}h ${m}m ${s}s`;
+}
+
+export const CountdownTimer = React.memo(function CountdownTimer({
+  resolutionTime,
+  resolved = false,
+}: CountdownTimerProps) {
+  const nowUnix = useGlobalTime();
+  const timeLeft = formatCountdown(resolutionTime, nowUnix, resolved);
+
+  return <span className="tabular-nums" suppressHydrationWarning>{timeLeft}</span>;
+});
+

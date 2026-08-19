@@ -1,12 +1,24 @@
 import MarketDetailClient from './MarketDetailClient';
-import { getMarketsFromChain, serializeMarket } from '@/lib/markets';
+import { getSingleMarketFromChain, serializeMarket } from '@/lib/markets';
+import { getIndexedMarketById } from '@/lib/indexed-markets';
 import { toUiMarket } from '@/lib/ui-market';
 import { notFound } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+
 export default async function MarketDetailPage({ params }: { params: { id: string } }) {
-  const markets = await getMarketsFromChain();
-  const rawMarket = markets.find((m) => m.marketId === params.id);
-  
+  let rawMarket = null;
+
+  try {
+    rawMarket = await getIndexedMarketById(params.id);
+  } catch (err) {
+    console.warn(`Market index read failed for ${params.id}, falling back to chain:`, err);
+  }
+
+  if (!rawMarket) {
+    rawMarket = await getSingleMarketFromChain(params.id);
+  }
+
   if (!rawMarket) {
     notFound();
   }
@@ -16,3 +28,4 @@ export default async function MarketDetailPage({ params }: { params: { id: strin
 
   return <MarketDetailClient market={market} />;
 }
+

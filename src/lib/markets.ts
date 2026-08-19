@@ -158,6 +158,51 @@ async function fetchMarketWithRetry(id: string): Promise<ChainMarket> {
   );
 }
 
+export async function getSingleMarketFromChain(id: string): Promise<Market | null> {
+  if (!ARCSIGNAL_ADDRESS || !/^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS)) {
+    return null;
+  }
+
+  try {
+    const data = await fetchMarketWithRetry(id);
+    if (!data || !data.marketId) return null;
+
+    const nowUnix = Math.floor(Date.now() / 1000);
+    return {
+      marketId: data.marketId,
+      category: mapCategory(data.category),
+      question: data.question,
+      resolutionTime: Number(data.resolutionTime),
+      followPool: data.followPool,
+      fadePool: data.fadePool,
+      resolved: data.resolved,
+      outcome: mapOutcome(data.resolved, data.outcome),
+      status: deriveMarketStatus({
+        resolved: data.resolved,
+        outcome: data.outcome,
+        resolutionTime: Number(data.resolutionTime),
+        nowUnix,
+      }),
+      resolvedAt: data.resolvedAt && data.resolvedAt > 0n
+        ? Number(data.resolvedAt)
+        : undefined,
+      openedAt: data.openedAt && data.openedAt > 0n
+        ? Number(data.openedAt)
+        : undefined,
+      closedAt: data.closedAt && data.closedAt > 0n
+        ? Number(data.closedAt)
+        : undefined,
+      resolutionReason: data.resolved
+        ? `Resolved on-chain with ${mapOutcome(data.resolved, data.outcome)} outcome.`
+        : undefined,
+      analysis: safeParseAnalysis(data.analysisJson),
+    };
+  } catch (err) {
+    console.error(`Error fetching single market ${id} from chain:`, err);
+    return null;
+  }
+}
+
 export async function getMarketsFromChain(
   forceRefresh = false,
   options: { limit?: number; offset?: number } = {}

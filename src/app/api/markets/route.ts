@@ -30,7 +30,14 @@ export async function GET(req: Request) {
         offset,
       })).map(serializeMarket);
     }
-    return NextResponse.json({ markets });
+    return NextResponse.json(
+      { markets },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=50',
+        },
+      }
+    );
   } catch (error) {
     console.error('[/api/markets]', error);
     return NextResponse.json(
@@ -39,3 +46,4 @@ export async function GET(req: Request) {
     );
   }
 }
+

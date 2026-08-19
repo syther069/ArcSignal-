@@ -1,6 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      'viem',
+      '@tanstack/react-query',
+      'recharts',
+      '@wagmi/core',
+    ],
+  },
   images: {
     remotePatterns: [],
   },
@@ -16,4 +25,5 @@ const nextConfig = {
 };
 
 export default nextConfig;
+
 

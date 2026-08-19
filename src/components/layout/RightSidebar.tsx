@@ -19,6 +19,7 @@ export default function RightSidebar() {
 
   useEffect(() => {
     async function loadActivity() {
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         const res = await fetch('/api/activity');
         if (res.ok) {
@@ -35,9 +36,21 @@ export default function RightSidebar() {
     }
 
     loadActivity();
-    const interval = setInterval(loadActivity, 15000);
-    return () => clearInterval(interval);
+    const interval = setInterval(loadActivity, 20000);
+
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        loadActivity();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
+
 
   return (
     <aside className="fixed right-0 top-16 h-[calc(100vh-64px)] w-[320px] bg-background border-l border-white/10 hidden xl:flex flex-col py-6 px-6 z-40 overflow-y-auto custom-scrollbar">

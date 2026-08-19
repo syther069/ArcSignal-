@@ -28,12 +28,9 @@ function getTimeframe(marketId: string) {
   return marketId.match(/-PRICE-(5m|15m|1h|4h|24h)-/)?.[1] ?? null;
 }
 
-export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
+export const MarketRow = React.memo(function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
   const [showTooltip, setShowTooltip] = useState(false);
 
-  // Pool values are loaded by the server-side market index/chain fallback.
-  // Reading every market again from the browser created one RPC request per
-  // row and exhausted ARC's public RPC rate limit on the markets page.
   const followPool = asRawUsdc(market.followPool);
   const fadePool = asRawUsdc(market.fadePool);
   const totalPool = followPool + fadePool;
@@ -51,7 +48,7 @@ export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
   const aiPrediction = market.analysis?.prediction?.toUpperCase() || 'YES';
   const confidence = Math.round(market.analysis?.confidence ?? 0);
 
-  // Status mapping per prompt specification
+  // Status mapping per specification
   let statusLabel = 'OPEN';
   let statusColorClass = 'border-[#c0c1ff]/30 bg-[#c0c1ff]/10 text-[#c0c1ff]';
   let statusExplanation = '';
@@ -253,4 +250,5 @@ export function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
       </div>
     </article>
   );
-}
+});
+

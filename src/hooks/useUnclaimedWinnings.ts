@@ -1,21 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAccount, usePublicClient } from 'wagmi';
-import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
-import { parseAbiItem } from 'viem';
+import { useAccount } from 'wagmi';
 
 /**
  * Returns the count of resolved markets where the user won but hasn't claimed yet.
- * Polls every 30 seconds while mounted.
+ * Uses lightweight indexed API query instead of expensive on-chain log scans.
+ * Throttles polling and pauses when the tab is hidden.
  */
 export function useUnclaimedWinnings(): number {
   const { address } = useAccount();
-  const publicClient = usePublicClient();
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (!address || !publicClient) {
+    if (!address) {
       setCount(0);
       return;
     }
@@ -23,87 +21,46 @@ export function useUnclaimedWinnings(): number {
     let cancelled = false;
 
     const check = async () => {
+      // Skip background polling if tab is not visible
+      if (typeof document !== 'undefined' && document.hidden) return;
+
       try {
-        const currentBlock = await publicClient.getBlockNumber();
-        const DEPLOYMENT_BLOCK = 50012000n;
+        const res = await fetch(`/api/portfolio?address=${encodeURIComponent(address)}`);
+        if (!res.ok) return;
 
-        let fromBlock = DEPLOYMENT_BLOCK;
-        let allLogs: any[] = [];
+        const data = await res.json();
+        if (cancelled || !data.positions) return;
 
-        while (fromBlock <= currentBlock) {
-          let toBlock = fromBlock + 9999n;
-          if (toBlock > currentBlock) toBlock = currentBlock;
-          const logs = await publicClient.getLogs({
-            address: ARCSIGNAL_ADDRESS,
-            event: parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)'),
-            fromBlock,
-            toBlock,
-          });
-          allLogs.push(...logs);
-          fromBlock = toBlock + 1n;
-        }
+        // Count positions where market is resolved, user won, and not yet claimed
+        const unclaimed = data.positions.filter(
+          (p: { isResolved: boolean; userWon: boolean; claimed: boolean }) =>
+            p.isResolved && p.userWon && !p.claimed
+        ).length;
 
-        // Map marketId -> Set of user staked sides (0 = Follow, 1 = Fade)
-        const positionsByMarket = new Map<string, Set<number>>();
-        for (const log of allLogs) {
-          const { user, marketId, side } = log.args as { user: string; marketId: string; side: number };
-          if (user?.toLowerCase() !== address.toLowerCase()) continue;
-          if (!positionsByMarket.has(marketId)) {
-            positionsByMarket.set(marketId, new Set());
-          }
-          positionsByMarket.get(marketId)!.add(Number(side));
-        }
-
-        if (positionsByMarket.size === 0) {
-          if (!cancelled) setCount(0);
-          return;
-        }
-
-        let unclaimed = 0;
-
-        for (const [marketId, userSides] of positionsByMarket.entries()) {
-          try {
-            const [marketResult, claimedResult] = await Promise.all([
-              publicClient.readContract({
-                address: ARCSIGNAL_ADDRESS,
-                abi: ARCSIGNAL_ABI,
-                functionName: 'getMarket',
-                args: [marketId],
-              }) as Promise<{ resolved: boolean; outcome: number }>,
-              publicClient.readContract({
-                address: ARCSIGNAL_ADDRESS,
-                abi: ARCSIGNAL_ABI,
-                functionName: 'claimed',
-                args: [marketId, address as `0x${string}`],
-              }) as Promise<boolean>,
-            ]);
-
-            if (!marketResult.resolved) continue;
-            if (claimedResult) continue;
-
-            // On-chain outcome: 1 = Follow (side 0), 2 = Fade (side 1)
-            const winningSide = marketResult.outcome === 1 ? 0 : marketResult.outcome === 2 ? 1 : -1;
-            if (winningSide !== -1 && userSides.has(winningSide)) {
-              unclaimed += 1;
-            }
-          } catch {
-            // skip markets that fail
-          }
-        }
-
-        if (!cancelled) setCount(unclaimed);
+        setCount(unclaimed);
       } catch {
-        // silently fail — don't disrupt the UI
+        // Silently fail to avoid UI disruption
       }
     };
 
     check();
-    const interval = setInterval(check, 30_000);
+    const interval = setInterval(check, 60_000);
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        check();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       cancelled = true;
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [address, publicClient]);
+  }, [address]);
 
   return count;
 }
+
