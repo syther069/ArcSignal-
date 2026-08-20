@@ -24,7 +24,7 @@ const footerLinks = [
   {
     title: 'COMMUNITY',
     links: [
-      { label: 'Twitter / X', href: 'https://x.com' },
+      { label: 'Twitter / X', href: 'https://x.com/ArcSignal_' },
       { label: 'Telegram', href: 'https://t.me' },
       { label: 'GitHub', href: 'https://github.com/syther069/ArcSignal-' },
     ],
