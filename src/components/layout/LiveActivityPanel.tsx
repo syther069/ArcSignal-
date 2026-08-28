@@ -15,19 +15,32 @@ export default function LiveActivityPanel() {
   const [recentActivity, setRecentActivity] = useState<Stake[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     try {
-      // 1. Fetch Market Pulse
-      const marketRes = await fetch('/api/markets');
-      if (marketRes.ok) {
+      const safeFetch = async (url: string) => {
+        try {
+          return await fetch(url, { signal });
+        } catch (error) {
+          if (error instanceof DOMException && error.name === 'AbortError') return null;
+          console.error(`Failed to fetch ${url}:`, error);
+          return null;
+        }
+      };
+
+      const [marketRes, portfolioRes, actRes] = await Promise.all([
+        safeFetch('/api/markets?limit=3'),
+        isConnected && address
+          ? safeFetch(`/api/portfolio?address=${encodeURIComponent(address)}`)
+          : Promise.resolve(null),
+        safeFetch('/api/activity'),
+      ]);
+
+      if (marketRes?.ok) {
         const payload = await marketRes.json();
         setMarketPulse((payload.markets ?? []).slice(0, 3));
       }
 
-      // 2. Fetch User Positions if connected
-      if (isConnected && address) {
-        try {
-          const portfolioRes = await fetch(`/api/portfolio?address=${address}`);
+      if (isConnected && address && portfolioRes) {
           if (portfolioRes.ok) {
             const portfolioData = await portfolioRes.json();
             if (portfolioData.positions) {
@@ -63,17 +76,11 @@ export default function LiveActivityPanel() {
               setPositions(mappedPositions);
             }
           }
-        } catch (portErr) {
-          console.error('Failed to fetch portfolio for activity panel:', portErr);
-        }
       } else {
         setPositions([]);
       }
 
-      // 3. Fetch Recent Activity Feed
-      try {
-        const actRes = await fetch('/api/activity');
-        if (actRes.ok) {
+      if (actRes?.ok) {
           const actData = await actRes.json();
           if (actData.activities) {
             const mappedActivity: Stake[] = actData.activities.map((a: any) => ({
@@ -86,11 +93,9 @@ export default function LiveActivityPanel() {
             }));
             setRecentActivity(mappedActivity);
           }
-        }
-      } catch (actErr) {
-        console.error('Failed to fetch recent activity:', actErr);
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       console.error('Error fetching activity panel data:', err);
     } finally {
       setLoading(false);
@@ -98,22 +103,32 @@ export default function LiveActivityPanel() {
   }, [address, isConnected]);
 
   useEffect(() => {
-    const handleFetch = () => {
+    let inFlight = false;
+    let controller: AbortController | undefined;
+    const handleFetch = async () => {
       if (typeof document !== 'undefined' && document.hidden) return;
-      fetchData();
+      if (inFlight) return;
+      inFlight = true;
+      controller = new AbortController();
+      try {
+        await fetchData(controller.signal);
+      } finally {
+        inFlight = false;
+      }
     };
 
-    handleFetch();
-    const interval = setInterval(handleFetch, 25000);
+    void handleFetch();
+    const interval = setInterval(() => void handleFetch(), 25000);
 
     const handleVisibility = () => {
       if (!document.hidden) {
-        fetchData();
+        void handleFetch();
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
+      controller?.abort();
       clearInterval(interval);
       document.removeEventListener('visibilitychange', handleVisibility);
     };

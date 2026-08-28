@@ -82,26 +82,65 @@ function saveLastBlock(address: string, block: bigint) {
   }
 }
 
+const PORTFOLIO_CACHE_TTL_MS = 120_000;
+const PORTFOLIO_CACHE_MAX_ENTRIES = 20;
+const portfolioMemoryCache = new Map<string, { positions: Position[]; timestamp: number }>();
+
+function readPortfolioCache(address: string) {
+  const key = address.toLowerCase();
+  const cached = portfolioMemoryCache.get(key);
+  if (!cached) return undefined;
+  if (Date.now() - cached.timestamp >= PORTFOLIO_CACHE_TTL_MS) {
+    portfolioMemoryCache.delete(key);
+    return undefined;
+  }
+  portfolioMemoryCache.delete(key);
+  portfolioMemoryCache.set(key, cached);
+  return cached;
+}
+
+function writePortfolioCache(address: string, positions: Position[]) {
+  const key = address.toLowerCase();
+  portfolioMemoryCache.delete(key);
+  while (portfolioMemoryCache.size >= PORTFOLIO_CACHE_MAX_ENTRIES) {
+    const oldestKey = portfolioMemoryCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    portfolioMemoryCache.delete(oldestKey);
+  }
+  portfolioMemoryCache.set(key, { positions, timestamp: Date.now() });
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function PortfolioClient() {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
 
-  const [positions, setPositions] = useState<Position[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [positions, setPositions] = useState<Position[]>(() =>
+    typeof window !== 'undefined' && address
+      ? readPortfolioCache(address)?.positions ?? []
+      : [],
+  );
+  const [loading, setLoading] = useState(() =>
+    typeof window !== 'undefined' && address ? !readPortfolioCache(address) : true,
+  );
   const [activeTab, setActiveTab] = useState<Tab>('open');
   const [claiming, setClaiming] = useState<Record<string, boolean>>({});
   const [claimTxHashes, setClaimTxHashes] = useState<Record<string, string>>({});
   const hasLoadedRef = useRef(false);
   const confirmedPositionsRef = useRef<Record<string, Position>>({});
+  const activeAddressRef = useRef(address);
+  activeAddressRef.current = address;
+  const fetchPromiseRef = useRef<{ key: string; promise: Promise<void> } | null>(null);
 
   // ─── Fetch this wallet's positions with a cache and authoritative reads ────
-  const fetchPortfolio = useCallback(async () => {
+  const loadPortfolio = useCallback(async () => {
     if (!address || !publicClient) {
       setLoading(false);
       return;
     }
+
+    const isCurrentAddress = () => activeAddressRef.current?.toLowerCase() === address.toLowerCase();
 
     let pendingStake: PendingStake | null = null;
     try {
@@ -215,7 +254,9 @@ export default function PortfolioClient() {
           // server reports an incomplete chain scan, preserve the current view
           // and let the polling effect retry instead of displaying false zeroes.
           if (positionsToShow.length > 0 || indexed.complete !== false || indexed.source === 'neon') {
+            if (!isCurrentAddress()) return;
             setPositions(positionsToShow);
+            writePortfolioCache(address, positionsToShow);
             hasLoadedRef.current = true;
             setLoading(false);
             return;
@@ -302,6 +343,7 @@ export default function PortfolioClient() {
       const cachedIds = cachedMarketIds(address);
       if (cachedIds.length > 0) {
         const cachedPositions = await readPositions(cachedIds);
+        if (!isCurrentAddress()) return;
         setPositions(cachedPositions);
         hasLoadedRef.current = true;
         setLoading(false);
@@ -314,6 +356,7 @@ export default function PortfolioClient() {
         if (marketIds.length > 0) {
           saveMarketIds(address, marketIds);
           const freshPositions = await readPositions(marketIds);
+          if (!isCurrentAddress()) return;
           setPositions(freshPositions);
           hasLoadedRef.current = true;
         }
@@ -326,15 +369,41 @@ export default function PortfolioClient() {
     }
   }, [address, publicClient]);
 
-  useEffect(() => {
-    fetchPortfolio();
-  }, [fetchPortfolio]);
+  const fetchPortfolio = useCallback(async () => {
+    const key = address?.toLowerCase() ?? 'disconnected';
+    if (fetchPromiseRef.current?.key === key) return fetchPromiseRef.current.promise;
+    const request = loadPortfolio();
+    fetchPromiseRef.current = { key, promise: request };
+    try {
+      await request;
+    } finally {
+      if (fetchPromiseRef.current?.promise === request) fetchPromiseRef.current = null;
+    }
+  }, [address, loadPortfolio]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void fetchPortfolio();
-    }, 10_000);
-    return () => window.clearInterval(timer);
+    if (!address) {
+      setPositions([]);
+      setLoading(false);
+      return;
+    }
+    const cached = readPortfolioCache(address);
+    setPositions(cached?.positions ?? []);
+    setLoading(!cached);
+  }, [address]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const poll = async () => {
+      if (document.visibilityState === 'visible') await fetchPortfolio();
+      if (!cancelled) timer = setTimeout(() => void poll(), 30_000);
+    };
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [fetchPortfolio]);
 
   useEffect(() => {
@@ -406,9 +475,11 @@ export default function PortfolioClient() {
     let wins = 0;
     let resolved = 0;
     let unclaimed = 0;
+    let openCount = 0;
 
     positions.forEach(p => {
       totalStaked += p.stakeUsdc;
+      if (!p.isResolved || (p.userWon && !p.claimed)) openCount++;
       if (p.isResolved && !p.isCancelled && p.userWon !== null) {
         resolved++;
         totalPnl += p.netPnl;
@@ -420,7 +491,7 @@ export default function PortfolioClient() {
     });
 
     const winRate = resolved > 0 ? (wins / resolved) * 100 : 0;
-    return { totalStaked, totalPnl, winRate, unclaimed, wins, resolved, openCount: positions.filter(p => !p.isResolved || (p.isResolved && p.userWon && !p.claimed)).length };
+    return { totalStaked, totalPnl, winRate, unclaimed, wins, resolved, openCount };
   }, [positions]);
 
   // ─── Filtered Positions ─────────────────────────────────────────────────────

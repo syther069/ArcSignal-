@@ -1,5 +1,5 @@
 export type MarketCategory = 'CRYPTO' | 'FOOTBALL';
-export type MarketOutcome = 'FOLLOW' | 'FADE' | 'PENDING' | 'CANCELLED';
+export type MarketOutcome = 'FOLLOW' | 'FADE' | 'PENDING' | 'UNRESOLVED' | 'CANCELLED';
 export type MarketStatus = 'DRAFT' | 'OPEN' | 'CLOSED' | 'PENDING_RESOLUTION' | 'RESOLVED' | 'VOIDED';
 
 export interface AIAnalysis {
@@ -10,7 +10,7 @@ export interface AIAnalysis {
   bullCase: string;
   bearCase: string;
   keyFactors: string[];
-  riskFactors: string[];
+  riskFactors?: string[];
   sources: string[];
   generatedAt: string;
 }

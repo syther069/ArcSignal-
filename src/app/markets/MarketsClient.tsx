@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Sidebar from '@/components/layout/Sidebar';
 import { MarketRow } from '@/components/markets/MarketRow';
@@ -9,7 +9,6 @@ import { Market, StakeSide } from '@/types';
 import type { SerializableMarket } from '@/lib/markets';
 import { toUiMarket } from '@/lib/ui-market';
 import { useDebounce } from '@/hooks/useDebounce';
-import { useGlobalTime } from '@/hooks/useGlobalTime';
 import {
   RotateCw,
   Search,
@@ -43,6 +42,52 @@ interface EnrichedMarket extends SerializableMarket {
   searchString: string;
 }
 
+function useMarketBoundaryTime(markets: SerializableMarket[]): number {
+  const [nowUnix, setNowUnix] = useState(() => Math.floor(Date.now() / 1000));
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleNextBoundary = () => {
+      if (timer) clearTimeout(timer);
+      const now = Math.floor(Date.now() / 1000);
+      setNowUnix((previous) => previous === now ? previous : now);
+
+      let nextBoundary = Number.POSITIVE_INFINITY;
+      for (const market of markets) {
+        if (market.resolved || market.status === 'RESOLVED') continue;
+        const closingSoonAt = market.resolutionTime - 3600;
+        if (closingSoonAt > now && closingSoonAt < nextBoundary) nextBoundary = closingSoonAt;
+        if (market.resolutionTime > now && market.resolutionTime < nextBoundary) {
+          nextBoundary = market.resolutionTime;
+        }
+      }
+
+      if (Number.isFinite(nextBoundary)) {
+        const delayMs = Math.min((nextBoundary - now) * 1000 + 50, 2_147_000_000);
+        timer = setTimeout(scheduleNextBoundary, Math.max(delayMs, 50));
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (timer) clearTimeout(timer);
+        timer = undefined;
+      } else {
+        scheduleNextBoundary();
+      }
+    };
+
+    scheduleNextBoundary();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      if (timer) clearTimeout(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [markets]);
+
+  return nowUnix;
+}
+
 export default function MarketsClient({ markets }: MarketsClientProps) {
   const [selectedCategory, setSelectedCategory] = useState('All Markets');
   const [selectedTimeframe, setSelectedTimeframe] = useState<string | null>(null);
@@ -57,7 +102,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
     side: StakeSide;
   } | null>(null);
 
-  const nowUnix = useGlobalTime();
+  const nowUnix = useMarketBoundaryTime(markets);
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
@@ -194,14 +239,25 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
 
   // Featured / Trending markets (Top 2 high conviction or active markets)
   const trendingMarkets = useMemo(() => {
-    return enrichedMarkets
-      .filter((m) => !m.resolved && m.resolutionTime > nowUnix)
-      .sort((a, b) => {
-        const diff = b.totalLiquidityNum - a.totalLiquidityNum;
-        if (diff !== 0) return diff;
-        return (b.analysis?.confidence ?? 0) - (a.analysis?.confidence ?? 0);
-      })
-      .slice(0, 2);
+    let first: EnrichedMarket | undefined;
+    let second: EnrichedMarket | undefined;
+    const ranksAbove = (left: EnrichedMarket, right: EnrichedMarket) => {
+      const liquidityDiff = left.totalLiquidityNum - right.totalLiquidityNum;
+      return liquidityDiff !== 0
+        ? liquidityDiff > 0
+        : (left.analysis?.confidence ?? 0) > (right.analysis?.confidence ?? 0);
+    };
+
+    for (const market of enrichedMarkets) {
+      if (market.resolved || market.resolutionTime <= nowUnix) continue;
+      if (!first || ranksAbove(market, first)) {
+        second = first;
+        first = market;
+      } else if (!second || ranksAbove(market, second)) {
+        second = market;
+      }
+    }
+    return first ? (second ? [first, second] : [first]) : [];
   }, [enrichedMarkets, nowUnix]);
 
   // Contextual empty state message
