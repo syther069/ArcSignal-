@@ -1,17 +1,21 @@
 import DashboardClient from './DashboardClient';
-import { serializeMarket, type SerializableMarket } from '@/lib/markets';
+import DataUnavailable from '@/components/DataUnavailable';
+import { serializeMarket } from '@/lib/markets';
 import { getIndexedMarkets } from '@/lib/indexed-markets';
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
-  let markets: SerializableMarket[] = [];
   const aiAccuracy: never[] = [];
+  const markets = await getIndexedMarkets(160, 0)
+    .then((result) => result.map(serializeMarket))
+    .catch((error) => {
+      console.error('Dashboard market index unavailable:', error);
+      return null;
+    });
 
-  try {
-    markets = (await getIndexedMarkets(160, 0)).map(serializeMarket);
-  } catch (error) {
-    console.error('Dashboard market index unavailable:', error);
+  if (!markets) {
+    return <DataUnavailable />;
   }
 
   return <DashboardClient markets={markets} aiAccuracy={aiAccuracy} />;

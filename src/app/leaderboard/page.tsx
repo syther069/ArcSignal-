@@ -1,4 +1,5 @@
 import LeaderboardClient from './LeaderboardClient';
+import DataUnavailable from '@/components/DataUnavailable';
 import { serializeMarket } from '@/lib/markets';
 import { getIndexedMarkets } from '@/lib/indexed-markets';
 import { getIndexedLeaderboard } from '@/lib/indexed-leaderboard';
@@ -6,24 +7,21 @@ import { getIndexedLeaderboard } from '@/lib/indexed-leaderboard';
 export const dynamic = 'force-dynamic';
 
 export default async function LeaderboardPage() {
-  const [leaderboardResult, marketsResult] = await Promise.allSettled([
-    getIndexedLeaderboard(100),
-    getIndexedMarkets(160, 0),
-  ]);
+  const result = await Promise.all([
+      getIndexedLeaderboard(100),
+      getIndexedMarkets(160, 0),
+    ])
+    .catch((error) => {
+      console.error('Leaderboard index unavailable:', error);
+      return null;
+    });
 
-  const leaderboard = leaderboardResult.status === 'fulfilled'
-    ? leaderboardResult.value
-    : [];
-  const markets = marketsResult.status === 'fulfilled'
-    ? marketsResult.value.map(serializeMarket)
-    : [];
+  if (!result) {
+    return <DataUnavailable />;
+  }
 
-  if (leaderboardResult.status === 'rejected') {
-    console.error('Leaderboard index unavailable:', leaderboardResult.reason);
-  }
-  if (marketsResult.status === 'rejected') {
-    console.error('Leaderboard market stats unavailable:', marketsResult.reason);
-  }
+  const [leaderboard, rawMarkets] = result;
+  const markets = rawMarkets.map(serializeMarket);
 
   const serializableLeaderboard = leaderboard.map((entry) => ({
     address: entry.address,

@@ -1,4 +1,5 @@
 import nextDynamic from 'next/dynamic';
+import DataUnavailable from '@/components/DataUnavailable';
 import { getIndexedAnalytics } from '@/lib/indexed-analytics';
 
 const AnalyticsClient = nextDynamic(() => import('./AnalyticsClient'), {
@@ -30,7 +31,7 @@ const EMPTY_ANALYTICS = {
     cancelledCount: 0,
     averageLiquidity: 0,
     dataAsOf: undefined,
-    dataSource: 'INDEX UNAVAILABLE',
+    dataSource: 'NO INDEXED MARKETS',
     followPercent: 0,
     fadePercent: 0,
     aiAccuracy: null,
@@ -40,11 +41,16 @@ const EMPTY_ANALYTICS = {
 };
 
 export default async function AnalyticsPage() {
-  try {
-    const indexed = await getIndexedAnalytics();
-    return <AnalyticsClient {...(indexed ?? EMPTY_ANALYTICS)} />;
-  } catch (error) {
-    console.error('Analytics index unavailable:', error);
-    return <AnalyticsClient {...EMPTY_ANALYTICS} />;
+  const result = await getIndexedAnalytics()
+    .then((data) => ({ data }))
+    .catch((error) => {
+      console.error('Analytics index unavailable:', error);
+      return null;
+    });
+
+  if (!result) {
+    return <DataUnavailable />;
   }
+
+  return <AnalyticsClient {...(result.data ?? EMPTY_ANALYTICS)} />;
 }

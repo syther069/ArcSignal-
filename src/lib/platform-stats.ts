@@ -10,13 +10,8 @@ export interface PlatformStats {
   accuracy: number | null;
 }
 
-async function loadPlatformStats(): Promise<PlatformStats> {
-  let markets: Market[];
-  try {
-    markets = await getIndexedMarkets(160, 0);
-  } catch {
-    markets = [];
-  }
+export async function loadPlatformStats(): Promise<PlatformStats> {
+  const markets: Market[] = await getIndexedMarkets(160, 0);
 
   let totalVolumeUsdc = 0;
   let activeMarkets = 0;
