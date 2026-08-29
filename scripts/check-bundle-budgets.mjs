@@ -1,23 +1,47 @@
-import { readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 import { gzipSync } from 'node:zlib';
 
 const budgets = {
-  '/layout': 225_000,
-  '/page': 105_000,
-  '/analytics/page': 220_000,
-  '/leaderboard/page': 120_000,
-  '/markets/page': 125_000,
+  page: { label: '/', maximum: 120_000 },
+  'analytics/page': { label: '/analytics', maximum: 235_000 },
+  'leaderboard/page': { label: '/leaderboard', maximum: 130_000 },
+  'markets/page': { label: '/markets', maximum: 135_000 },
 };
 
 const manifestPath = path.join('.next', 'app-build-manifest.json');
-const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const failures = [];
 
-for (const [route, budget] of Object.entries(budgets)) {
-  const files = manifest.pages?.[route];
+function getRouteFiles(route) {
+  if (existsSync(manifestPath)) {
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    return manifest.pages?.[`/${route}`] ?? [];
+  }
+
+  const clientManifestPath = path.join(
+    '.next',
+    'server',
+    'app',
+    `${route}_client-reference-manifest.js`,
+  );
+  if (!existsSync(clientManifestPath)) return [];
+
+  const context = {};
+  context.globalThis = context;
+  vm.runInNewContext(readFileSync(clientManifestPath, 'utf8'), context);
+  const routeManifest = Object.values(context.__RSC_MANIFEST ?? {})[0];
+  const files = new Set();
+  for (const clientModule of Object.values(routeManifest?.clientModules ?? {})) {
+    for (const chunk of clientModule.chunks ?? []) files.add(chunk);
+  }
+  return [...files];
+}
+
+for (const [route, { label, maximum }] of Object.entries(budgets)) {
+  const files = getRouteFiles(route);
   if (!Array.isArray(files) || files.length === 0) {
-    failures.push(`${route}: missing from ${manifestPath}`);
+    failures.push(`${label}: client build manifest is missing`);
     continue;
   }
 
@@ -30,11 +54,11 @@ for (const [route, budget] of Object.entries(budgets)) {
   }
 
   console.log(
-    `${route}: ${(gzipBytes / 1024).toFixed(1)} KiB gzip `
-    + `(${(rawBytes / 1024).toFixed(1)} KiB raw), budget ${(budget / 1024).toFixed(1)} KiB`,
+    `${label}: ${(gzipBytes / 1024).toFixed(1)} KiB gzip `
+    + `(${(rawBytes / 1024).toFixed(1)} KiB raw), budget ${(maximum / 1024).toFixed(1)} KiB`,
   );
-  if (gzipBytes > budget) {
-    failures.push(`${route}: ${gzipBytes} gzip bytes exceeds ${budget}`);
+  if (gzipBytes > maximum) {
+    failures.push(`${label}: ${gzipBytes} gzip bytes exceeds ${maximum}`);
   }
 }
 

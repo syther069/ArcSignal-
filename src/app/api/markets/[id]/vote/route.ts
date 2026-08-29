@@ -7,10 +7,10 @@ import { getSql } from '@/lib/db';
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const marketId = params?.id;
+    const { id: marketId } = await params;
     if (!marketId || typeof marketId !== 'string' || marketId.length > 100) {
       return NextResponse.json({ success: false, error: 'Invalid marketId parameter' }, { status: 400 });
     }

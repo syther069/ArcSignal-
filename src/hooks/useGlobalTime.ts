@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
  * across the application. Replaces dozens of individual setInterval instances
  * with a single synchronized tick listener.
  */
-let globalListeners: Set<() => void> = new Set();
+const globalListeners: Set<() => void> = new Set();
 let globalInterval: ReturnType<typeof setInterval> | null = null;
 let currentUnixSeconds = Math.floor(Date.now() / 1000);
 

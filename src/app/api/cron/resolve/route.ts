@@ -111,7 +111,7 @@ export async function POST(req: Request) {
 
   // ── 1. Fetch recent market IDs without the large getAllMarketIds payload ──
   let marketCount = 0;
-  let targetIds: string[] = [];
+  const targetIds: string[] = [];
   try {
     const count = await readWithRetry('getMarketCount', () => resolvePublicClient.readContract({
       address: CONTRACT_ADDRESS,

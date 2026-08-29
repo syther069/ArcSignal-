@@ -2,10 +2,8 @@ import { spawnSync } from 'node:child_process';
 
 const baseline = {
   critical: 0,
-  high: 5,
-  moderate: 11,
-  low: 0,
-  total: 16,
+  high: 1,
+  total: 14,
 };
 
 const audit = spawnSync(
