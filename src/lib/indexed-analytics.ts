@@ -1,6 +1,6 @@
 import { getSql } from './db';
 
-export async function getIndexedAnalytics(limit = 500) {
+export async function getIndexedAnalytics(limit = 160) {
   const sql = getSql();
   const rows = await sql`
     select market_id, category, question, resolution_time, follow_pool, fade_pool,
@@ -13,11 +13,18 @@ export async function getIndexedAnalytics(limit = 500) {
 
   const markets = rows.map((row) => {
     let analysis: Record<string, unknown> = {};
-    try { analysis = row.analysis_json ? JSON.parse(String(row.analysis_json)) : {}; } catch { /* tolerate malformed legacy data */ }
+    try {
+      analysis = typeof row.analysis_json === 'object'
+        ? row.analysis_json as Record<string, unknown>
+        : row.analysis_json
+          ? JSON.parse(String(row.analysis_json))
+          : {};
+    } catch {
+      // Tolerate malformed legacy data without transferring it to the client.
+    }
+
     return {
-      marketId: row.market_id,
-      category: row.category,
-      question: row.question,
+      category: String(row.category),
       title: row.question,
       resolutionTime: Number(row.resolution_time),
       // Keep dashboard values in human-readable USDC units. The index stores
@@ -27,9 +34,6 @@ export async function getIndexedAnalytics(limit = 500) {
       resolved: Boolean(row.resolved),
       outcome: Number(row.outcome) === 1 ? 'FOLLOW' : Number(row.outcome) === 2 ? 'FADE' : 'PENDING',
       confidence: Number(analysis.confidence ?? 0),
-      probability: Number(analysis.probability ?? 0),
-      aiSignal: analysis.prediction ?? 'PENDING',
-      analysis,
     };
   });
 
@@ -47,7 +51,9 @@ export async function getIndexedAnalytics(limit = 500) {
   let runningFootballTotal = 0;
   let runningFootballCorrect = 0;
 
-  const resolvedWithAccuracy = resolved.map((market) => {
+  const resolvedWithAccuracy = [...resolved]
+    .sort((a, b) => a.resolutionTime - b.resolutionTime)
+    .map((market) => {
     if (market.category === 'CRYPTO') {
       runningCryptoTotal += 1;
       if (market.outcome === 'FOLLOW') runningCryptoCorrect += 1;
@@ -56,17 +62,17 @@ export async function getIndexedAnalytics(limit = 500) {
       if (market.outcome === 'FOLLOW') runningFootballCorrect += 1;
     }
 
-    return {
-      ...market,
-      resolutionDate: new Date(market.resolutionTime * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      cryptoAccuracy: runningCryptoTotal > 0
-        ? Math.round((runningCryptoCorrect / runningCryptoTotal) * 100)
-        : null,
-      footballAccuracy: runningFootballTotal > 0
-        ? Math.round((runningFootballCorrect / runningFootballTotal) * 100)
-        : null,
-    };
-  });
+      return {
+        ...market,
+        resolutionDate: new Date(market.resolutionTime * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        cryptoAccuracy: runningCryptoTotal > 0
+          ? Math.round((runningCryptoCorrect / runningCryptoTotal) * 100)
+          : null,
+        footballAccuracy: runningFootballTotal > 0
+          ? Math.round((runningFootballCorrect / runningFootballTotal) * 100)
+          : null,
+      };
+    });
   const totalVolume = totalFollow + totalFade;
   const avgConfidence = markets.length > 0 ? Math.round(markets.reduce((sum, market) => sum + market.confidence, 0) / markets.length) : 0;
 

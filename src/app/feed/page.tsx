@@ -1,6 +1,7 @@
 import FeedClient from './FeedClient';
 import { Stake } from '@/types';
-import { getMarketsFromChain, serializeMarket, type SerializableMarket } from '@/lib/markets';
+import { serializeMarket, type SerializableMarket } from '@/lib/markets';
+import { getIndexedMarkets } from '@/lib/indexed-markets';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,10 +10,9 @@ export default async function FeedPage() {
   let markets: SerializableMarket[] = [];
 
   try {
-    const chainMarkets = await getMarketsFromChain();
-    markets = chainMarkets.map(serializeMarket);
-  } catch {
-    markets = [];
+    markets = (await getIndexedMarkets(160, 0)).map(serializeMarket);
+  } catch (error) {
+    console.error('Feed market index unavailable:', error);
   }
 
   return <FeedClient initialStakes={initialStakes} markets={markets} />;

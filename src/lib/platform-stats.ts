@@ -1,7 +1,6 @@
 import { unstable_cache } from 'next/cache';
 import { formatUnits } from 'viem';
 import { getIndexedMarkets } from './indexed-markets';
-import { getMarketsFromChain } from './markets';
 import type { Market } from './types';
 
 export interface PlatformStats {
@@ -17,9 +16,6 @@ async function loadPlatformStats(): Promise<PlatformStats> {
     markets = await getIndexedMarkets(160, 0);
   } catch {
     markets = [];
-  }
-  if (markets.length === 0) {
-    markets = await getMarketsFromChain(false, { limit: 24, offset: 0 });
   }
 
   let totalVolumeUsdc = 0;
@@ -48,6 +44,6 @@ async function loadPlatformStats(): Promise<PlatformStats> {
 
 export const getPlatformStats = unstable_cache(
   loadPlatformStats,
-  ['platform-stats-v1'],
+  ['platform-stats-v2-index-only'],
   { revalidate: 15 },
 );

@@ -1,100 +1,28 @@
 import LeaderboardClient from './LeaderboardClient';
-import { getMarketsFromChain, serializeMarket } from '@/lib/markets';
-import { publicClient, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
-import { parseAbiItem } from 'viem';
+import { serializeMarket } from '@/lib/markets';
+import { getIndexedMarkets } from '@/lib/indexed-markets';
 import { getIndexedLeaderboard } from '@/lib/indexed-leaderboard';
 
 export const dynamic = 'force-dynamic';
 
 export default async function LeaderboardPage() {
-  let markets: any[] = [];
-  let leaderboard: Array<{
-    address: string;
-    totalStaked: bigint | string;
-    correctPredictions: number;
-    totalPredictions: number;
-    winRate: number;
-    totalPayout: string;
-    resolvedStaked: string;
-    netPnl: number;
-    roi: number;
-  }> = [];
+  const [leaderboardResult, marketsResult] = await Promise.allSettled([
+    getIndexedLeaderboard(100),
+    getIndexedMarkets(160, 0),
+  ]);
 
-  let indexedLoaded = false;
-  try {
-    const indexedLeaderboard = await getIndexedLeaderboard(100);
-    if (indexedLeaderboard.length > 0) {
-      leaderboard = indexedLeaderboard;
-      indexedLoaded = true;
-    }
-  } catch (error) {
-    console.warn('Indexed leaderboard unavailable; using chain fallback.', error);
+  const leaderboard = leaderboardResult.status === 'fulfilled'
+    ? leaderboardResult.value
+    : [];
+  const markets = marketsResult.status === 'fulfilled'
+    ? marketsResult.value.map(serializeMarket)
+    : [];
+
+  if (leaderboardResult.status === 'rejected') {
+    console.error('Leaderboard index unavailable:', leaderboardResult.reason);
   }
-
-  try {
-    const chainMarkets = await getMarketsFromChain();
-    markets = chainMarkets.map(serializeMarket);
-
-    if (!indexedLoaded) {
-      const DEPLOYMENT_BLOCK = 50012000n;
-      const latestBlock = await publicClient.getBlockNumber();
-      const maxRange = 9_000n;
-      const event = parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)');
-      const stakedLogs: any[] = [];
-      for (let fromBlock = DEPLOYMENT_BLOCK; fromBlock <= latestBlock; fromBlock += maxRange) {
-        const toBlock = fromBlock + maxRange - 1n > latestBlock ? latestBlock : fromBlock + maxRange - 1n;
-        stakedLogs.push(...await publicClient.getLogs({ address: ARCSIGNAL_ADDRESS, event, fromBlock, toBlock }));
-      }
-
-    const addressMap = new Map<string, { totalStaked: bigint; correct: number; total: number }>();
-    
-    for (const log of stakedLogs) {
-      const { user, amount, marketId, side } = log.args as { user: string; amount: bigint; marketId: string; side: any };
-      if (!user) continue;
-      const userKey = user.toLowerCase();
-      if (!addressMap.has(userKey)) {
-        addressMap.set(userKey, { totalStaked: 0n, correct: 0, total: 0 });
-      }
-      const entry = addressMap.get(userKey)!;
-      entry.totalStaked += BigInt(amount || 0n);
-      
-      const market = markets.find((m: any) => m.marketId === marketId);
-      // outcome: 0 = unresolved, 1 = follow wins, 2 = fade wins
-      // side:    0 = follow,     1 = fade
-      if (market && market.resolved) {
-        const rawOutcome = Number(market.outcome === 'FOLLOW' ? 1 : market.outcome === 'FADE' ? 2 : 0);
-        if (rawOutcome !== 0) {
-          entry.total += 1;
-          const winningSide = rawOutcome === 1 ? 0 : 1; // outcome 1 → follow(0) wins, outcome 2 → fade(1) wins
-          if (Number(side) === winningSide) entry.correct += 1;
-        }
-      }
-    }
-
-    leaderboard = Array.from(addressMap.entries())
-      .map(([address, data]) => ({
-        address,
-        totalStaked: data.totalStaked,
-        correctPredictions: data.correct,
-        totalPredictions: data.total,
-        winRate: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
-        totalPayout: '0',
-        resolvedStaked: data.totalStaked.toString(),
-        netPnl: 0,
-        roi: 0,
-      }))
-      // Sort: first by win rate desc (only for those who have resolved predictions), then by totalStaked desc
-      .sort((a, b) => {
-        if (a.totalPredictions > 0 && b.totalPredictions > 0) {
-          if (b.winRate !== a.winRate) return b.winRate - a.winRate;
-        }
-        return b.totalStaked > a.totalStaked ? -1 : b.totalStaked < a.totalStaked ? 1 : 0;
-      })
-      .slice(0, 20);
-    }
-  } catch (error) {
-    console.error('Failed to fetch leaderboard:', error);
-    leaderboard = [];
+  if (marketsResult.status === 'rejected') {
+    console.error('Leaderboard market stats unavailable:', marketsResult.reason);
   }
 
   const serializableLeaderboard = leaderboard.map((entry) => ({
