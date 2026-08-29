@@ -6,17 +6,24 @@ dotenv.config({ path: resolve(process.cwd(), '.env') });
 import { POST } from '../src/app/api/cron/generate/route';
 
 async function run() {
-    const req = new Request('http://localhost/api/cron/generate', {
-        method: 'POST',
-        headers: {
-            'authorization': 'Bearer ' + process.env.CRON_SECRET
-        }
-    });
-    
-    console.log("Generating markets...");
-    const response = await POST(req);
-    const data = await response.json();
-    console.log(JSON.stringify(data, null, 2));
+  const timeframe = process.argv[2]?.trim();
+  const url = new URL('http://localhost/api/cron/generate');
+  if (timeframe) url.searchParams.set('timeframe', timeframe);
+
+  const request = new Request(url.toString(), {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${process.env.CRON_SECRET ?? ''}`,
+    },
+  });
+
+  const response = await POST(request);
+  const data = await response.json();
+  console.log(JSON.stringify(data, null, 2));
+  if (!response.ok) process.exitCode = 1;
 }
 
-run().catch(console.error);
+run().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

@@ -8,8 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "trigger": "npx tsx scripts/trigger-markets.ts",
-    "generate": "npx tsx scripts/trigger-markets.ts",
+    "trigger": "npx tsx scripts/run-generate.ts",
+    "generate": "npx tsx scripts/run-generate.ts",
     "resolve": "npx tsx scripts/run-resolve.ts",
     "db:migrate": "npx tsx scripts/migrate-db.ts"
   },

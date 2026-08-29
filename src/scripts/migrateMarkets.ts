@@ -13,8 +13,13 @@ const RPC_URL = process.env.ARC_RPC_URL
   ?? 'https://rpc.testnet.arc.network';
 const privateKey = process.env.RESOLVER_PRIVATE_KEY;
 
-if (!privateKey) {
-  console.error("Missing RESOLVER_PRIVATE_KEY");
+if (process.env.ENABLE_CONTRACT_MIGRATION !== 'true') {
+  console.error('Contract migration is disabled. Set ENABLE_CONTRACT_MIGRATION=true for this one-time operation.');
+  process.exit(1);
+}
+
+if (!privateKey || !/^0x[a-fA-F0-9]{64}$/.test(privateKey)) {
+  console.error("Missing or invalid RESOLVER_PRIVATE_KEY");
   process.exit(1);
 }
 
@@ -81,7 +86,10 @@ async function main() {
           market.resolutionTime,
         ],
       });
-      await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== 'success') {
+        throw new Error(`createMarket transaction reverted: ${hash}`);
+      }
       console.log(`  -> Created! Tx: ${hash}`);
     } catch (e: any) {
       console.error(`  -> Failed to create:`, e.shortMessage || e.message);

@@ -11,6 +11,8 @@ const validMarket: CryptoData = {
   total_volume: 50_000_000_000,
   high_24h: 102_000,
   low_24h: 98_000,
+  price_source: 'coingecko',
+  price_observed_at: 1_788_000_000,
 };
 
 describe('crypto market validation', () => {
@@ -25,6 +27,7 @@ describe('crypto market validation', () => {
     ['negative volume', { total_volume: -1 }],
     ['invalid daily range', { high_24h: 90_000, low_24h: 98_000 }],
     ['fractional rank', { market_cap_rank: 1.5 }],
+    ['missing provider timestamp', { price_observed_at: Number.NaN }],
   ])('rejects %s', (_label, patch) => {
     expect(() => assertCryptoData([{ ...validMarket, ...patch }])).toThrow(
       'CoinGecko returned incomplete market data',

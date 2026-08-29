@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
-import { createWalletClient, http, createPublicClient } from 'viem';
+import { createWalletClient, decodeEventLog, http, createPublicClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchCompletedFixtures } from '@/lib/apifootball';
 import { authorizeCronRequest } from '@/lib/cron-auth';
 import { getSql } from '@/lib/db';
+import {
+  decideCryptoResolution,
+  parseCryptoOracleSpec,
+  parseMarketTimeframe,
+} from '@/lib/oracle-policy';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -73,6 +78,10 @@ export async function POST(req: Request) {
   const authorization = authorizeCronRequest(req);
   if (!authorization.ok) return authorization.response;
 
+  if (process.env.ENABLE_MARKET_AUTOMATION !== 'true') {
+    return NextResponse.json({ error: 'Market automation is disabled' }, { status: 503 });
+  }
+
   const url = new URL(req.url);
   const timeframeParam = url.searchParams.get('timeframe')?.trim();
   const timeframe = timeframeParam && timeframeParam !== 'all' ? timeframeParam : null;
@@ -121,7 +130,7 @@ export async function POST(req: Request) {
           functionName: 'getMarketIdByIndex',
           args: [index],
         }) as Promise<string>);
-        if (timeframe && !marketId.includes(`-${timeframe}-`)) {
+        if (timeframe && parseMarketTimeframe(marketId) !== timeframe) {
           skipped.push(`${marketId}: skipped by timeframe filter (${timeframe})`);
           await sleep(100);
           continue;
@@ -170,6 +179,7 @@ export async function POST(req: Request) {
 
   // ── 4. Loop through all markets. ─────────────────────────────────────────
   for (const marketId of targetIds) {
+    let expectedOutcome: 1 | 2 | undefined;
     let market: {
       marketId: string;
       category: string;
@@ -213,46 +223,36 @@ export async function POST(req: Request) {
       const categoryNorm = market.category.toUpperCase();
 
       if (categoryNorm === 'CRYPTO') {
-        const priceMatch = market.question.match(/\$?([\d,]+(?:\.\d+)?)/);
-        if (priceMatch) {
-          const targetPrice = parseFloat(priceMatch[1].replace(/,/g, ''));
-          const symbolRaw = marketId.split('-')[0].toLowerCase();
-          const coin = coins.find(
-            (c) => c.symbol.toLowerCase() === symbolRaw || c.id.toLowerCase() === symbolRaw
-          );
-
-          if (coin) {
-            const is5m = marketId.includes('-5m-');
-
-            if (is5m) {
-              // 5m timeframe: "hold above" target.
-              if (coin.current_price < targetPrice) {
-                shouldResolveNow = true;
-                outcome = 2; // Fade wins if it drops below support
-                outcomeReason = `Dropped below support $${targetPrice} to $${coin.current_price}`;
-              } else if (isExpired) {
-                shouldResolveNow = true;
-                outcome = 1; // Follow wins if it held above until expiry
-                outcomeReason = `Held above $${targetPrice} until expiry (current $${coin.current_price})`;
-              }
-            } else {
-              // 15m, 1h, 4h, 24h timeframe: "reach" or "break above" target.
-              if (coin.current_price >= targetPrice) {
-                shouldResolveNow = true;
-                outcome = 1; // Follow wins if it hits target early
-                outcomeReason = `Hit target $${targetPrice} early (current $${coin.current_price})`;
-              } else if (isExpired) {
-                shouldResolveNow = true;
-                outcome = 2; // Fade wins if it never reached target by expiry
-                outcomeReason = `Failed to reach $${targetPrice} by expiry (current $${coin.current_price})`;
-              }
-            }
-          } else {
-            skipped.push(`${marketId}: reason=coin_not_found (symbol="${symbolRaw}")`);
-          }
-        } else {
-          skipped.push(`${marketId}: reason=target_unparseable (question="${market.question}")`);
+        let policy;
+        try {
+          policy = parseCryptoOracleSpec(market.analysisJson, Number(market.resolutionTime));
+        } catch (policyError) {
+          skipped.push(`${marketId}: reason=manual_review (${policyError instanceof Error ? policyError.message : String(policyError)})`);
+          await recordOracleAttempt(marketId, 'SKIPPED');
+          continue;
         }
+
+        const coin = coins.find((candidate) => candidate.symbol.toUpperCase() === policy.symbol);
+        if (!coin) {
+          skipped.push(`${marketId}: reason=coin_not_found (symbol="${policy.symbol}")`);
+          await recordOracleAttempt(marketId, 'SKIPPED');
+          continue;
+        }
+
+        const decision = decideCryptoResolution(policy, {
+          provider: coin.price_source,
+          symbol: coin.symbol,
+          price: coin.current_price,
+          observedAt: coin.price_observed_at,
+        }, now);
+        if (decision.action !== 'resolve') {
+          skipped.push(`${marketId}: reason=${decision.action} (${decision.reason})`);
+          await recordOracleAttempt(marketId, 'SKIPPED');
+          continue;
+        }
+        shouldResolveNow = true;
+        outcome = decision.outcome;
+        outcomeReason = decision.reason;
 
       } else if (categoryNorm === 'FOOTBALL') {
         if (isExpired) {
@@ -278,6 +278,7 @@ export async function POST(req: Request) {
         await recordOracleAttempt(marketId, 'SKIPPED');
         continue;
       }
+      expectedOutcome = outcome;
 
       // Re-read immediately before submitting. This makes repeated or
       // overlapping cron runs safe: only an unresolved market may be sent.
@@ -305,7 +306,24 @@ export async function POST(req: Request) {
 
       await recordOracleAttempt(marketId, 'SUBMITTED', outcome, hash);
 
-      await resolvePublicClient.waitForTransactionReceipt({ hash });
+      const receipt = await resolvePublicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== 'success') {
+        throw new Error(`resolveMarket transaction reverted: ${hash}`);
+      }
+      const resolvedEvent = receipt.logs.some((log) => {
+        try {
+          const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: log.data, topics: log.topics });
+          const args = decoded.args as { marketId?: string; outcome?: number };
+          return decoded.eventName === 'MarketResolved'
+            && args.marketId === marketId
+            && Number(args.outcome) === outcome;
+        } catch {
+          return false;
+        }
+      });
+      if (!resolvedEvent) {
+        throw new Error(`MarketResolved event missing or mismatched for ${marketId}`);
+      }
       await recordOracleAttempt(marketId, 'CONFIRMED', outcome, hash);
       resolved.push(`${marketId}: outcome=${outcome} (${outcomeReason}) tx=${hash}`);
       await new Promise(r => setTimeout(r, 500));
@@ -322,9 +340,15 @@ export async function POST(req: Request) {
           args: [marketId],
         })) as typeof market;
 
-        if (currentMarket.resolved) {
-          skipped.push(`${marketId}: already resolved by another run`);
-          await recordOracleAttempt(marketId, 'SKIPPED');
+        if (currentMarket.resolved && expectedOutcome !== undefined) {
+          if (Number(currentMarket.outcome) === expectedOutcome) {
+            skipped.push(`${marketId}: already resolved by another run with matching outcome`);
+            await recordOracleAttempt(marketId, 'SKIPPED', expectedOutcome);
+          } else {
+            const message = `critical outcome mismatch: expected ${expectedOutcome}, chain has ${currentMarket.outcome}`;
+            errors.push(`${marketId}: ${message}`);
+            await recordOracleAttempt(marketId, 'FAILED', expectedOutcome, undefined, message);
+          }
         } else {
           const message = err instanceof Error ? err.message : String(err);
           errors.push(`${marketId}: ${message}`);

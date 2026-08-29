@@ -8,6 +8,8 @@ export interface CryptoData {
   total_volume: number;
   high_24h: number;
   low_24h: number;
+  price_source: 'coingecko' | 'binance';
+  price_observed_at: number;
 }
 
 export interface TickerPrice {
@@ -60,7 +62,10 @@ export function assertCryptoData(value: unknown): CryptoData[] {
       !isNonNegativeFiniteNumber(data.total_volume) ||
       !isPositiveFiniteNumber(data.high_24h) ||
       !isPositiveFiniteNumber(data.low_24h) ||
-      data.high_24h < data.low_24h
+      data.high_24h < data.low_24h ||
+      (data.price_source !== 'coingecko' && data.price_source !== 'binance') ||
+      !Number.isInteger(data.price_observed_at) ||
+      !isPositiveFiniteNumber(data.price_observed_at)
     ) {
       throw new Error('CoinGecko returned incomplete market data');
     }
@@ -75,6 +80,8 @@ export function assertCryptoData(value: unknown): CryptoData[] {
       total_volume: data.total_volume,
       high_24h: data.high_24h,
       low_24h: data.low_24h,
+      price_source: data.price_source,
+      price_observed_at: data.price_observed_at,
     };
   });
 }
@@ -105,6 +112,7 @@ async function fetchBinanceFallback(): Promise<CryptoData[]> {
     quoteVolume: string;
     highPrice: string;
     lowPrice: string;
+    closeTime: number;
   }>;
 
   if (!Array.isArray(data)) {
@@ -126,6 +134,8 @@ async function fetchBinanceFallback(): Promise<CryptoData[]> {
       total_volume: parseFloat(t.quoteVolume),
       high_24h: parseFloat(t.highPrice),
       low_24h: parseFloat(t.lowPrice),
+      price_source: 'binance' as const,
+      price_observed_at: Math.floor(t.closeTime / 1000),
     };
   }));
 }
@@ -144,7 +154,21 @@ export async function fetchCryptoMarkets(): Promise<CryptoData[]> {
     });
 
     if (response.ok) {
-      const data = assertCryptoData(await response.json());
+      const raw = await response.json();
+      if (!Array.isArray(raw)) {
+        throw new Error('Invalid CoinGecko response format');
+      }
+      const data = assertCryptoData(raw.map((item) => {
+        const value = item as Record<string, unknown>;
+        const observedAt = typeof value.last_updated === 'string'
+          ? Math.floor(Date.parse(value.last_updated) / 1000)
+          : Number.NaN;
+        return {
+          ...value,
+          price_source: 'coingecko',
+          price_observed_at: observedAt,
+        };
+      }));
       cachedCryptoData = data;
       cachedAt = now;
       return data;

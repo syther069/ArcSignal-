@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createWalletClient, http } from 'viem';
+import { createWalletClient, decodeEventLog, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, publicClient, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { fetchCryptoMarkets } from '@/lib/coingecko';
@@ -7,6 +7,10 @@ import { fetchUpcomingFixtures } from '@/lib/apifootball';
 import { generateCryptoAnalysis, generateFootballAnalysis } from '@/lib/gemini';
 import { authorizeCronRequest } from '@/lib/cron-auth';
 import type { Hash } from 'viem';
+import {
+  assertFreshGenerationObservation,
+  ORACLE_POLICY_VERSION,
+} from '@/lib/oracle-policy';
 
 const CONTRACT_ADDRESS = ARCSIGNAL_ADDRESS;
 
@@ -22,6 +26,10 @@ function resolutionTimestamp(hoursFromNow: number): bigint {
 export async function POST(req: Request) {
   const authorization = authorizeCronRequest(req);
   if (!authorization.ok) return authorization.response;
+
+  if (process.env.ENABLE_MARKET_AUTOMATION !== 'true') {
+    return NextResponse.json({ error: 'Market automation is disabled' }, { status: 503 });
+  }
 
   const privateKey = process.env.RESOLVER_PRIVATE_KEY;
   if (!privateKey || !/^0x[a-fA-F0-9]{64}$/.test(privateKey)) {
@@ -67,6 +75,18 @@ export async function POST(req: Request) {
     const selected = requiredSymbols
       .map((symbol) => marketsBySymbol.get(symbol))
       .filter((coin): coin is NonNullable<typeof coin> => Boolean(coin));
+    if (selected.some((coin) => coin.price_source !== 'coingecko')) {
+      throw new Error('CoinGecko is unavailable; refusing to create markets from a fallback oracle');
+    }
+    const observationCheckTime = Math.floor(Date.now() / 1000);
+    for (const coin of selected) {
+      assertFreshGenerationObservation({
+        provider: coin.price_source,
+        symbol: coin.symbol,
+        price: coin.current_price,
+        observedAt: coin.price_observed_at,
+      }, observationCheckTime);
+    }
 
     const url = new URL(req.url);
     let onlyTimeframe = url.searchParams.get('timeframe');
@@ -112,37 +132,32 @@ export async function POST(req: Request) {
       return Math.round(raw / magnitude) * magnitude;
     }
 
-    function getQuestion(symbol: string, current: number, target: number, timeframe: string): string {
+    function getQuestion(symbol: string, threshold: number, timeframe: string): string {
       const fmt = (n: number) => n.toLocaleString('en-US');
-      if (timeframe === '5m') return `Will ${symbol} hold above $${fmt(getSupportLevel(current))} over the next 5 minutes?`;
-      if (timeframe === '15m') return `Will ${symbol} reach $${fmt(target)} or higher within the next 15 minutes?`;
-      if (timeframe === '1h') return `Will ${symbol} break above $${fmt(target)} and close there within the next hour?`;
-      if (timeframe === '4h') return `Will ${symbol} trade above $${fmt(target)} by the end of the next 4-hour candle?`;
-      return `Will ${symbol} close above $${fmt(target)} on today\'s daily candle?`;
+      return `Will ${symbol} be at or above $${fmt(threshold)} at the end of the next ${timeframe}?`;
     }
 
-    function getResolutionCriteria(symbol: string, current: number, target: number, timeframe: string, resolutionDate: string): string {
+    function getResolutionCriteria(symbol: string, threshold: number, resolutionDate: string): string {
       const fmt = (n: number) => n.toLocaleString('en-US');
-      if (timeframe === '5m') return `Resolves YES if ${symbol}/USD price on CoinGecko is at or above $${fmt(getSupportLevel(current))} at resolution time (${resolutionDate}). Resolves NO if price drops below $${fmt(getSupportLevel(current))}.`;
-      if (timeframe === '15m') return `Resolves YES if ${symbol}/USD price on CoinGecko is at or above $${fmt(target)} at resolution time (${resolutionDate}). Current price at generation: $${fmt(current)}.`;
-      if (timeframe === '1h') return `Resolves YES if ${symbol}/USD price on CoinGecko is above $${fmt(target)} at resolution time (${resolutionDate}). This represents a ~1% gain from the current price of $${fmt(current)}.`;
-      if (timeframe === '4h') return `Resolves YES if ${symbol}/USD price on CoinGecko exceeds $${fmt(target)} at resolution time (${resolutionDate}). This represents approximately a 2% move from the current price of $${fmt(current)}.`;
-      return `Resolves YES if ${symbol}/USD daily close price on CoinGecko is above $${fmt(target)} at resolution time (${resolutionDate}). Current price: $${fmt(current)}. Target represents ~3.5% gain.`;
+      return `Resolves YES if ${symbol}/USD on CoinGecko is at or above $${fmt(threshold)} at ${resolutionDate}; otherwise resolves NO.`;
     }
 
-    const jobs: { coin: any; timeframe: any; target: number; resolutionTime: bigint; resolutionDate: string; question: string; marketId: string; }[] = [];
+    const jobs: { coin: any; timeframe: any; threshold: number; resolutionTime: bigint; resolutionDate: string; question: string; marketId: string; }[] = [];
 
     for (const coin of selected) {
       for (const timeframe of timeframes) {
         const symbolUpper = coin.symbol.toUpperCase();
 
         const target = getPriceTarget(coin.current_price, timeframe.label);
+        const threshold = timeframe.label === '5m'
+          ? getSupportLevel(coin.current_price)
+          : target;
         const resolutionTime = BigInt(now + timeframe.minutes * 60);
         const resolutionDate = new Date(Number(resolutionTime) * 1000).toUTCString();
-        const question = getQuestion(symbolUpper, coin.current_price, target, timeframe.label);
+        const question = getQuestion(symbolUpper, threshold, timeframe.label);
         const marketId = `${symbolUpper}-PRICE-${timeframe.label}-${now}`;
 
-        jobs.push({ coin, timeframe, target, resolutionTime, resolutionDate, question, marketId });
+        jobs.push({ coin, timeframe, threshold, resolutionTime, resolutionDate, question, marketId });
       }
     }
 
@@ -152,7 +167,7 @@ export async function POST(req: Request) {
         jobs.map(async (job) => {
           const analysis = await generateCryptoAnalysis({
             question: job.question,
-            resolutionCriteria: getResolutionCriteria(job.coin.symbol.toUpperCase(), job.coin.current_price, job.target, job.timeframe.label, job.resolutionDate),
+            resolutionCriteria: getResolutionCriteria(job.coin.symbol.toUpperCase(), job.threshold, job.resolutionDate),
             resolutionTime: job.resolutionDate,
             cryptoData: {
               id: job.coin.id,
@@ -163,58 +178,55 @@ export async function POST(req: Request) {
               total_volume: job.coin.total_volume,
               high_24h: job.coin.high_24h,
               low_24h: job.coin.low_24h,
-              target_price: job.target,
+              target_price: job.threshold,
             },
           });
           return { job, analysis };
         })
       );
 
-      let currentNonce = await publicClient.getTransactionCount({
-        address: account.address,
-        blockTag: 'pending',
-      });
-
       for (const res of analysisResults) {
         if (res.status === 'fulfilled') {
           const { job, analysis } = res.value;
-          const analysisWithSubType = { ...analysis, subType: job.timeframe.label };
+          const analysisWithSubType = {
+            ...analysis,
+            subType: job.timeframe.label,
+            oracle: {
+              version: ORACLE_POLICY_VERSION,
+              provider: 'coingecko',
+              symbol: job.coin.symbol.toUpperCase(),
+              targetPrice: job.threshold,
+              comparator: 'gte',
+              resolutionTimestamp: Number(job.resolutionTime),
+              maxObservationDelaySeconds: 120,
+            },
+          };
           const symbolUpper = job.coin.symbol.toUpperCase();
 
           try {
-            let hash: Hash | undefined;
-            for (let attempt = 1; attempt <= 4; attempt++) {
+            const hash: Hash = await walletClient.writeContract({
+              account,
+              chain: arcTestnet,
+              address: CONTRACT_ADDRESS,
+              abi: ARCSIGNAL_ABI,
+              functionName: 'createMarket',
+              args: [job.marketId, 'CRYPTO', job.question, JSON.stringify(analysisWithSubType), job.resolutionTime],
+            });
+            const receipt = await publicClient.waitForTransactionReceipt({ hash });
+            if (receipt.status !== 'success') {
+              throw new Error(`createMarket transaction reverted: ${hash}`);
+            }
+            const createdEvent = receipt.logs.some((log) => {
               try {
-                hash = await walletClient.writeContract({
-                  account,
-                  chain: arcTestnet,
-                  address: CONTRACT_ADDRESS,
-                  abi: ARCSIGNAL_ABI,
-                  functionName: 'createMarket',
-                  args: [job.marketId, 'CRYPTO', job.question, JSON.stringify(analysisWithSubType), job.resolutionTime],
-                  nonce: currentNonce++,
-                });
-                await publicClient.waitForTransactionReceipt({ hash });
-                break;
-              } catch (err: any) {
-                const errMsg = err?.message || String(err);
-                if (attempt < 4 && (errMsg.includes('429') || errMsg.includes('limit') || errMsg.includes('nonce'))) {
-                  await new Promise((r) => setTimeout(r, 2000));
-                  try {
-                    currentNonce = await publicClient.getTransactionCount({
-                      address: account.address,
-                      blockTag: 'pending',
-                    });
-                  } catch {}
-                  continue;
-                }
-                throw err;
+                const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: log.data, topics: log.topics });
+                const args = decoded.args as { marketId?: string };
+                return decoded.eventName === 'MarketCreated' && args.marketId === job.marketId;
+              } catch {
+                return false;
               }
-            }
-
-            if (hash) {
-              created.push(`[CRYPTO] ${job.question} (Tx: ${hash})`);
-            }
+            });
+            if (!createdEvent) throw new Error(`MarketCreated event missing for ${job.marketId}`);
+            created.push(`[CRYPTO] ${job.question} (Tx: ${hash})`);
             await new Promise(r => setTimeout(r, 1200));
           } catch (err) {
             errors.push(`[${symbolUpper}] ${job.timeframe.label}: ${err instanceof Error ? err.message : String(err)}`);
@@ -258,14 +270,27 @@ export async function POST(req: Request) {
             },
           });
 
-          const hash = await walletClient.writeContract({
+          const hash: Hash = await walletClient.writeContract({
             address: CONTRACT_ADDRESS,
             abi: ARCSIGNAL_ABI,
             functionName: 'createMarket',
             args: [marketId, 'FOOTBALL', question, JSON.stringify(analysis), resolutionTime],
           });
 
-          await publicClient.waitForTransactionReceipt({ hash });
+          const receipt = await publicClient.waitForTransactionReceipt({ hash });
+          if (receipt.status !== 'success') {
+            throw new Error(`createMarket transaction reverted: ${hash}`);
+          }
+          const createdEvent = receipt.logs.some((log) => {
+            try {
+              const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: log.data, topics: log.topics });
+              const args = decoded.args as { marketId?: string };
+              return decoded.eventName === 'MarketCreated' && args.marketId === marketId;
+            } catch {
+              return false;
+            }
+          });
+          if (!createdEvent) throw new Error(`MarketCreated event missing for ${marketId}`);
           created.push(`[FOOTBALL] ${question}`);
         } catch (err) {
           errors.push(`[FOOTBALL] ${fixture.homeTeam} vs ${fixture.awayTeam}: ${err instanceof Error ? err.message : String(err)}`);

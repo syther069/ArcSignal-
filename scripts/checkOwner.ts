@@ -1,21 +1,23 @@
 import { createPublicClient, http } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet } from '../src/lib/arc';
 import * as dotenv from 'dotenv';
 import { resolve } from 'path';
 
 dotenv.config({ path: resolve(process.cwd(), '.env') });
 
-const ARCSIGNAL_ADDRESS = process.env.ARCSIGNAL_ADDRESS as `0x${string}`;
-const PRIVATE_KEY = process.env.PRIVATE_KEY as `0x${string}`;
+const RPC_URL = process.env.ARC_RPC_URL
+  ?? process.env.ARC_TESTNET_RPC_URL
+  ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL
+  ?? 'https://rpc.testnet.arc.network';
+const ARCSIGNAL_ADDRESS = (
+  process.env.ARCSIGNAL_ADDRESS
+  ?? '0x4f33115a18fe6a181be98610ddde3fab71efabed'
+) as `0x${string}`;
 
 async function checkOwner() {
-  const account = privateKeyToAccount(PRIVATE_KEY.startsWith('0x') ? PRIVATE_KEY : `0x${PRIVATE_KEY}`);
-  console.log('Admin wallet address derived from PRIVATE_KEY:', account.address);
-
   const publicClient = createPublicClient({
     chain: arcTestnet,
-    transport: http(),
+    transport: http(RPC_URL),
   });
 
   try {
@@ -31,12 +33,6 @@ async function checkOwner() {
       functionName: 'owner',
     });
     console.log('Contract owner address from blockchain:', owner);
-    
-    if (account.address.toLowerCase() === (owner as string).toLowerCase()) {
-      console.log('✅ Addresses MATCH! The revert is NOT caused by ownership.');
-    } else {
-      console.log('❌ Addresses DO NOT match! Ownership issue confirmed.');
-    }
   } catch (error) {
     console.error('Failed to fetch contract owner:', error);
   }
