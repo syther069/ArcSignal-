@@ -1,8 +1,6 @@
 name: Production indexer
 
 on:
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -20,7 +18,7 @@ jobs:
       - name: Apply additive index schema
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          MIGRATION_URL: https://arc-signal.xyz/api/cron/migrate-index
+          MIGRATION_URL: https://arc-signal-nine.vercel.app/api/cron/migrate-index
         run: |
           test -n "$CRON_SECRET"
           curl \
@@ -38,7 +36,7 @@ jobs:
       - name: Advance finalized Arc index
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          INDEX_URL: https://arc-signal.xyz/api/cron/index
+          INDEX_URL: https://arc-signal-nine.vercel.app/api/cron/index
         run: |
           test -n "$CRON_SECRET"
           curl \

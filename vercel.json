@@ -1,9 +1,3 @@
 {
-  "installCommand": "npm ci",
-  "crons": [
-    {
-      "path": "/api/cron/index",
-      "schedule": "17 3 * * *"
-    }
-  ]
+  "installCommand": "npm ci"
 }
