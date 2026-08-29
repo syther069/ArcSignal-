@@ -34,7 +34,7 @@ export default function Sidebar() {
       <div>
         <div className="px-6 mb-7 flex items-center gap-3">
           <div className="w-10 h-10 flex items-center justify-center shrink-0 overflow-hidden rounded-lg">
-            <Image src="/logo.png" alt="ArcSignal Logo" width={40} height={40} className="w-full h-full object-cover" />
+            <Image src="/logo.webp" alt="ArcSignal Logo" width={40} height={40} className="w-full h-full object-cover" />
           </div>
           <div>
             <p className="font-[family-name:var(--font-hanken)] text-sm font-bold text-[#e5e2e1] leading-none">

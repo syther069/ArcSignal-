@@ -56,7 +56,7 @@ export default function Navbar() {
         {/* Left: Logo + Nav */}
         <div className="flex items-center gap-10">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo.png" alt="ArcSignal Logo" width={32} height={32} className="w-8 h-8 object-contain" />
+            <Image src="/logo.webp" alt="ArcSignal Logo" width={32} height={32} className="w-8 h-8 object-contain" />
             <span className="font-[family-name:var(--font-hanken)] text-xl font-bold tracking-tight text-[#e5e2e1]">
               ArcSignal
             </span>

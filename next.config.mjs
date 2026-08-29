@@ -7,7 +7,6 @@ const nextConfig = {
       'viem',
       '@tanstack/react-query',
       'recharts',
-      '@wagmi/core',
     ],
   },
   images: {
