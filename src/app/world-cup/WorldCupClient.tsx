@@ -81,6 +81,12 @@ export default function WorldCupClient({ upcomingFixtures, liveMatches, football
               <p className="font-mono text-slate-400 text-xs max-w-md mx-auto">
                 AI sports forecasting engine monitors global international fixtures and major European tournament qualifiers. Fixture feeds populate automatically when matches are active.
               </p>
+              <Link
+                href="/markets?category=football"
+                className="mt-5 inline-flex rounded border border-[#38bdf8]/40 bg-[#38bdf8]/5 px-4 py-2 font-mono text-[10px] font-bold tracking-widest text-[#38bdf8] transition-all hover:bg-[#38bdf8]/15"
+              >
+                VIEW AVAILABLE FOOTBALL MARKETS
+              </Link>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -115,8 +121,16 @@ export default function WorldCupClient({ upcomingFixtures, liveMatches, football
           {footballMarkets.length === 0 ? (
             <div className="glass-card p-6 border-white/5 bg-[#101416]/60">
               <p className="font-mono text-slate-400 text-sm text-center">
-                No active football markets. Run the seed script to generate predictions.
+                No active football markets are available right now.
               </p>
+              <div className="mt-4 text-center">
+                <Link
+                  href="/markets"
+                  className="inline-flex rounded border border-[#38bdf8]/40 bg-[#38bdf8]/5 px-4 py-2 font-mono text-[10px] font-bold tracking-widest text-[#38bdf8] transition-all hover:bg-[#38bdf8]/15"
+                >
+                  BROWSE LIVE MARKETS
+                </Link>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
