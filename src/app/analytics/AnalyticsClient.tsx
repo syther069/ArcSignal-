@@ -440,9 +440,9 @@ export default function AnalyticsClient({
             SYNCHRONIZED
           </div>
           <div className="flex gap-4">
-            <a href="#" className="hover:text-primary transition-colors">DOCS</a>
-            <a href="#" className="hover:text-primary transition-colors">PRIVACY</a>
-            <a href="#" className="hover:text-primary transition-colors">TERMS</a>
+            <Link href="/docs" className="hover:text-primary transition-colors">DOCS</Link>
+            <Link href="/privacy" className="hover:text-primary transition-colors">PRIVACY</Link>
+            <Link href="/terms" className="hover:text-primary transition-colors">TERMS</Link>
           </div>
         </footer>
 

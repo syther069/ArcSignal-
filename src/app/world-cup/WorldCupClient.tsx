@@ -92,18 +92,12 @@ export default function WorldCupClient({ upcomingFixtures, liveMatches, football
                     <span className="font-mono text-xs text-slate-500 px-3 border border-white/10 py-1 rounded">VS</span>
                     <span className="font-bold text-white text-sm flex-1">{fixture.awayTeam}</span>
                   </div>
-                  <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="mt-4">
                     <Link
                       href="/markets?category=football"
-                      className="py-2 text-center font-mono text-[10px] tracking-widest font-bold text-[#34d399] border border-[#34d399]/40 bg-[#34d399]/5 hover:bg-[#34d399]/15 transition-all rounded"
+                      className="block py-2 text-center font-mono text-[10px] tracking-widest font-bold text-[#38bdf8] border border-[#38bdf8]/40 bg-[#38bdf8]/5 hover:bg-[#38bdf8]/15 transition-all rounded"
                     >
-                      FOLLOW AI
-                    </Link>
-                    <Link
-                      href="/markets?category=football"
-                      className="py-2 text-center font-mono text-[10px] tracking-widest font-bold text-[#f87171] border border-[#f87171]/40 bg-transparent hover:bg-[#f87171]/10 transition-all rounded"
-                    >
-                      FADE AI
+                      VIEW AVAILABLE FOOTBALL MARKETS
                     </Link>
                   </div>
                 </div>

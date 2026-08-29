@@ -7,7 +7,6 @@ import {
   useBalance,
   useReadContract,
   useWriteContract,
-  useWaitForTransactionReceipt,
   usePublicClient,
 } from 'wagmi';
 import { type Address } from 'viem';
@@ -27,7 +26,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import ConnectWalletButton from '@/components/wallet/ConnectWalletButton';
-import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { Stake as BaseStake } from '@/types';
 import toast from 'react-hot-toast';
 
@@ -69,7 +68,7 @@ interface ProfileClientProps {
 }
 
 export default function ProfileClient({ walletAddress, isPublic = false }: ProfileClientProps) {
-  const { address: connectedAddress, isConnected } = useAccount();
+  const { address: connectedAddress, isConnected, chainId } = useAccount();
   const publicClient = usePublicClient();
   
   // The address we are viewing
@@ -210,6 +209,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
   const [editForm, setEditForm] = useState({ username: '', bio: '', avatarUrl: '' });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isConfirmingProfile, setIsConfirmingProfile] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const { writeContractAsync, isPending: isSaving } = useWriteContract();
@@ -269,6 +269,14 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
 
   const handleSave = async () => {
     if (!targetAddress) return;
+    if (!publicClient) {
+      toast.error('ARC RPC is unavailable. Please try again.');
+      return;
+    }
+    if (chainId !== arcTestnet.id) {
+      toast.error('Switch to ARC Testnet before updating your profile.');
+      return;
+    }
 
     const newUsername = editForm.username.trim();
     if (newUsername.length > 0) {
@@ -297,24 +305,35 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
           }
         }
       } catch (err) {
-        console.warn('Pre-flight check failed', err);
+        console.error('Username availability check failed', err);
+        toast.error('Could not verify username availability. Please retry.');
+        return;
       }
     }
 
     try {
-      await writeContractAsync({
+      setIsConfirmingProfile(true);
+      const { request } = await publicClient.simulateContract({
+        account: targetAddress as Address,
         address: ARCSIGNAL_ADDRESS,
         abi: ARCSIGNAL_ABI,
         functionName: 'setProfile',
         args: [newUsername, editForm.bio, editForm.avatarUrl],
       });
-      
-      toast.success('Profile updated! Transaction sent.');
+      const hash = await writeContractAsync(request);
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== 'success' || receipt.to?.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) {
+        throw new Error('Profile transaction was not confirmed successfully on ArcSignal.');
+      }
+
+      toast.success('Profile confirmed on-chain.');
       setIsEditing(false);
       setLocalProfile({ username: newUsername, bio: editForm.bio, avatarUrl: editForm.avatarUrl });
     } catch (e: any) {
       console.error('Failed to save profile', e);
       toast.error('Update failed: ' + (e?.shortMessage || e?.message || 'Unknown error'));
+    } finally {
+      setIsConfirmingProfile(false);
     }
   };
 
@@ -372,12 +391,6 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
             >
               <Pencil size={15} />
               Edit Profile
-            </button>
-          )}
-
-          {isPublic && (
-            <button className="w-full py-3 rounded-xl bg-[#ddb7ff] text-[#0f172a] font-[family-name:var(--font-inter)] font-bold text-sm hover:bg-[#f0dbff] transition-all shadow-lg shadow-[#ddb7ff]/10">
-              Follow Operator
             </button>
           )}
 
@@ -687,7 +700,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={isUploading || isSaving}
+                disabled={isUploading || isSaving || isConfirmingProfile}
                 className="px-8 py-2.5 text-[#0f172a] text-sm font-semibold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50"
                 style={{
                   background: '#ddb7ff',
@@ -695,7 +708,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
                   fontFamily: 'Inter, sans-serif',
                 }}
               >
-                {isUploading ? 'Uploading...' : isSaving ? 'Sign in Wallet...' : 'Save Profile'}
+                {isUploading ? 'Uploading...' : isConfirmingProfile ? 'Confirming on ARC...' : isSaving ? 'Sign in Wallet...' : 'Save Profile'}
               </button>
             </div>
           </div>

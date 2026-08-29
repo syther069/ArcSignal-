@@ -31,7 +31,10 @@ export async function stakeOnMarket(
 
   if (allowance < amount) {
     const approvalHash = await approveUSDC(amount, walletClient);
-    await publicClient.waitForTransactionReceipt({ hash: approvalHash });
+    const approvalReceipt = await publicClient.waitForTransactionReceipt({ hash: approvalHash });
+    if (approvalReceipt.status !== 'success') {
+      throw new Error('USDC approval transaction failed on-chain');
+    }
   }
 
   return walletClient.writeContract({

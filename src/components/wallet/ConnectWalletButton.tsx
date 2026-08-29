@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Wallet, ChevronDown, LogOut, AlertTriangle, Loader2, Copy, Check, ShieldCheck } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
+import { arcTestnet } from '@/lib/contracts';
 import WalletModal from './WalletModal';
 
 export default function ConnectWalletButton() {
@@ -65,7 +66,7 @@ export default function ConnectWalletButton() {
   if (isWrongNetwork) {
     return (
       <button 
-        onClick={() => switchChain({ chainId: 5042002 })}
+        onClick={() => switchChain({ chainId: arcTestnet.id })}
         className="flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-4 py-1.5 text-sm font-semibold text-amber-300 transition-all duration-200 hover:bg-amber-500/20 hover:border-amber-400/60 shadow-[0_0_15px_rgba(245,158,11,0.1)]"
       >
         <AlertTriangle size={16} className="text-amber-400" />

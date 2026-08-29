@@ -18,9 +18,6 @@ export const arcTestnet = {
     default: { http: [browserRpcUrl] },
     public: { http: [browserRpcUrl] },
   },
-  blockExplorers: {
-    default: { name: 'ARC Explorer', url: 'https://testnet.arcscan.app' },
-  },
   contracts: {
     multicall3: {
       address: '0xca11bde05977b3631167028862be2a173976ca11',

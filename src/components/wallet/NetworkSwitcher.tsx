@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
+import { arcTestnet } from '@/lib/contracts';
 
 export default function NetworkSwitcher() {
   const { mounted, isWrongNetwork, switchChain } = useWallet();
@@ -19,7 +20,7 @@ export default function NetworkSwitcher() {
           ⚠ You are on the wrong network. Switch to Arc Testnet to trade.
         </span>
         <button
-          onClick={() => switchChain({ chainId: 5042002 })}
+          onClick={() => switchChain({ chainId: arcTestnet.id })}
           className="bg-amber-500 hover:bg-amber-600 text-[#1a0a00] text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded transition-colors"
         >
           Switch Network

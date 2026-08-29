@@ -148,7 +148,10 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
       });
       const hash = await walletClient.writeContract(request);
       toast.loading('Transaction submitted, confirming…', { id: toastId });
-      await publicClient.waitForTransactionReceipt({ hash });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== 'success' || receipt.to?.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) {
+        throw new Error('Claim transaction was not confirmed successfully on ArcSignal.');
+      }
       toast.success('Winnings claimed!', { id: toastId });
       await Promise.all([refetchMarket(), refetchFollow(), refetchFade(), refetchClaimed()]);
     } catch (err: any) {
@@ -499,14 +502,9 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                             <span className="font-mono text-white truncate max-w-[180px]">
                               {ARCSIGNAL_ADDRESS}
                             </span>
-                            <a
-                              href={`https://testnet.arcscan.app/address/${ARCSIGNAL_ADDRESS}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[#ddb7ff] hover:underline"
-                            >
-                              <ExternalLink size={12} />
-                            </a>
+                            <Link href="/docs" className="text-[#ddb7ff] hover:underline">
+                              Contract details
+                            </Link>
                           </div>
                         </div>
 

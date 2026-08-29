@@ -2,10 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAccount, useWalletClient, usePublicClient, useReadContract } from 'wagmi';
-import { parseUnits, formatUnits, formatEther } from 'viem';
+import { decodeEventLog, parseUnits, formatUnits, formatEther } from 'viem';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Market, StakeSide } from '@/types';
 import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
-import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { clearMarketCache } from '@/lib/markets';
 import { useWallet } from '@/hooks/useWallet';
 import toast from 'react-hot-toast';
@@ -65,6 +67,7 @@ export interface StakeModalProps {
 }
 
 export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
+  const router = useRouter();
   const [amount, setAmount] = useState('');
   const [selectedSide, setSelectedSide] = useState<StakeSide>(side);
   const [step, setStep] = useState<'idle' | 'review' | 'approving' | 'staking' | 'confirming' | 'success'>('idle');
@@ -81,7 +84,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const publicClient = usePublicClient();
   const { isWrongNetwork, switchChain } = useWallet();
 
-  const { data: usdcRaw } = useReadContract({
+  const { data: usdcRaw, refetch: refetchBalance } = useReadContract({
     address: USDC_ADDRESS,
     abi: USDC_ABI,
     functionName: 'balanceOf',
@@ -99,6 +102,11 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
     query: { enabled: !!address, staleTime: 10_000 },
   });
   const currentAllowance = (usdcAllowanceRaw as bigint | undefined) ?? 0n;
+
+  useEffect(() => {
+    if (!isOpen || !address) return;
+    void Promise.all([refetchBalance(), refetchAllowance()]);
+  }, [address, isOpen, refetchAllowance, refetchBalance]);
 
   const parsedAmount = Math.max(parseFloat(amount) || 0, 0);
   const amountStr = isNaN(parsedAmount) ? '0' : parsedAmount.toString();
@@ -198,6 +206,13 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
     setError(null);
   };
 
+  const handleMax = async () => {
+    const latest = await refetchBalance();
+    const balance = (latest.data as bigint | undefined) ?? 0n;
+    setAmount(formatUnits(balance, 6));
+    setError(null);
+  };
+
   const handleApprove = async () => {
     if (isWrongNetwork) {
       toast.error('Switch to Arc Testnet before approving USDC.');
@@ -220,7 +235,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         args: [ARCSIGNAL_ADDRESS, amountBigInt],
       });
       const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
-      if (approveReceipt.status === 'reverted') {
+      if (approveReceipt.status !== 'success') {
         throw new Error('USDC approval transaction failed on-chain.');
       }
       await refetchAllowance();
@@ -257,11 +272,28 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         throw new Error('ArcSignal contract address is not configured.');
       }
 
-      if (usdcBalanceBigInt < amountBigInt) {
-        throw new Error(`Insufficient USDC balance. You have ${formatUnits(usdcBalanceBigInt, 6)} USDC but need ${amount} USDC.`);
+      const [freshBalance, freshAllowance] = await Promise.all([
+        publicClient.readContract({
+          address: USDC_ADDRESS,
+          abi: USDC_ABI,
+          functionName: 'balanceOf',
+          args: [address],
+        }),
+        publicClient.readContract({
+          address: USDC_ADDRESS,
+          abi: USDC_ABI,
+          functionName: 'allowance',
+          args: [address, ARCSIGNAL_ADDRESS],
+        }),
+      ]);
+
+      if (freshBalance < amountBigInt) {
+        await refetchBalance();
+        throw new Error(`Insufficient USDC balance. You have ${formatUnits(freshBalance, 6)} USDC but need ${amountStr} USDC.`);
       }
 
-      if (currentAllowance < amountBigInt) {
+      if (freshAllowance < amountBigInt) {
+        await refetchAllowance();
         throw new Error('Insufficient USDC allowance. Please approve first.');
       }
 
@@ -288,8 +320,35 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
       setStep('confirming');
 
       const stakeReceipt = await publicClient.waitForTransactionReceipt({ hash: stakeHash });
-      if (stakeReceipt.status === 'reverted') {
+      if (stakeReceipt.status !== 'success') {
         throw new Error('Stake transaction failed on-chain. The market may be closed or you may have insufficient USDC.');
+      }
+
+      const hasMatchingStakeEvent = stakeReceipt.logs.some((log) => {
+        if (log.address.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) return false;
+        try {
+          const decoded = decodeEventLog({
+            abi: ARCSIGNAL_ABI,
+            data: log.data,
+            topics: log.topics,
+          });
+          if (decoded.eventName !== 'Staked') return false;
+          const args = decoded.args as {
+            marketId: string;
+            user: string;
+            side: number;
+            amount: bigint;
+          };
+          return args.marketId === market.marketId
+            && args.user.toLowerCase() === address.toLowerCase()
+            && Number(args.side) === selectedSide
+            && args.amount === amountBigInt;
+        } catch {
+          return false;
+        }
+      });
+      if (!hasMatchingStakeEvent) {
+        throw new Error('Confirmed transaction did not contain the expected ArcSignal stake event.');
       }
 
       const voteResponse = await fetch(`/api/markets/${market.marketId}/vote`, {
@@ -321,6 +380,8 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
       }
 
       clearMarketCache();
+      await Promise.all([refetchBalance(), refetchAllowance()]);
+      router.refresh();
       setTxHash(stakeHash);
       setEstimatedGas(null);
       toast.success(`Successfully placed ${selectedSide === 0 ? 'FOLLOW' : 'FADE'} position for ${amountStr} USDC!`);
@@ -394,14 +455,12 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                 <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider">
                   Transaction Hash
                 </span>
-                <a
-                  href={`https://testnet.arcscan.app/tx/${txHash}`}
-                  target="_blank"
-                  rel="noreferrer"
+                <Link
+                  href={`/transaction/${txHash}`}
                   className="text-[#ddb7ff] text-xs break-all hover:underline"
                 >
                   {txHash}
-                </a>
+                </Link>
               </div>
 
               <button
@@ -474,7 +533,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
 
               {isWrongNetwork && (
                 <button
-                  onClick={() => switchChain({ chainId: 5042002 })}
+                  onClick={() => switchChain({ chainId: arcTestnet.id })}
                   className="w-full min-h-[44px] rounded-xl border border-amber-500/50 bg-amber-500/10 text-amber-300 text-xs font-semibold font-sans"
                 >
                   Switch to Arc Testnet
@@ -625,7 +684,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                   
                   <button
                     type="button"
-                    onClick={() => setAmount(usdcBalanceFormatted)}
+                    onClick={() => void handleMax()}
                     className="px-2.5 py-1 rounded-lg bg-[#ddb7ff]/15 hover:bg-[#ddb7ff]/25 border border-[#ddb7ff]/30 text-[#ddb7ff] font-mono text-xs font-bold transition-colors shrink-0"
                   >
                     MAX

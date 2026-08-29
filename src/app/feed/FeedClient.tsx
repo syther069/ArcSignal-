@@ -239,7 +239,7 @@ export default function FeedClient({
           </div>
           <div className="flex gap-2 text-[#38bdf8]">
             <span className="opacity-50">ARCSIGNAL_OS:~$</span>
-            <span>tail -f activity_stream.log --filter=&quot;live_stakes&quot;</span>
+            <span>activity_history --source=&quot;indexed_stakes&quot;</span>
             <span className="inline-block w-2 h-3 bg-[#38bdf8] animate-pulse"></span>
           </div>
         </div>

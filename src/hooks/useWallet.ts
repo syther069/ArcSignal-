@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useBalance } from 'wagmi';
+import { arcTestnet } from '@/lib/contracts';
 
 export function useWallet() {
   const [mounted, setMounted] = useState(false);
@@ -11,7 +12,7 @@ export function useWallet() {
   const { switchChain } = useSwitchChain();
   const { data: balance } = useBalance({ address });
   
-  const isWrongNetwork = isConnected && chain?.id !== 5042002;
+  const isWrongNetwork = isConnected && chain?.id !== arcTestnet.id;
   const shortAddress = address 
     ? `${address.slice(0,6)}...${address.slice(-4)}` 
     : null;

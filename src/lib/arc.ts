@@ -15,7 +15,6 @@ export const arcTestnetConfig = {
   name: arcTestnet.name,
   rpcUrl,
   nativeCurrency: arcTestnet.nativeCurrency,
-  blockExplorer: arcTestnet.blockExplorers.default.url,
 };
 
 function getConnectors() {

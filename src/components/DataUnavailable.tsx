@@ -15,7 +15,7 @@ export default function DataUnavailable() {
           The data service is unavailable right now. No empty or zero values are being shown as live metrics.
         </p>
         <a
-          href=""
+          href="/markets"
           className="mt-6 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-black transition hover:brightness-110"
         >
           Try again

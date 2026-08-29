@@ -16,7 +16,7 @@ const footerLinks = [
     title: 'RESOURCES',
     links: [
       { label: 'Documentation', href: '/docs' },
-      { label: 'Smart Contracts', href: 'https://testnet.arcscan.app/address/0x4f33115a18fe6a181be98610ddde3fab71efabed' },
+      { label: 'Smart Contracts', href: '/docs' },
       { label: 'Protocol Guide', href: '/guide' },
       { label: 'Bug Bounty', href: 'https://github.com/syther069/ArcSignal-' },
     ],
@@ -24,8 +24,8 @@ const footerLinks = [
   {
     title: 'COMMUNITY',
     links: [
-      { label: 'Twitter / X', href: 'https://x.com' },
-      { label: 'Telegram', href: 'https://t.me' },
+      { label: 'GitHub', href: 'https://github.com/syther069/ArcSignal-' },
+      { label: 'Support', href: '/support' },
       { label: 'GitHub', href: 'https://github.com/syther069/ArcSignal-' },
     ],
   },

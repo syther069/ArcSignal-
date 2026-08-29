@@ -291,7 +291,9 @@ export default function PortfolioClient() {
       const hash = await walletClient.writeContract(request);
       toast.loading('Transaction submitted, confirming…', { id: toastId });
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      if (receipt.status === 'reverted') throw new Error('The transaction reverted on-chain. No funds were claimed.');
+      if (receipt.status !== 'success' || receipt.to?.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) {
+        throw new Error('The claim transaction was not confirmed successfully on ArcSignal. No funds were claimed.');
+      }
       setClaimTxHashes(prev => ({ ...prev, [marketId]: hash }));
 
       // Optimistically mark position as claimed so UI updates instantly
@@ -633,7 +635,7 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming, 
             )}
           </button>
         )}
-        {claimTxHash && <a href={`https://testnet.arcscan.app/tx/${claimTxHash}`} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center justify-center gap-2 text-xs text-[#c4b5fd] hover:text-white transition-colors"><ExternalLink size={13} /> View claim transaction</a>}
+        {claimTxHash && <Link href={`/transaction/${claimTxHash}`} className="inline-flex min-h-[44px] items-center justify-center gap-2 text-xs text-[#c4b5fd] hover:text-white transition-colors"><ExternalLink size={13} /> Verify claim transaction</Link>}
       </div>
     </div>
   );

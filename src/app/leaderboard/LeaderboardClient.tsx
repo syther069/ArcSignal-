@@ -271,7 +271,7 @@ export default function LeaderboardClient({
           <div className="bg-surface-container-lowest border border-outline-variant p-5 rounded-xl">
             <h3 className="font-headline-md text-sm text-primary mb-4">Recent Activity</h3>
             <div className="flex-1 flex items-center justify-center text-text-muted font-code-sm py-8">
-              No activity yet
+              Indexed activity unavailable
             </div>
           </div>
 
@@ -283,9 +283,9 @@ export default function LeaderboardClient({
                 <h3 className="font-headline-md text-sm text-tertiary">ARC Testnet</h3>
               </div>
               <p className="text-text-muted font-code-sm text-xs mb-4">Chain ID: 5042002</p>
-              <a href="https://testnet.arcscan.app" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-[#1e293b] px-3 py-1.5 rounded font-label-caps text-[10px] hover:bg-[#1e293b]/80 transition-all text-text-muted hover:text-white">
-                VIEW EXPLORER
-              </a>
+              <span className="inline-flex items-center gap-2 bg-[#1e293b] px-3 py-1.5 rounded font-label-caps text-[10px] text-text-muted">
+                RPC VERIFIED
+              </span>
             </div>
           </div>
         </aside>

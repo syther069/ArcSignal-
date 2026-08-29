@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { clearMarketCache } from '@/lib/markets';
 import { revalidatePath } from 'next/cache';
 import { publicClient, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
-import { decodeEventLog, type Address } from 'viem';
+import { decodeEventLog, parseUnits, type Address } from 'viem';
 import { getSql } from '@/lib/db';
 
 export async function POST(
@@ -22,7 +22,7 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Request body required' }, { status: 400 });
     }
 
-    const { txHash, walletAddress, marketId: bodyMarketId } = body || {};
+    const { txHash, walletAddress, marketId: bodyMarketId, direction, amount } = body || {};
 
     // Validate payload consistency
     if (bodyMarketId && bodyMarketId !== marketId) {
@@ -38,6 +38,19 @@ export async function POST(
     if (!walletAddress || typeof walletAddress !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
       return NextResponse.json({ success: false, error: 'Valid walletAddress is required' }, { status: 400 });
     }
+
+    if (direction !== 'follow' && direction !== 'fade') {
+      return NextResponse.json({ success: false, error: 'Direction must be follow or fade' }, { status: 400 });
+    }
+
+    let expectedAmount: bigint;
+    try {
+      expectedAmount = parseUnits(String(amount), 6);
+      if (expectedAmount <= 0n) throw new Error('Amount must be positive');
+    } catch {
+      return NextResponse.json({ success: false, error: 'Valid USDC amount is required' }, { status: 400 });
+    }
+    const expectedSide = direction === 'follow' ? 0 : 1;
 
     // Fetch and verify transaction receipt on-chain
     let receipt;
@@ -68,11 +81,15 @@ export async function POST(
     // successful on-chain trade into a failed UI confirmation.
     try {
       const stakedLog = receipt.logs.find((log) => {
+        if (log.address.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) return false;
         try {
           const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: log.data, topics: log.topics });
           if (decoded.eventName !== 'Staked') return false;
-          const args = decoded.args as { marketId?: string; user?: string };
-          return args.marketId === marketId && args.user?.toLowerCase() === walletAddress.toLowerCase();
+          const args = decoded.args as { marketId?: string; user?: string; side?: number; amount?: bigint };
+          return args.marketId === marketId
+            && args.user?.toLowerCase() === walletAddress.toLowerCase()
+            && Number(args.side) === expectedSide
+            && args.amount === expectedAmount;
         } catch {
           return false;
         }

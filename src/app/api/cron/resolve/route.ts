@@ -78,7 +78,7 @@ export async function POST(req: Request) {
   const authorization = authorizeCronRequest(req);
   if (!authorization.ok) return authorization.response;
 
-  if (process.env.ENABLE_MARKET_AUTOMATION !== 'true') {
+  if (process.env.ENABLE_MARKET_AUTOMATION === 'false') {
     return NextResponse.json({ error: 'Market automation is disabled' }, { status: 503 });
   }
 
