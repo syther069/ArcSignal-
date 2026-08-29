@@ -231,8 +231,10 @@ export async function GET(req: Request) {
     }
 
     let failedReads = 0;
-    const stakeReads = await Promise.all(
-      chainMarkets.map(async (m) => {
+    const stakeReads: Array<any> = [];
+    for (let offset = 0; offset < chainMarkets.length; offset += 8) {
+      const batch = await Promise.all(
+        chainMarkets.slice(offset, offset + 8).map(async (m) => {
         try {
           const [followRaw, fadeRaw] = await Promise.all([
             publicClient.readContract({
@@ -310,8 +312,10 @@ export async function GET(req: Request) {
           failedReads += 1;
           return null;
         }
-      })
-    );
+        })
+      );
+      stakeReads.push(...batch);
+    }
 
     const flatPositions = stakeReads.filter(Boolean).flat();
     return NextResponse.json({

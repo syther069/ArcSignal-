@@ -1,4 +1,8 @@
-import AnalyticsClient from './AnalyticsClient';
+import nextDynamic from 'next/dynamic';
+
+const AnalyticsClient = nextDynamic(() => import('./AnalyticsClient'), {
+  loading: () => <div className="min-h-screen bg-background" aria-busy="true" />,
+});
 import { getMarketsFromChain, serializeMarket } from '@/lib/markets';
 import { toUiMarket } from '@/lib/ui-market';
 import { publicClient, ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
@@ -59,12 +63,13 @@ export default async function AnalyticsPage() {
   let stakedLogs: any[] = [];
   try {
     const DEPLOYMENT_BLOCK = 50012000n;
-    stakedLogs = await publicClient.getLogs({
-      address: ARCSIGNAL_ADDRESS,
-      event: ARCSIGNAL_ABI.find((x: any) => x.type === 'event' && x.name === 'Staked') as any,
-      fromBlock: DEPLOYMENT_BLOCK,
-      toBlock: 'latest',
-    }) as any[];
+    const latestBlock = await publicClient.getBlockNumber();
+    const event = ARCSIGNAL_ABI.find((x: any) => x.type === 'event' && x.name === 'Staked') as any;
+    const maxRange = 9_000n;
+    for (let fromBlock = DEPLOYMENT_BLOCK; fromBlock <= latestBlock; fromBlock += maxRange) {
+      const toBlock = fromBlock + maxRange - 1n > latestBlock ? latestBlock : fromBlock + maxRange - 1n;
+      stakedLogs.push(...await publicClient.getLogs({ address: ARCSIGNAL_ADDRESS, event, fromBlock, toBlock }));
+    }
   } catch (err) {
     console.error('Failed to fetch logs:', err);
     stakedLogs = [];

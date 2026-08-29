@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import {
   useAccount,
@@ -29,7 +29,6 @@ import {
 import Sidebar from '@/components/layout/Sidebar';
 import ConnectWalletButton from '@/components/wallet/ConnectWalletButton';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
-import { getMarketsFromChain } from '@/lib/markets';
 import { Stake as BaseStake } from '@/types';
 import toast from 'react-hot-toast';
 
@@ -115,75 +114,36 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
   // ─── Position Data from Contract ────────────────────────────────────────────
   const [stakes, setStakes] = useState<Stake[]>([]);
   const [loadingPositions, setLoadingPositions] = useState(true);
+  const positionsRequest = useRef<Promise<void> | null>(null);
 
   const loadPositions = React.useCallback(async () => {
-      if (!targetAddress || !publicClient) return;
+    if (!targetAddress) { setStakes([]); setLoadingPositions(false); return; }
+    if (positionsRequest.current) return positionsRequest.current;
+    const request = (async () => {
       setLoadingPositions(true);
       try {
-        const chainMarkets = await getMarketsFromChain();
-        
-        const fetchMarketStake = async (m: any) => {
-          try {
-            const [followStake, fadeStake] = await Promise.all([
-              publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'followStakes', args: [m.marketId, targetAddress] }) as Promise<bigint>,
-              publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'fadeStakes', args: [m.marketId, targetAddress] }) as Promise<bigint>,
-            ]);
-            return { followStake: Number(followStake), fadeStake: Number(fadeStake) };
-          } catch (e) {
-            console.error('Failed to read stakes for market', m.marketId, e);
-            return { followStake: 0, fadeStake: 0 };
-          }
-        };
-
-        const results = await Promise.all(chainMarkets.map(fetchMarketStake));
-
-        const userStakes: Stake[] = [];
-
-        chainMarkets.forEach((m, i) => {
-          const { followStake, fadeStake } = results[i];
-
-          const addStake = (side: number, rawAmount: number) => {
-            let pnl: number | undefined = undefined;
-            const amt = rawAmount / 1e6;
-
-            if (m.resolved) {
-              const outcome = Number(m.outcome);
-              const winningSide = outcome === 1 ? 0 : 1;
-              const isWin = side === winningSide;
-              
-              if (isWin) {
-                const winPool  = Number(winningSide === 0 ? m.followPool : m.fadePool) / 1e6;
-                const losePool = Number(winningSide === 0 ? m.fadePool  : m.followPool) / 1e6;
-                pnl = winPool > 0 ? (amt * losePool) / winPool : 0;
-              } else {
-                pnl = -amt;
-              }
-            }
-
-            userStakes.push({
-              id: `${m.marketId}-${side}`,
-              walletAddress: targetAddress,
-              txHash: '',
-              createdAt: new Date().toISOString(),
-              marketId: m.marketId,
-              side,
-              amountUsdc: amt,
-              timestamp: new Date().toISOString(),
-              pnl,
-              isWin: m.resolved ? (side === (Number(m.outcome) === 1 ? 0 : 1)) : undefined,
-            } as unknown as Stake);
-          };
-
-          if (followStake > 0) addStake(0, followStake);
-          if (fadeStake > 0) addStake(1, fadeStake);
-        });
-
-        setStakes(userStakes.reverse());
-      } catch (err) {
-        console.error(err);
-      }
-      setLoadingPositions(false);
-  }, [targetAddress, publicClient]);
+        const response = await fetch(`/api/portfolio?address=${encodeURIComponent(targetAddress)}`, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`Portfolio request failed (${response.status})`);
+        const data = await response.json();
+        const nextStakes: Stake[] = (data.positions ?? []).map((position: any, index: number) => ({
+          id: `${position.marketId}-${position.side}-${index}`,
+          walletAddress: targetAddress,
+          txHash: '',
+          createdAt: new Date().toISOString(),
+          marketId: position.marketId,
+          side: Number(position.side),
+          amountUsdc: Number(position.stakeUsdc ?? 0),
+          timestamp: new Date().toISOString(),
+          pnl: position.isResolved ? Number(position.netPnl ?? 0) : undefined,
+          isWin: position.isResolved ? Boolean(position.userWon) : undefined,
+        } as Stake));
+        setStakes(nextStakes);
+      } catch (err) { console.error('Failed to load portfolio positions:', err); }
+      finally { setLoadingPositions(false); }
+    })();
+    positionsRequest.current = request;
+    try { await request; } finally { positionsRequest.current = null; }
+  }, [targetAddress]);
 
   useEffect(() => {
     loadPositions();

@@ -20,18 +20,31 @@ export default async function LeaderboardPage() {
     roi: number;
   }> = [];
 
+  let indexedLoaded = false;
+  try {
+    const indexedLeaderboard = await getIndexedLeaderboard(100);
+    if (indexedLeaderboard.length > 0) {
+      leaderboard = indexedLeaderboard;
+      indexedLoaded = true;
+    }
+  } catch (error) {
+    console.warn('Indexed leaderboard unavailable; using chain fallback.', error);
+  }
+
   try {
     const chainMarkets = await getMarketsFromChain();
     markets = chainMarkets.map(serializeMarket);
 
-    const DEPLOYMENT_BLOCK = 50012000n;
-
-    const stakedLogs = await publicClient.getLogs({
-      address: ARCSIGNAL_ADDRESS,
-      event: parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)'),
-      fromBlock: DEPLOYMENT_BLOCK,
-      toBlock: 'latest',
-    });
+    if (!indexedLoaded) {
+      const DEPLOYMENT_BLOCK = 50012000n;
+      const latestBlock = await publicClient.getBlockNumber();
+      const maxRange = 9_000n;
+      const event = parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)');
+      const stakedLogs: any[] = [];
+      for (let fromBlock = DEPLOYMENT_BLOCK; fromBlock <= latestBlock; fromBlock += maxRange) {
+        const toBlock = fromBlock + maxRange - 1n > latestBlock ? latestBlock : fromBlock + maxRange - 1n;
+        stakedLogs.push(...await publicClient.getLogs({ address: ARCSIGNAL_ADDRESS, event, fromBlock, toBlock }));
+      }
 
     const addressMap = new Map<string, { totalStaked: bigint; correct: number; total: number }>();
     
@@ -78,18 +91,10 @@ export default async function LeaderboardPage() {
         return b.totalStaked > a.totalStaked ? -1 : b.totalStaked < a.totalStaked ? 1 : 0;
       })
       .slice(0, 20);
+    }
   } catch (error) {
     console.error('Failed to fetch leaderboard:', error);
     leaderboard = [];
-  }
-
-  // Prefer the database read model for ranking. It aggregates one row per
-  // wallet/market, so repeated top-ups do not inflate prediction counts.
-  try {
-    const indexedLeaderboard = await getIndexedLeaderboard(100);
-    if (indexedLeaderboard.length > 0) leaderboard = indexedLeaderboard;
-  } catch (error) {
-    console.warn('Indexed leaderboard unavailable; using chain fallback.', error);
   }
 
   const serializableLeaderboard = leaderboard.map((entry) => ({
