@@ -40,38 +40,33 @@ describe('crypto market validation', () => {
     );
   });
 
-  it('bypasses the shared and in-memory caches for generation reads', async () => {
-    const firstPrice = 100_000;
-    const secondPrice = 101_000;
-    const observedAt = new Date().toISOString();
-    const responseFor = (price: number) => ({
+  it('uses the uncached current-price endpoint for generation observations', async () => {
+    const observedAt = Math.floor(Date.now() / 1000);
+    const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => [{
-        id: 'bitcoin',
-        symbol: 'btc',
-        current_price: price,
-        price_change_percentage_24h: 1,
-        market_cap: 2_000_000_000_000,
-        market_cap_rank: 1,
-        total_volume: 50_000_000_000,
-        high_24h: 102_000,
-        low_24h: 98_000,
-        last_updated: observedAt,
-      }],
+      json: async () => ({
+        bitcoin: {
+          usd: 101_000,
+          last_updated_at: observedAt,
+        },
+      }),
     });
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(responseFor(firstPrice))
-      .mockResolvedValueOnce(responseFor(secondPrice));
     vi.stubGlobal('fetch', fetchMock);
 
-    const { fetchCryptoMarkets } = await import('@/lib/coingecko');
-    const cached = await fetchCryptoMarkets();
-    const fresh = await fetchCryptoMarkets({ fresh: true });
+    const { fetchFreshCryptoPrices } = await import('@/lib/coingecko');
+    const fresh = await fetchFreshCryptoPrices();
 
-    expect(cached[0].current_price).toBe(firstPrice);
-    expect(fresh[0].current_price).toBe(secondPrice);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[1][1]).toMatchObject({ cache: 'no-store' });
-    expect(fetchMock.mock.calls[1][1]).not.toHaveProperty('next');
+    expect(fresh).toEqual([{
+      id: 'bitcoin',
+      symbol: 'btc',
+      current_price: 101_000,
+      price_source: 'coingecko',
+      price_observed_at: observedAt,
+    }]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toContain('/simple/price?');
+    expect(fetchMock.mock.calls[0][0]).toContain('include_last_updated_at=true');
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ cache: 'no-store' });
+    expect(fetchMock.mock.calls[0][1]).not.toHaveProperty('next');
   });
 });

@@ -18,13 +18,25 @@ export interface TickerPrice {
   change: number;
 }
 
-interface FetchCryptoMarketsOptions {
-  fresh?: boolean;
+export interface FreshCryptoPrice {
+  id: string;
+  symbol: string;
+  current_price: number;
+  price_source: 'coingecko';
+  price_observed_at: number;
 }
 
 const BASE_URL = 'https://api.coingecko.com/api/v3';
 const CACHE_TTL_MS = 60_000;
-const MARKET_IDS = 'bitcoin,ethereum,solana,sui,ripple,avalanche-2';
+const MARKETS = [
+  { id: 'bitcoin', symbol: 'btc' },
+  { id: 'ethereum', symbol: 'eth' },
+  { id: 'solana', symbol: 'sol' },
+  { id: 'sui', symbol: 'sui' },
+  { id: 'ripple', symbol: 'xrp' },
+  { id: 'avalanche-2', symbol: 'avax' },
+] as const;
+const MARKET_IDS = MARKETS.map(({ id }) => id).join(',');
 
 let cachedAt = 0;
 let cachedCryptoData: CryptoData[] | null = null;
@@ -144,29 +156,18 @@ async function fetchBinanceFallback(): Promise<CryptoData[]> {
   }));
 }
 
-export async function fetchCryptoMarkets(
-  options: FetchCryptoMarketsOptions = {},
-): Promise<CryptoData[]> {
-  const fresh = options.fresh === true;
+export async function fetchCryptoMarkets(): Promise<CryptoData[]> {
   const now = Date.now();
-  if (!fresh && cachedCryptoData && now - cachedAt < CACHE_TTL_MS) {
+  if (cachedCryptoData && now - cachedAt < CACHE_TTL_MS) {
     return cachedCryptoData;
   }
 
   try {
     const url = `${BASE_URL}/coins/markets?vs_currency=usd&ids=${MARKET_IDS}`;
-    const response = await fetch(
-      url,
-      fresh
-        ? {
-            headers: getHeaders(),
-            cache: 'no-store',
-          }
-        : {
-            headers: getHeaders(),
-            next: { revalidate: 60 },
-          },
-    );
+    const response = await fetch(url, {
+      headers: getHeaders(),
+      next: { revalidate: 60 },
+    });
 
     if (response.ok) {
       const raw = await response.json();
@@ -197,6 +198,50 @@ export async function fetchCryptoMarkets(
   cachedCryptoData = fallbackData;
   cachedAt = Date.now();
   return fallbackData;
+}
+
+export async function fetchFreshCryptoPrices(): Promise<FreshCryptoPrice[]> {
+  const url = `${BASE_URL}/simple/price?ids=${MARKET_IDS}&vs_currencies=usd&include_last_updated_at=true&precision=full`;
+  const response = await fetch(url, {
+    headers: getHeaders(),
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    throw new Error(`CoinGecko current-price request failed with status ${response.status}`);
+  }
+
+  const raw = await response.json();
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    throw new Error('Invalid CoinGecko current-price response format');
+  }
+
+  const data = raw as Record<string, unknown>;
+  const prices: FreshCryptoPrice[] = [];
+  for (const market of MARKETS) {
+    const value = data[market.id];
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) continue;
+    const record = value as Record<string, unknown>;
+    if (
+      !isPositiveFiniteNumber(record.usd) ||
+      !Number.isSafeInteger(record.last_updated_at) ||
+      !isPositiveFiniteNumber(record.last_updated_at)
+    ) {
+      continue;
+    }
+
+    prices.push({
+      id: market.id,
+      symbol: market.symbol,
+      current_price: record.usd,
+      price_source: 'coingecko',
+      price_observed_at: record.last_updated_at,
+    });
+  }
+
+  if (prices.length === 0) {
+    throw new Error('CoinGecko returned no valid current-price observations');
+  }
+  return prices;
 }
 
 export async function fetchTickerPrices(): Promise<TickerPrice[]> {
