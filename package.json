@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
+    "audit:baseline": "node scripts/check-audit-baseline.mjs",
+    "check:bundles": "node scripts/check-bundle-budgets.mjs",
     "trigger": "npx tsx scripts/run-generate.ts",
     "generate": "npx tsx scripts/run-generate.ts",
     "resolve": "npx tsx scripts/run-resolve.ts",
