@@ -27,6 +27,8 @@ jobs:
             --silent \
             --show-error \
             --fail-with-body \
+            --retry 2 \
+            --retry-all-errors \
             --connect-timeout 10 \
             --max-time 30 \
             --request POST \
