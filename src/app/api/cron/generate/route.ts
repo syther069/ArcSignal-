@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createWalletClient, decodeEventLog, http } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, publicClient, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
-import { fetchCryptoMarkets } from '@/lib/coingecko';
+import { fetchCryptoMarkets, type CryptoData } from '@/lib/coingecko';
 import { fetchUpcomingFixtures } from '@/lib/apifootball';
 import { generateCryptoAnalysis, generateFootballAnalysis } from '@/lib/gemini';
 import { authorizeCronRequest } from '@/lib/cron-auth';
@@ -61,9 +61,9 @@ export async function POST(req: Request) {
   // CRYPTO MARKETS
   try {
     const requiredSymbols = ['BTC', 'ETH', 'SOL', 'XRP', 'SUI', 'AVAX'];
-    let cryptoMarkets: any[] = [];
+    let cryptoMarkets: CryptoData[] = [];
     try {
-      cryptoMarkets = await fetchCryptoMarkets();
+      cryptoMarkets = await fetchCryptoMarkets({ fresh: true });
     } catch (e) {
       console.error('All live crypto price feeds failed:', e);
       throw new Error(`Live price feeds unavailable across all providers: ${e instanceof Error ? e.message : String(e)}`);
@@ -72,20 +72,36 @@ export async function POST(req: Request) {
     const marketsBySymbol = new Map(
       cryptoMarkets.map((coin) => [coin.symbol.toUpperCase(), coin]),
     );
-    const selected = requiredSymbols
-      .map((symbol) => marketsBySymbol.get(symbol))
-      .filter((coin): coin is NonNullable<typeof coin> => Boolean(coin));
-    if (selected.some((coin) => coin.price_source !== 'coingecko')) {
+    if (cryptoMarkets.some((coin) => coin.price_source !== 'coingecko')) {
       throw new Error('CoinGecko is unavailable; refusing to create markets from a fallback oracle');
     }
+
+    const selected: CryptoData[] = [];
     const observationCheckTime = Math.floor(Date.now() / 1000);
-    for (const coin of selected) {
-      assertFreshGenerationObservation({
-        provider: coin.price_source,
-        symbol: coin.symbol,
-        price: coin.current_price,
-        observedAt: coin.price_observed_at,
-      }, observationCheckTime);
+    for (const symbol of requiredSymbols) {
+      const coin = marketsBySymbol.get(symbol);
+      if (!coin) {
+        errors.push(`[${symbol}] generation skipped: CoinGecko observation is missing`);
+        continue;
+      }
+
+      try {
+        assertFreshGenerationObservation({
+          provider: coin.price_source,
+          symbol: coin.symbol,
+          price: coin.current_price,
+          observedAt: coin.price_observed_at,
+        }, observationCheckTime);
+        selected.push(coin);
+      } catch (error) {
+        errors.push(
+          `[${symbol}] generation skipped: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+
+    if (selected.length === 0) {
+      throw new Error('No fresh CoinGecko observations are available');
     }
 
     const url = new URL(req.url);

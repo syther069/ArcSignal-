@@ -18,6 +18,10 @@ export interface TickerPrice {
   change: number;
 }
 
+interface FetchCryptoMarketsOptions {
+  fresh?: boolean;
+}
+
 const BASE_URL = 'https://api.coingecko.com/api/v3';
 const CACHE_TTL_MS = 60_000;
 const MARKET_IDS = 'bitcoin,ethereum,solana,sui,ripple,avalanche-2';
@@ -140,18 +144,29 @@ async function fetchBinanceFallback(): Promise<CryptoData[]> {
   }));
 }
 
-export async function fetchCryptoMarkets(): Promise<CryptoData[]> {
+export async function fetchCryptoMarkets(
+  options: FetchCryptoMarketsOptions = {},
+): Promise<CryptoData[]> {
+  const fresh = options.fresh === true;
   const now = Date.now();
-  if (cachedCryptoData && now - cachedAt < CACHE_TTL_MS) {
+  if (!fresh && cachedCryptoData && now - cachedAt < CACHE_TTL_MS) {
     return cachedCryptoData;
   }
 
   try {
     const url = `${BASE_URL}/coins/markets?vs_currency=usd&ids=${MARKET_IDS}`;
-    const response = await fetch(url, {
-      headers: getHeaders(),
-      next: { revalidate: 60 },
-    });
+    const response = await fetch(
+      url,
+      fresh
+        ? {
+            headers: getHeaders(),
+            cache: 'no-store',
+          }
+        : {
+            headers: getHeaders(),
+            next: { revalidate: 60 },
+          },
+    );
 
     if (response.ok) {
       const raw = await response.json();
@@ -170,7 +185,7 @@ export async function fetchCryptoMarkets(): Promise<CryptoData[]> {
         };
       }));
       cachedCryptoData = data;
-      cachedAt = now;
+      cachedAt = Date.now();
       return data;
     }
   } catch (cgError) {
@@ -180,7 +195,7 @@ export async function fetchCryptoMarkets(): Promise<CryptoData[]> {
   // Secondary fallback provider: Binance public ticker
   const fallbackData = await fetchBinanceFallback();
   cachedCryptoData = fallbackData;
-  cachedAt = now;
+  cachedAt = Date.now();
   return fallbackData;
 }
 
