@@ -158,6 +158,30 @@ async function fetchMarketWithRetry(id: string): Promise<ChainMarket> {
   );
 }
 
+async function fetchMarketsWithMulticall(
+  ids: string[],
+): Promise<PromiseSettledResult<ChainMarket>[]> {
+  const results = await withTimeout(
+    publicClient.multicall({
+      contracts: ids.map((id) => ({
+        address: ARCSIGNAL_ADDRESS as Address,
+        abi: ARCSIGNAL_ABI,
+        functionName: 'getMarket' as const,
+        args: [id] as const,
+      })),
+      allowFailure: true,
+    }),
+    MARKET_RPC_TIMEOUT_MS,
+    `getMarket multicall (${ids.length})`,
+  );
+
+  return results.map((result) => (
+    result.status === 'success'
+      ? { status: 'fulfilled', value: result.result as ChainMarket }
+      : { status: 'rejected', reason: result.error }
+  ));
+}
+
 export async function getSingleMarketFromChain(id: string): Promise<Market | null> {
   if (!ARCSIGNAL_ADDRESS || !/^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS)) {
     return null;
@@ -265,11 +289,17 @@ export async function getMarketsFromChain(
 
     const markets: Market[] = [];
 
-    const marketResults = await mapWithConcurrency(
-      targetIds,
-      MARKET_READ_CONCURRENCY,
-      (id) => fetchMarketWithRetry(id)
-    );
+    let marketResults: PromiseSettledResult<ChainMarket>[];
+    try {
+      marketResults = await fetchMarketsWithMulticall(targetIds);
+    } catch (multicallError) {
+      console.warn('Batched market reads unavailable; using rate-limited reads:', multicallError);
+      marketResults = await mapWithConcurrency(
+        targetIds,
+        MARKET_READ_CONCURRENCY,
+        (id) => fetchMarketWithRetry(id),
+      );
+    }
 
     for (const res of marketResults) {
       if (res.status === 'fulfilled' && res.value) {

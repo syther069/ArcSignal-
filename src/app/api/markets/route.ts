@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { serializeMarket } from '@/lib/markets';
-import { getIndexedMarkets } from '@/lib/indexed-markets';
+import { getMarketSnapshot } from '@/lib/market-source';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,10 +16,16 @@ export async function GET(req: Request) {
   const offset = boundedInteger(url.searchParams.get('offset'), 0, 0, 10_000);
 
   try {
-    const markets = (await getIndexedMarkets(limit, offset)).map(serializeMarket);
+    const snapshot = await getMarketSnapshot(limit, offset);
+    const markets = snapshot.markets.map(serializeMarket);
 
     return NextResponse.json(
-      { markets, source: 'neon' },
+      {
+        markets,
+        source: snapshot.source,
+        complete: snapshot.complete,
+        fetchedAt: snapshot.fetchedAt,
+      },
       {
         headers: {
           'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=50',

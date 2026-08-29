@@ -1,5 +1,5 @@
 import MarketDetailClient from './MarketDetailClient';
-import { serializeMarket } from '@/lib/markets';
+import { getSingleMarketFromChain, serializeMarket } from '@/lib/markets';
 import { getIndexedMarketById } from '@/lib/indexed-markets';
 import { toUiMarket } from '@/lib/ui-market';
 import { notFound } from 'next/navigation';
@@ -12,7 +12,14 @@ export default async function MarketDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const rawMarket = await getIndexedMarketById(id);
+  let rawMarket = await getIndexedMarketById(id).catch((error) => {
+    console.warn('Market index unavailable; reading market from ARC chain:', error);
+    return null;
+  });
+
+  if (!rawMarket) {
+    rawMarket = await getSingleMarketFromChain(id);
+  }
 
   if (!rawMarket) {
     notFound();

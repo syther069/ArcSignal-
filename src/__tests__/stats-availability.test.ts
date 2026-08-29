@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const getIndexedMarkets = vi.fn();
+const getMarketSnapshot = vi.fn();
 const getPlatformStats = vi.fn();
 
 vi.mock('next/cache', () => ({
   unstable_cache: (loader: unknown) => loader,
 }));
 
-vi.mock('@/lib/indexed-markets', () => ({
-  getIndexedMarkets,
+vi.mock('@/lib/market-source', () => ({
+  getMarketSnapshot,
 }));
 
 vi.mock('@/lib/platform-stats', async (importOriginal) => {
@@ -25,7 +25,12 @@ describe('stats availability behavior', () => {
   });
 
   it('keeps zero stats for a successful empty indexed dataset', async () => {
-    getIndexedMarkets.mockResolvedValue([]);
+    getMarketSnapshot.mockResolvedValue({
+      markets: [],
+      source: 'neon',
+      complete: true,
+      fetchedAt: '2026-08-29T00:00:00.000Z',
+    });
     const { loadPlatformStats } = await import('@/lib/platform-stats');
 
     await expect(loadPlatformStats()).resolves.toEqual({
@@ -33,14 +38,16 @@ describe('stats availability behavior', () => {
       activeMarkets: 0,
       totalMarkets: 0,
       accuracy: null,
+      source: 'neon',
+      complete: true,
     });
   });
 
-  it('does not convert an index failure into zero stats', async () => {
-    getIndexedMarkets.mockRejectedValue(new Error('database unavailable'));
+  it('does not convert a complete source failure into zero stats', async () => {
+    getMarketSnapshot.mockRejectedValue(new Error('market sources unavailable'));
     const { loadPlatformStats } = await import('@/lib/platform-stats');
 
-    await expect(loadPlatformStats()).rejects.toThrow('database unavailable');
+    await expect(loadPlatformStats()).rejects.toThrow('market sources unavailable');
   });
 
   it('returns an explicit retryable 503 when stats are unavailable', async () => {

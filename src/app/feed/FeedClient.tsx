@@ -11,9 +11,14 @@ type FeedFilter = 'ALL' | 'FOOTBALL' | 'CRYPTO' | 'FOLLOW' | 'FADE';
 interface FeedClientProps {
   initialStakes: Stake[];
   markets: SerializableMarket[];
+  historyUnavailable?: boolean;
 }
 
-export default function FeedClient({ initialStakes, markets: _markets }: FeedClientProps) {
+export default function FeedClient({
+  initialStakes,
+  markets: _markets,
+  historyUnavailable = false,
+}: FeedClientProps) {
   const [filter, setFilter] = useState<FeedFilter>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
@@ -59,18 +64,22 @@ export default function FeedClient({ initialStakes, markets: _markets }: FeedCli
               LIVE ACTIVITY FEED
             </h1>
             <p className="font-mono text-sm text-zinc-300">
-              Real-time platform execution log and oracle verification stream.
+              {historyUnavailable
+                ? 'Live markets are available from ARC; indexed activity history is recovering.'
+                : 'Real-time platform execution log and oracle verification stream.'}
             </p>
           </div>
           
           <div className="flex gap-3">
             <div className="bg-white/5 border border-white/10 px-4 py-2 flex items-center gap-3 rounded-md">
-              <div className="w-2 h-2 rounded-full bg-[#38bdf8] animate-pulse"></div>
-              <span className="font-mono text-xs font-bold tracking-widest text-[#38bdf8]">LIVE FEED</span>
+              <div className={`w-2 h-2 rounded-full ${historyUnavailable ? 'bg-amber-400' : 'bg-[#38bdf8] animate-pulse'}`}></div>
+              <span className={`font-mono text-xs font-bold tracking-widest ${historyUnavailable ? 'text-amber-400' : 'text-[#38bdf8]'}`}>
+                {historyUnavailable ? 'INDEX RECOVERY' : 'LIVE FEED'}
+              </span>
             </div>
             <div className="bg-white/5 border border-white/10 px-4 py-2 flex items-center gap-2 rounded-md">
               <span className="font-mono text-xs text-slate-400 tracking-widest">
-                EVENTS: <span className="font-bold text-white">{filteredStakes.length}</span>
+                 EVENTS: <span className="font-bold text-white">{historyUnavailable ? '—' : filteredStakes.length}</span>
               </span>
             </div>
           </div>
@@ -161,7 +170,9 @@ export default function FeedClient({ initialStakes, markets: _markets }: FeedCli
                 ) : (
                   <tr>
                     <td colSpan={5} className="p-12 text-center text-slate-500 font-mono">
-                      No activity found matching these filters.
+                      {historyUnavailable
+                        ? 'Activity history is temporarily unavailable while the index recovers.'
+                        : 'No activity found matching these filters.'}
                     </td>
                   </tr>
                 )}

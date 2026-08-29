@@ -3,10 +3,12 @@ import Footer from '@/components/layout/Footer';
 import { getPlatformStats, type PlatformStats } from '@/lib/platform-stats';
 
 const DEFAULT_STATS: PlatformStats = {
-    accuracy: 94.2,
-    totalVolume: 0,
-    activeMarkets: 0,
-    totalMarkets: 0,
+  accuracy: null,
+  totalVolume: 0,
+  activeMarkets: 0,
+  totalMarkets: 0,
+  source: 'neon',
+  complete: false,
 };
 
 export default async function LandingPage() {

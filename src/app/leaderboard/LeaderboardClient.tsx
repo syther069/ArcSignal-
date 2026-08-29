@@ -21,11 +21,16 @@ interface LeaderboardEntry {
 interface LeaderboardClientProps {
   leaderboard: LeaderboardEntry[];
   markets: any[];
+  dataUnavailable?: boolean;
 }
 
 const formatAddress = (addr: string) => `${addr.substring(0, 6)}...${addr.slice(-4)}`;
 
-export default function LeaderboardClient({ leaderboard, markets }: LeaderboardClientProps) {
+export default function LeaderboardClient({
+  leaderboard,
+  markets,
+  dataUnavailable = false,
+}: LeaderboardClientProps) {
   const { address } = useAccount();
   const [metric, setMetric] = useState<'accuracy' | 'profit' | 'roi' | 'volume'>('accuracy');
   const [minPredictions, setMinPredictions] = useState(0);
@@ -83,6 +88,12 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
             <p className="text-text-muted font-sans text-base">Transparent performance rankings for ArcSignal prediction traders.</p>
           </div>
 
+          {dataUnavailable && (
+            <div className="mb-6 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4 text-sm text-amber-200" role="status">
+              Trader rankings are temporarily unavailable while the index recovers. Live market volume remains available from ARC.
+            </div>
+          )}
+
           {connectedEntry && (
             <div className="mb-6 rounded-xl border border-[#ddb7ff]/30 bg-[#ddb7ff]/5 p-4 flex flex-wrap items-center justify-between gap-4">
               <div><p className="font-label-caps text-xs text-text-muted">Your leaderboard position</p><p className="font-code-sm text-xl text-primary">#{connectedRank}</p></div>
@@ -109,9 +120,9 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
             <div className="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl relative overflow-hidden flex flex-col justify-between">
               <p className="text-text-muted font-sans text-sm font-medium mb-2">Active Traders</p>
               <div className="flex items-center gap-3">
-                <span className="font-code-sm text-2xl font-bold">{activeTradersCount}</span>
-                <span className="flex h-2 w-2 rounded-full bg-tertiary animate-pulse"></span>
-                <span className="text-text-muted text-sm font-medium">Live</span>
+                <span className="font-code-sm text-2xl font-bold">{dataUnavailable ? '—' : activeTradersCount}</span>
+                {!dataUnavailable && <span className="flex h-2 w-2 rounded-full bg-tertiary animate-pulse"></span>}
+                <span className="text-text-muted text-sm font-medium">{dataUnavailable ? 'Index recovering' : 'Live'}</span>
               </div>
             </div>
 
@@ -119,7 +130,9 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
             <div className="bg-surface-container-lowest border border-outline-variant p-6 rounded-xl flex flex-col justify-between">
               <p className="text-text-muted font-sans text-sm font-medium mb-2">Top Performer</p>
               <div className="flex flex-col gap-1">
-                {topPerformer ? (
+                {dataUnavailable ? (
+                  <span className="font-code-sm text-text-muted">Unavailable</span>
+                ) : topPerformer ? (
                   <>
                     <span className="font-code-sm text-xl font-bold text-primary">{formatAddress(topPerformer.address)}</span>
                     <span className="text-tertiary text-sm font-medium">{topPerformer.winRate}% Win Rate</span>
@@ -141,7 +154,9 @@ export default function LeaderboardClient({ leaderboard, markets }: LeaderboardC
             </div>
             {filteredLeaderboard.length === 0 ? (
               <div className="w-full py-16 flex items-center justify-center text-text-muted font-code-sm text-center">
-                No traders have placed positions yet. Be the first to stake on a market.
+                {dataUnavailable
+                  ? 'Rankings will return when the indexed position history is available.'
+                  : 'No traders have placed positions yet. Be the first to stake on a market.'}
               </div>
             ) : (
               <div className="overflow-x-auto scrollbar-hide">

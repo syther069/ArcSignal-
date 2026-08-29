@@ -1,17 +1,19 @@
 import { unstable_cache } from 'next/cache';
 import { formatUnits } from 'viem';
-import { getIndexedMarkets } from './indexed-markets';
-import type { Market } from './types';
+import { getMarketSnapshot, type MarketSource } from './market-source';
 
 export interface PlatformStats {
   totalVolume: number;
   activeMarkets: number;
   totalMarkets: number;
   accuracy: number | null;
+  source: MarketSource;
+  complete: boolean;
 }
 
 export async function loadPlatformStats(): Promise<PlatformStats> {
-  const markets: Market[] = await getIndexedMarkets(160, 0);
+  const snapshot = await getMarketSnapshot(160, 0);
+  const { markets } = snapshot;
 
   let totalVolumeUsdc = 0;
   let activeMarkets = 0;
@@ -31,6 +33,8 @@ export async function loadPlatformStats(): Promise<PlatformStats> {
     totalVolume: Math.round(totalVolumeUsdc * 100) / 100,
     activeMarkets,
     totalMarkets: markets.length,
+    source: snapshot.source,
+    complete: snapshot.complete,
     accuracy: resolvedMarkets > 0
       ? Math.round((correctMarkets / resolvedMarkets) * 1_000) / 10
       : null,
