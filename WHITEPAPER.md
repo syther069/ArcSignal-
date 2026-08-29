@@ -58,7 +58,7 @@ All financial logic is handled by immutable smart contracts deployed on the **AR
 ### 3.2 The Off-Chain Engine
 To provide a frictionless Web2-like experience without compromising Web3 settlement:
 - **Next.js & React:** Powers a lightning-fast, responsive frontend.
-- **Supabase:** Acts as our real-time database, indexing on-chain events and caching AI predictions for instant UI rendering without spamming RPC nodes.
+- **Neon PostgreSQL:** Indexes on-chain events and caches market data for responsive reads. When the index is unavailable, the application uses a bounded ARC Multicall snapshot rather than unbounded RPC scans.
 - **AI Oracles (Gemini & API Integrations):** The backend periodically triggers AI agents to ingest real-time market data, sentiment, or sports statistics (e.g., via API-Football) to formulate predictions and open new markets on-chain.
 
 ### 3.3 Wallet Onboarding
@@ -71,11 +71,11 @@ Utilizing **Wagmi** and **AppKit (WalletConnect)**, ArcSignal supports both nati
 ### 4.1 The Settlement Layer
 ArcSignal intentionally uses an established stablecoin (USDC) for all market staking. We believe users should speculate on the *outcome* of an event, not on the underlying currency of the platform.
 
-### 4.2 The Prediction Pass (NFT)
-To foster a dedicated community and unlock premium features, ArcSignal introduces the **Prediction Pass**. As an ERC-721 token, holding this pass grants users access to:
+### 4.2 Prediction Pass Roadmap
+The repository includes an experimental **Prediction Pass** ERC-721 contract, but it is not part of the currently verified ArcSignal testnet product. A future release may use it for:
 - **Deep AI Rationale:** While casual users see the AI's final prediction, Pass holders can view the full reasoning, sentiment analysis, and data weights the AI used to reach its conclusion.
 - **Early Market Access:** Pass holders may get a time-advantage to stake in high-conviction pools before they are opened to the general public.
-- **Fee Reductions:** (Planned for Mainnet) Lower platform fees on winning claims.
+- **Protocol Benefits:** Potential future benefits defined only after the Mainnet economics are finalized.
 
 ---
 

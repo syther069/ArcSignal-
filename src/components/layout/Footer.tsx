@@ -25,8 +25,8 @@ const footerLinks = [
     title: 'COMMUNITY',
     links: [
       { label: 'GitHub', href: 'https://github.com/syther069/ArcSignal-' },
+      { label: 'X', href: 'https://x.com/ArcSignal_' },
       { label: 'Support', href: '/support' },
-      { label: 'GitHub', href: 'https://github.com/syther069/ArcSignal-' },
     ],
   },
 ];
@@ -79,6 +79,9 @@ export default function Footer() {
                   <li key={link.label}>
                     <Link
                       href={link.href}
+                      target={link.href.startsWith('https://') ? '_blank' : undefined}
+                      rel={link.href.startsWith('https://') ? 'noopener noreferrer' : undefined}
+                      aria-label={link.href.startsWith('https://') ? `${link.label} (opens in a new tab)` : link.label}
                       className="text-xs text-slate-500 hover:text-[#38bdf8] transition-colors duration-200"
                     >
                       {link.label}

@@ -1,123 +1,112 @@
 # ArcSignal
 
-## Overview
-ArcSignal is the AI-Driven Decentralized Prediction Market built on the ARC Network. It merges artificial intelligence with decentralized finance, deploying sophisticated AI agents to analyze data across Crypto and Sports, and issuing a baseline prediction for the crowd to trade against.
+USDC prediction markets on ARC Testnet. Traders take a **Follow** or **Fade**
+position, and resolved pools settle pari-mutually on-chain.
 
-## Screenshots
+- Production: [arc-signal.xyz](https://arc-signal.xyz)
+- Network: ARC Testnet (`5042002`)
+- ArcSignal contract: `0x4f33115a18fe6a181be98610ddde3fab71efabed`
+- Testnet USDC: `0x3600000000000000000000000000000000000000`
 
-### Homepage
-![Homepage](.<img width="1877" height="800" alt="image" src="https://github.com/user-attachments/assets/09a200e5-00a5-4975-b5ff-04bcb8f0ed47"/>)
+> Testnet software. The contracts are unaudited and must not be used with
+> real-value funds.
 
+![ArcSignal dashboard](public/screenshots/dashboard.png)
 
-### Markets
-![Markets](.<img width="1902" height="821" alt="image" src="https://github.com/user-attachments/assets/9a8a4671-c1d5-4a69-a28e-874c68597fc0" />)
+## Documentation
 
-### Profile
-![Profile](.<img width="1902" height="802" alt="image" src="https://github.com/user-attachments/assets/95de7c84-fd77-4436-a2d3-712db30bc365" />)
+- [Protocol and application guide](DOCS.md)
+- [Whitepaper](WHITEPAPER.md)
+- [Privacy policy](PRIVACY.md)
+- [Terms](TERMS.md)
+- [Operations and maintenance scripts](scripts/README.md)
 
-## What it does
-Instead of users creating arbitrary markets and waiting for a counterparty, ArcSignal deploys AI agents (powered by Google Gemini) to generate data-backed predictions (e.g., "Will BTC break $65k today?"). Participants interact with a streamlined pari-mutuel smart contract, staking USDC to either **"Follow"** (agree) or **"Fade"** (disagree) the AI's signal. This creates a highly liquid, gamified, and frictionless ecosystem testing human intuition against machine intelligence.
+## Current capabilities
 
-## Core features
+- AI-generated crypto and football market theses
+- On-chain Follow/Fade staking with USDC
+- Pool-derived payout estimates with no deployed-contract trading fee
+- On-chain user profiles and transaction verification
+- Indexed Neon data with a bounded 60-market ARC Multicall fallback
+- Authenticated generation, resolution, maintenance, and indexing routes
+- Responsive market, portfolio, leaderboard, feed, and analytics interfaces
 
-### AI-Initiated Markets
-No more "blank canvas" problems. The AI acts as the house thesis, analyzing real-time data to automatically generate markets and predictions.
+Market generation and resolution are currently owner-controlled testnet
+operations. Decentralized resolution and ARC Mainnet support are roadmap items,
+not current production claims.
 
-### Follow vs Fade Mechanics
-A simple, intuitive binary choice. Stake USDC to agree (Follow) or disagree (Fade) with the AI's prediction.
+## Repository layout
 
-### Pari-Mutuel Settlement
-Odds are dynamic and determined by the ratio of capital in the Follow and Fade pools. The losing pool's capital is distributed pro-rata to the winning pool.
-
-### Prediction Pass
-Holders of the ERC-721 Prediction Pass unlock deep AI rationale, early market access, and platform fee reductions.
-
-### Stablecoin Settlement
-All markets are denominated and settled in USDC, eliminating native-token volatility risk during the prediction lifecycle.
-
-## Supported chains
-- **ARC Testnet** (Currently Deployed)
-- **ARC Mainnet** (Planned)
-
-## Tech stack
-- **Frontend:** Next.js (App Router), React, Tailwind CSS
-- **Web3 Integration:** Wagmi, AppKit (WalletConnect), Viem
-- **Smart Contracts:** Solidity
-- **Backend & Data:** Supabase (PostgreSQL, Realtime)
-- **AI & Oracles:** Gemini API, API-Football
-
-## Project structure
 ```text
-ArcSignal/
+.
+├── .github/workflows/       # CI and indexer workflows
+├── db/schema.sql            # PostgreSQL/Neon schema
+├── lib/                     # Foundry dependencies
+├── public/                  # Runtime images and screenshots
+├── scripts/
+│   ├── diagnostics/         # Read-only ARC diagnostics
+│   ├── operations/          # Operational checks
+│   ├── deploy/legacy/       # Manual recovery deployment helpers
+│   └── README.md            # Script usage and safety notes
 ├── src/
-│   ├── app/             # Next.js App Router pages and API routes
-│   │   ├── api/         # Cron jobs and API endpoints
-│   │   ├── dashboard/   # User dashboard
-│   │   ├── markets/     # Active prediction markets
-│   │   └── ...
-│   ├── components/      # Reusable React components
-│   ├── lib/             # Utilities, Web3 config, and API integrations
-│   └── styles/          # Global CSS
-├── contracts/           # Solidity smart contracts
-└── public/              # Static assets and images
+│   ├── app/                 # Next.js pages and API routes
+│   ├── components/          # Shared React components
+│   ├── contracts/           # ArcSignal Solidity source
+│   ├── hooks/               # Client hooks
+│   ├── lib/                 # Chain, data, and domain logic
+│   └── __tests__/           # Vitest regression tests
+└── test/                    # Foundry contract tests
 ```
+
+Generated directories such as `.next/`, `out/`, caches, logs, and
+`node_modules/` are intentionally excluded from Git.
 
 ## Local development
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-username/ArcSignal.git
-   cd ArcSignal
-   ```
+Requirements:
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+- Node.js 20 or newer
+- npm
+- Foundry when running Solidity tests
 
-3. **Environment Setup**
-   Copy `.env.example` to `.env.local` and configure your API keys (AppKit, RPC URL, Supabase, Gemini, etc.).
-   ```bash
-   cp .env.example .env.local
-   ```
-
-4. **Run the development server**
-   ```bash
-   npm run dev
-   ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## Build verification
-To verify that the project builds correctly for production:
 ```bash
-npm run build
+git clone https://github.com/syther069/ArcSignal-.git
+cd ArcSignal-
+npm install
+cp .env.example .env.local
+npm run dev
 ```
-This will compile the Next.js application and report any type errors or missing dependencies.
 
-## Current status
-ArcSignal is currently live on the **ARC Testnet**. We are actively testing AI market generation, smart contract settlement, and overall platform stability before progressing to Mainnet.
+Configure only the variables required for the flow you are running. Never
+commit private keys, tokens, wallet files, or populated environment files.
 
-## Roadmap
+## Verification
 
-### Phase 1: ARC Testnet Launch
-- Deployment of core Follow/Fade smart contracts.
-- Integration of Gemini AI for Crypto market predictions.
-- Integration of Football APIs for sports predictions.
-- Community testing and UI/UX refinement.
+```bash
+npx tsc --noEmit
+npm test
+npm run lint
+npm run build
+npm run check:bundles
+npm run audit:baseline
+forge test
+```
 
-### Phase 2: Mainnet & Decentralized Oracles
-- Deployment on ARC Mainnet.
-- Transitioning market resolution to a decentralized oracle network.
-- Launch of the Prediction Pass NFT mint.
+The production dependency audit uses a checked baseline so new vulnerabilities
+fail CI without misrepresenting existing advisories as resolved.
 
-### Phase 3: Agentic Expansion
-- Introduction of specialized AI agents (e.g., DeFi Agent, Macro Agent).
-- User-generated markets with AI-assisted odds framing.
+## Data and transaction integrity
 
-## Security notes
-- **Unaudited Contracts:** The smart contracts (`ARCSignal.sol`) are currently unaudited. Do not use real funds.
-- **API Keys:** Never commit your `.env.local` file containing private keys or API secrets.
+- ARC RPC receipts and matching ArcSignal events are authoritative for
+  transaction confirmation.
+- External testnet explorers are not treated as proof.
+- Neon is the preferred indexed source.
+- When Neon is unavailable, public reads use bounded ARC snapshots rather than
+  unbounded log scans or per-market RPC storms.
+- Empty, incomplete, and unavailable data states are reported explicitly; the
+  application does not fabricate positions, history, rankings, or receipts.
 
-## Author
-Built by the ArcSignal Team.
+## License and ownership
+
+Copyright belongs to the ArcSignal project contributors. No open-source license
+is granted unless a license file is added explicitly.

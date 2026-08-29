@@ -10,10 +10,12 @@
     "test": "vitest run",
     "audit:baseline": "node scripts/check-audit-baseline.mjs",
     "check:bundles": "node scripts/check-bundle-budgets.mjs",
-    "trigger": "npx tsx scripts/run-generate.ts",
     "generate": "npx tsx scripts/run-generate.ts",
     "resolve": "npx tsx scripts/run-resolve.ts",
-    "db:migrate": "npx tsx scripts/migrate-db.ts"
+    "db:migrate": "npx tsx scripts/migrate-db.ts",
+    "ops:check-markets": "npx tsx scripts/diagnostics/check-markets.ts",
+    "ops:check-owner": "npx tsx scripts/diagnostics/check-owner.ts",
+    "ops:scheduler": "npx tsx scripts/operations/scheduler.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

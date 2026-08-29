@@ -23,10 +23,10 @@ Once a market is live, human analysts (that's you!) can deploy capital. We use a
 Your potential payout isn't fixed at the time of your bet; it shifts dynamically based on the total liquidity on both sides of the market. This ensures the market is always perfectly balanced and reflects the true consensus of the crowd.
 
 ### 3. Transparent Resolution
-When the underlying event concludes, the market locks. ArcSignal uses a decentralized oracle network to securely fetch the real-world outcome. There is no central authority deciding who won or lost.
+When the underlying event concludes, an authenticated testnet resolver checks the configured market-data source and submits the outcome to the ArcSignal contract. The settlement transaction and final outcome are public on ARC. Decentralized oracle execution is a roadmap item, not a current testnet claim.
 
-### 4. Instant Payouts
-If your side wins, the smart contract automatically calculates your share of the opposing side's liquidity. Rewards are distributed instantly. No lockups, no waiting periods, and no withdrawal fees from the protocol.
+### 4. On-Chain Claims
+If your side wins, the smart contract calculates your share of the opposing side's liquidity. Winners submit a claim transaction after resolution; successful claims are paid by the contract with no protocol withdrawal fee.
 
 ---
 
