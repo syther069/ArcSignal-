@@ -6,6 +6,7 @@ const browserRpcUrl =
   'https://rpc.testnet.arc.network';
 const serverRpcUrl =
   process.env.ARC_RPC_URL ??
+  process.env.ARC_TESTNET_RPC_URL ??
   browserRpcUrl;
 
 export const arcTestnet = {

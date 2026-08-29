@@ -36,7 +36,12 @@ export async function POST(req: Request) {
   const walletClient = createWalletClient({
     account,
     chain: arcTestnet,
-    transport: http(process.env.ARC_RPC_URL ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.network'),
+    transport: http(
+      process.env.ARC_RPC_URL
+      ?? process.env.ARC_TESTNET_RPC_URL
+      ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL
+      ?? 'https://rpc.testnet.arc.network',
+    ),
   });
 
   const created: string[] = [];

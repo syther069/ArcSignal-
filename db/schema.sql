@@ -1,6 +1,8 @@
 create table if not exists sync_state (
   id text primary key,
   last_block numeric(78, 0) not null default 0,
+  lease_token text,
+  lease_expires_at timestamptz,
   updated_at timestamptz not null default now()
 );
 
@@ -70,3 +72,14 @@ create table if not exists oracle_attempts (
 );
 
 alter table markets_index add column if not exists status text not null default 'OPEN';
+alter table sync_state add column if not exists lease_token text;
+alter table sync_state add column if not exists lease_expires_at timestamptz;
+
+create index if not exists sync_state_lease_expiry_idx
+  on sync_state (lease_expires_at);
+create index if not exists indexed_events_block_number_idx
+  on indexed_events (block_number);
+create index if not exists indexed_events_event_block_idx
+  on indexed_events (event_name, block_number desc);
+create index if not exists claims_index_wallet_idx
+  on claims_index (lower(wallet_address));

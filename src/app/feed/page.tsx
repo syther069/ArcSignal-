@@ -6,7 +6,7 @@ import { getIndexedMarkets } from '@/lib/indexed-markets';
 export const dynamic = 'force-dynamic';
 
 export default async function FeedPage() {
-  let initialStakes: Stake[] = [];
+  const initialStakes: Stake[] = [];
   let markets: SerializableMarket[] = [];
 
   try {
