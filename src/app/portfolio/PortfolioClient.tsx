@@ -5,7 +5,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
 import type { Market } from '@/lib/types';
-import { formatUnits, parseAbiItem } from 'viem';
+import { formatUnits } from 'viem';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { TrendingUp, TrendingDown, Clock, Trophy, Coins, BarChart3, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
@@ -28,59 +28,8 @@ interface Position {
 
 type Tab = 'open' | 'resolved' | 'all';
 
-type ChainMarket = {
-  marketId: string;
-  category: string;
-  question: string;
-  resolutionTime: bigint;
-  followPool: bigint;
-  fadePool: bigint;
-  resolved: boolean;
-  outcome: number;
-};
-
-const STAKED_EVENT = parseAbiItem('event Staked(string marketId, address user, uint8 side, uint256 amount)');
-const POSITION_CACHE_PREFIX = 'arcsignal:portfolio:market-ids:';
-const BLOCK_CACHE_PREFIX = 'arcsignal:portfolio:last-block:';
-const CONTRACT_DEPLOY_BLOCK = 50_012_000n;
-const LOG_CHUNK_SIZE = 2_000n;
-const MAX_FALLBACK_BLOCKS = 100_000n;
 const PENDING_STAKES_KEY = 'arcsignal:portfolio:pending-stakes';
 type PendingStake = { address: string; marketId: string; txHash: string; createdAt: string };
-
-function cachedMarketIds(address: string): string[] {
-  try {
-    const value = window.localStorage.getItem(`${POSITION_CACHE_PREFIX}${address.toLowerCase()}`);
-    return value ? JSON.parse(value) as string[] : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveMarketIds(address: string, ids: string[]) {
-  try {
-    window.localStorage.setItem(`${POSITION_CACHE_PREFIX}${address.toLowerCase()}`, JSON.stringify(ids));
-  } catch {
-    // Storage is an optimization; portfolio reads remain authoritative.
-  }
-}
-
-function cachedLastBlock(address: string): bigint | null {
-  try {
-    const value = window.localStorage.getItem(`${BLOCK_CACHE_PREFIX}${address.toLowerCase()}`);
-    return value ? BigInt(value) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveLastBlock(address: string, block: bigint) {
-  try {
-    window.localStorage.setItem(`${BLOCK_CACHE_PREFIX}${address.toLowerCase()}`, block.toString());
-  } catch {
-    // Storage is an optimization; portfolio reads remain authoritative.
-  }
-}
 
 const PORTFOLIO_CACHE_TTL_MS = 120_000;
 const PORTFOLIO_CACHE_MAX_ENTRIES = 20;
@@ -135,7 +84,7 @@ export default function PortfolioClient() {
 
   // ─── Fetch this wallet's positions with a cache and authoritative reads ────
   const loadPortfolio = useCallback(async () => {
-    if (!address || !publicClient) {
+    if (!address) {
       setLoading(false);
       return;
     }
@@ -167,10 +116,10 @@ export default function PortfolioClient() {
         : undefined;
       if (pendingStake?.txHash && !alreadyConfirmed) query.set('txHash', pendingStake.txHash);
       const indexedResponse = await fetch(`/api/portfolio?${query.toString()}`, { cache: 'no-store' });
-      if (indexedResponse.ok) {
-        const indexed = (await indexedResponse.json()) as {
+      const indexed = (await indexedResponse.json()) as {
           source?: string;
           complete?: boolean;
+          error?: string;
           positions?: Array<{
             marketId: string;
             side: 0 | 1;
@@ -195,8 +144,11 @@ export default function PortfolioClient() {
             };
           }>;
         };
+      if (!indexedResponse.ok) {
+        throw new Error(indexed.error || `Portfolio request failed (${indexedResponse.status})`);
+      }
 
-        if (Array.isArray(indexed.positions)) {
+      if (Array.isArray(indexed.positions)) {
           const mappedPositions = indexed.positions.map((position) => ({
               ...position,
               stakeRaw: BigInt(position.stakeRaw),
@@ -253,121 +205,26 @@ export default function PortfolioClient() {
           // An explicitly complete empty response is authoritative. If the
           // server reports an incomplete chain scan, preserve the current view
           // and let the polling effect retry instead of displaying false zeroes.
-          if (positionsToShow.length > 0 || indexed.complete !== false || indexed.source === 'neon') {
-            if (!isCurrentAddress()) return;
-            setPositions(positionsToShow);
-            writePortfolioCache(address, positionsToShow);
-            hasLoadedRef.current = true;
-            setLoading(false);
-            return;
-          }
-
-          // Keep the current view while the server retries an incomplete read.
-          // The polling effect below will retry without launching a large
-          // client-side scan across every market.
+          if (!isCurrentAddress()) return;
+          setPositions(positionsToShow);
+          writePortfolioCache(address, positionsToShow);
+          hasLoadedRef.current = true;
           setLoading(false);
           return;
-        }
+      }
 
-        if (pendingStake) {
-          // The transaction may still be propagating to the server RPC.
-          // Retry with the same receipt on the next polling cycle.
-          setLoading(false);
-          return;
-        }
+      if (pendingStake) {
+        // The transaction may still be propagating to the server RPC.
+        // Retry with the same receipt on the next polling cycle.
+        setLoading(false);
+        return;
       }
     } catch (error) {
-      console.warn('Indexed portfolio API unavailable; using client fallback.', error);
-    }
-
-    // Client-side fallback: check active markets directly
-    const readPositions = async (marketIds: string[]) => {
-      const uniqueIds = [...new Set(marketIds)];
-      const readOne = async (marketId: string) => {
-        const [data, followRaw, fadeRaw] = await Promise.all([
-          publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'getMarket', args: [marketId] }) as Promise<ChainMarket>,
-          publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'followStakes', args: [marketId, address] }) as Promise<bigint>,
-          publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'fadeStakes', args: [marketId, address] }) as Promise<bigint>,
-        ]);
-        const claimed = data.resolved && (data.outcome === 1 ? followRaw : fadeRaw) > 0n
-          ? await publicClient.readContract({ address: ARCSIGNAL_ADDRESS, abi: ARCSIGNAL_ABI, functionName: 'claimed', args: [marketId, address] }) as boolean
-          : false;
-        return { data, followRaw, fadeRaw, claimed };
-      };
-
-      const results: PromiseSettledResult<Awaited<ReturnType<typeof readOne>>>[] = [];
-      for (let i = 0; i < uniqueIds.length; i += 4) {
-        results.push(...await Promise.allSettled(uniqueIds.slice(i, i + 4).map(readOne)));
-      }
-
-      const newPositions: Position[] = [];
-      for (const result of results) {
-        if (result.status !== 'fulfilled') continue;
-        const { data, followRaw, fadeRaw, claimed } = result.value;
-        const market = {
-          marketId: data.marketId,
-          category: data.category === 'FOOTBALL' ? 'FOOTBALL' : 'CRYPTO',
-          question: data.question,
-          resolutionTime: Number(data.resolutionTime),
-          followPool: data.followPool,
-          fadePool: data.fadePool,
-          resolved: data.resolved,
-          outcome: data.outcome === 1 ? 'FOLLOW' : data.outcome === 2 ? 'FADE' : 'PENDING',
-          status: data.resolved ? (data.outcome === 0 ? 'CANCELLED' : 'RESOLVED') : 'OPEN',
-        } as Market;
-
-        const winningSide = data.outcome === 1 ? 0 : data.outcome === 2 ? 1 : -1;
-        for (const [side, stakeRaw] of [[0, followRaw], [1, fadeRaw]] as Array<[0 | 1, bigint]>) {
-          if (stakeRaw === 0n) continue;
-          const stakeUsdc = Number(formatUnits(stakeRaw, 6));
-          const userWon = data.resolved && winningSide >= 0 ? side === winningSide : null;
-          let payout = 0;
-          let netPnl = 0;
-
-          if (data.resolved && userWon) {
-            const winPool = winningSide === 0 ? data.followPool : data.fadePool;
-            const losePool = winningSide === 0 ? data.fadePool : data.followPool;
-            payout = stakeUsdc + (stakeUsdc * Number(losePool)) / Number(winPool || 1n);
-            netPnl = payout - stakeUsdc;
-          } else if (data.resolved && userWon === false) {
-            netPnl = -stakeUsdc;
-          }
-
-          newPositions.push({ market, side, stakeRaw, stakeUsdc, claimed, isResolved: data.resolved, outcome: data.outcome, userWon, payout, netPnl, isCancelled: data.resolved && data.outcome === 0 });
-        }
-      }
-      return newPositions;
-    };
-
-    try {
-      const cachedIds = cachedMarketIds(address);
-      if (cachedIds.length > 0) {
-        const cachedPositions = await readPositions(cachedIds);
-        if (!isCurrentAddress()) return;
-        setPositions(cachedPositions);
-        hasLoadedRef.current = true;
-        setLoading(false);
-      }
-
-      const marketsRes = await fetch('/api/markets');
-      if (marketsRes.ok) {
-        const payload = await marketsRes.json();
-        const marketIds = (payload.markets ?? []).map((m: any) => m.marketId);
-        if (marketIds.length > 0) {
-          saveMarketIds(address, marketIds);
-          const freshPositions = await readPositions(marketIds);
-          if (!isCurrentAddress()) return;
-          setPositions(freshPositions);
-          hasLoadedRef.current = true;
-        }
-      }
-    } catch (err) {
-      console.error('Portfolio client fallback failed:', err);
-    } finally {
+      console.warn('Portfolio API unavailable:', error);
       hasLoadedRef.current = true;
       setLoading(false);
     }
-  }, [address, publicClient]);
+  }, [address]);
 
   const fetchPortfolio = useCallback(async () => {
     const key = address?.toLowerCase() ?? 'disconnected';
@@ -397,7 +254,7 @@ export default function PortfolioClient() {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const poll = async () => {
       if (document.visibilityState === 'visible') await fetchPortfolio();
-      if (!cancelled) timer = setTimeout(() => void poll(), 30_000);
+      if (!cancelled) timer = setTimeout(() => void poll(), 60_000);
     };
     void poll();
     return () => {

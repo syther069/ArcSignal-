@@ -5,7 +5,6 @@ import Navbar from '@/components/layout/Navbar';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import { Web3Provider } from '@/components/layout/Web3Provider';
 import NetworkSwitcher from '@/components/wallet/NetworkSwitcher';
-import NotificationManager from '@/components/layout/NotificationManager';
 import './globals.css';
 
 const jetBrainsMono = JetBrains_Mono({
@@ -55,7 +54,6 @@ export default function RootLayout({
       </head>
       <body>
         <Web3Provider>
-          <NotificationManager />
           <Navbar />
           <NetworkSwitcher />
           {children}

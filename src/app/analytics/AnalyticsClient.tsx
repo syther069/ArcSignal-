@@ -1,9 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useWatchContractEvent } from 'wagmi';
-import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import React, { useMemo, useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Link from 'next/link';
 import {
@@ -83,24 +80,7 @@ export default function AnalyticsClient({
   resolvedMarkets,
   markets
 }: AnalyticsClientProps) {
-  const router = useRouter();
   const [range, setRange] = useState<'7d' | '30d' | 'all'>('all');
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      router.refresh();
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [router]);
-
-  useWatchContractEvent({
-    address: ARCSIGNAL_ADDRESS,
-    abi: ARCSIGNAL_ABI,
-    eventName: 'Staked',
-    onLogs() {
-      router.refresh();
-    },
-  });
 
   const {
     totalStakedUsdc,

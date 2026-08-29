@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
 import { publicClient, ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
-import { getMarketsFromChain } from '@/lib/markets';
 import { decodeEventLog, type Address } from 'viem';
 import { calculateParimutuelPnL, deriveMarketStatus, mapCategory } from '@/lib/parimutuel-math';
 
@@ -125,17 +124,22 @@ export async function GET(req: Request) {
     }
     try {
       const position = await readPositionFromTransaction(txHash, address);
-      return NextResponse.json({ source: 'onchain', complete: true, positions: [position], txHash });
+      return NextResponse.json(
+        { source: 'onchain', complete: true, positions: [position], txHash },
+        { headers: { 'Cache-Control': 'private, no-store' } },
+      );
     } catch (error) {
       return NextResponse.json({
         source: 'onchain',
         complete: false,
         error: error instanceof Error ? error.message : 'Trade is not available yet',
-      }, { status: 409 });
+      }, {
+        status: 409,
+        headers: { 'Cache-Control': 'private, no-store' },
+      });
     }
   }
 
-  // 1. Try Neon DB index first
   try {
     const sql = getSql();
     const rows = await sql`
@@ -160,177 +164,74 @@ export async function GET(req: Request) {
       order by p.last_staked_block desc nulls last
     `;
 
-    if (rows.length > 0) {
-      return NextResponse.json({
-        source: 'neon',
-        positions: rows.map((row) => {
-          const side = Number(row.side) as 0 | 1;
-          const stakeRaw = BigInt(String(row.amount));
-          const resolved = Boolean(row.resolved);
-          const outcome = Number(row.outcome);
-          const followPool = BigInt(String(row.follow_pool ?? 0));
-          const fadePool = BigInt(String(row.fade_pool ?? 0));
+    return NextResponse.json({
+      source: 'neon',
+      complete: true,
+      positions: rows.map((row) => {
+        const side = Number(row.side) as 0 | 1;
+        const stakeRaw = BigInt(String(row.amount));
+        const resolved = Boolean(row.resolved);
+        const outcome = Number(row.outcome);
+        const followPool = BigInt(String(row.follow_pool ?? 0));
+        const fadePool = BigInt(String(row.fade_pool ?? 0));
 
-          const pnl = calculateParimutuelPnL({
-            side,
-            stakeRaw,
-            resolved,
-            outcome,
-            followPool,
-            fadePool,
-          });
+        const pnl = calculateParimutuelPnL({
+          side,
+          stakeRaw,
+          resolved,
+          outcome,
+          followPool,
+          fadePool,
+        });
 
-          const status = deriveMarketStatus({
-            resolved,
-            outcome,
-            statusString: String(row.status ?? ''),
-            resolutionTime: Number(row.resolution_time),
-          });
+        const status = deriveMarketStatus({
+          resolved,
+          outcome,
+          statusString: String(row.status ?? ''),
+          resolutionTime: Number(row.resolution_time),
+        });
 
-          return {
+        return {
+          marketId: String(row.market_id),
+          side,
+          stakeRaw: String(stakeRaw),
+          stakeUsdc: pnl.stakeUsdc,
+          claimed: Boolean(row.claimed),
+          isResolved: resolved,
+          outcome,
+          status,
+          userWon: pnl.userWon,
+          payout: pnl.payout,
+          netPnl: pnl.netPnl,
+          market: {
             marketId: row.market_id,
-            side,
-            stakeRaw: String(stakeRaw),
-            stakeUsdc: pnl.stakeUsdc,
-            claimed: Boolean(row.claimed),
-            isResolved: resolved,
+            category: mapCategory(String(row.category)),
+            question: String(row.question),
+            resolutionTime: Number(row.resolution_time),
+            followPool: String(followPool),
+            fadePool: String(fadePool),
+            resolved,
             outcome,
             status,
-            userWon: pnl.userWon,
-            payout: pnl.payout,
-            netPnl: pnl.netPnl,
-            market: {
-              marketId: row.market_id,
-              category: mapCategory(String(row.category)),
-              question: row.question,
-              resolutionTime: Number(row.resolution_time),
-              followPool: String(followPool),
-              fadePool: String(fadePool),
-              resolved,
-              outcome,
-              status,
-            },
-          };
-        }),
-      });
-    }
-  } catch {
-    // Neon DB unavailable or not configured, proceed to on-chain read
-  }
-
-  // 2. Authoritative on-chain reader fallback: inspect active markets for user stakes
-  try {
-    const chainMarkets = await getMarketsFromChain();
-    if (!chainMarkets || chainMarkets.length === 0) {
-      return NextResponse.json({
-        source: 'chain',
-        complete: false,
-        positions: [],
-        error: 'No chain markets were available for this read',
-      });
-    }
-
-    let failedReads = 0;
-    const stakeReads: Array<any> = [];
-    for (let offset = 0; offset < chainMarkets.length; offset += 8) {
-      const batch = await Promise.all(
-        chainMarkets.slice(offset, offset + 8).map(async (m) => {
-        try {
-          const [followRaw, fadeRaw] = await Promise.all([
-            publicClient.readContract({
-              address: ARCSIGNAL_ADDRESS,
-              abi: ARCSIGNAL_ABI,
-              functionName: 'followStakes',
-              args: [m.marketId, address as `0x${string}`],
-            }) as Promise<bigint>,
-            publicClient.readContract({
-              address: ARCSIGNAL_ADDRESS,
-              abi: ARCSIGNAL_ABI,
-              functionName: 'fadeStakes',
-              args: [m.marketId, address as `0x${string}`],
-            }) as Promise<bigint>,
-          ]);
-
-          const userHasFollow = followRaw > 0n;
-          const userHasFade = fadeRaw > 0n;
-          if (!userHasFollow && !userHasFade) return null;
-
-          const claimed = m.resolved
-            ? ((await publicClient.readContract({
-                address: ARCSIGNAL_ADDRESS,
-                abi: ARCSIGNAL_ABI,
-                functionName: 'claimed',
-                args: [m.marketId, address as `0x${string}`],
-              }).catch(() => false)) as boolean)
-            : false;
-
-          const positionsForMarket = [];
-          const rawOutcome = m.outcome === 'FOLLOW' ? 1 : m.outcome === 'FADE' ? 2 : 0;
-
-          for (const [side, stakeRaw] of [
-            [0, followRaw],
-            [1, fadeRaw],
-          ] as Array<[0 | 1, bigint]>) {
-            if (stakeRaw === 0n) continue;
-            const pnl = calculateParimutuelPnL({
-              side,
-              stakeRaw,
-              resolved: m.resolved,
-              outcome: rawOutcome,
-              followPool: m.followPool,
-              fadePool: m.fadePool,
-            });
-
-            positionsForMarket.push({
-              marketId: m.marketId,
-              side,
-              stakeRaw: String(stakeRaw),
-              stakeUsdc: pnl.stakeUsdc,
-              claimed,
-              isResolved: m.resolved,
-              outcome: rawOutcome,
-              status: m.status,
-              userWon: pnl.userWon,
-              payout: pnl.payout,
-              netPnl: pnl.netPnl,
-              market: {
-                marketId: m.marketId,
-                category: mapCategory(m.category),
-                question: m.question ?? m.marketId,
-                resolutionTime: m.resolutionTime,
-                followPool: String(m.followPool),
-                fadePool: String(m.fadePool),
-                resolved: m.resolved,
-                outcome: rawOutcome,
-                status: m.status,
-              },
-            });
-          }
-
-          return positionsForMarket;
-        } catch {
-          failedReads += 1;
-          return null;
-        }
-        })
-      );
-      stakeReads.push(...batch);
-    }
-
-    const flatPositions = stakeReads.filter(Boolean).flat();
-    return NextResponse.json({
-      source: 'chain',
-      complete: failedReads === 0,
-      failedReads,
-      positions: flatPositions,
+          },
+        };
+      }),
+    }, {
+      headers: { 'Cache-Control': 'private, no-store' },
     });
-  } catch (chainErr) {
-    console.error('Server-side chain portfolio query failed:', chainErr);
+  } catch (error) {
+    console.error('Portfolio index unavailable:', error);
     return NextResponse.json({
-      source: 'fallback',
+      source: 'unavailable',
       complete: false,
       positions: [],
-      error: 'Portfolio chain read is temporarily unavailable',
-    }, { status: 503 });
+      error: 'Portfolio is temporarily unavailable',
+    }, {
+      status: 503,
+      headers: {
+        'Cache-Control': 'private, no-store',
+        'Retry-After': '30',
+      },
+    });
   }
 }

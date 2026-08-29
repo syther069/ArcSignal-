@@ -1,10 +1,7 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useWatchContractEvent } from 'wagmi';
+import React, { useMemo, useState } from 'react';
 import { useAccount } from 'wagmi';
-import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import Sidebar from '@/components/layout/Sidebar';
 import { Trophy } from 'lucide-react';
 import Link from 'next/link';
@@ -29,26 +26,9 @@ interface LeaderboardClientProps {
 const formatAddress = (addr: string) => `${addr.substring(0, 6)}...${addr.slice(-4)}`;
 
 export default function LeaderboardClient({ leaderboard, markets }: LeaderboardClientProps) {
-  const router = useRouter();
   const { address } = useAccount();
   const [metric, setMetric] = useState<'accuracy' | 'profit' | 'roi' | 'volume'>('accuracy');
   const [minPredictions, setMinPredictions] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      router.refresh();
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [router]);
-
-  useWatchContractEvent({
-    address: ARCSIGNAL_ADDRESS,
-    abi: ARCSIGNAL_ABI,
-    eventName: 'Staked',
-    onLogs() {
-      router.refresh();
-    },
-  });
 
   const {
     totalVolume,

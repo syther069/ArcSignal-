@@ -9,7 +9,6 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
   usePublicClient,
-  useWatchContractEvent,
 } from 'wagmi';
 import { type Address } from 'viem';
 import {
@@ -146,28 +145,29 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
   }, [targetAddress]);
 
   useEffect(() => {
-    loadPositions();
-    const interval = setInterval(() => loadPositions(), 60000);
-    return () => clearInterval(interval);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const poll = async () => {
+      if (document.visibilityState === 'visible') await loadPositions();
+      if (!cancelled) timer = setTimeout(() => void poll(), 60_000);
+    };
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void loadPositions();
+    };
+
+    void poll();
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
   }, [loadPositions]);
-
-  useWatchContractEvent({
-    address: ARCSIGNAL_ADDRESS,
-    abi: ARCSIGNAL_ABI,
-    eventName: 'Staked',
-    onLogs() {
-      loadPositions();
-    },
-  });
-
-  useWatchContractEvent({
-    address: ARCSIGNAL_ADDRESS,
-    abi: ARCSIGNAL_ABI,
-    eventName: 'MarketResolved',
-    onLogs() {
-      loadPositions();
-    },
-  });
 
   // ─── Stats Derivation ───────────────────────────────────────────────────────
   const stats = useMemo(() => {
