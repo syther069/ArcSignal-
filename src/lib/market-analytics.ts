@@ -3,6 +3,7 @@ import type { MarketSnapshot } from './market-source';
 
 export function buildMarketAnalytics(snapshot: MarketSnapshot) {
   const markets = snapshot.markets.map((market) => ({
+    marketId: market.marketId,
     category: market.category,
     title: market.question ?? market.marketId,
     resolutionTime: market.resolutionTime,

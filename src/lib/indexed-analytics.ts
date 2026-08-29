@@ -24,6 +24,7 @@ export async function getIndexedAnalytics(limit = 160) {
     }
 
     return {
+      marketId: String(row.market_id),
       category: String(row.category),
       title: row.question,
       resolutionTime: Number(row.resolution_time),
