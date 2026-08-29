@@ -526,10 +526,10 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
 
                         <div className="p-3 rounded-xl bg-[#1a1a1a] border border-white/[0.04] space-y-1">
                           <span className="font-mono text-[10px] text-[#94a3b8] uppercase tracking-wider block">
-                            Protocol Trading Fee
+                            Protocol Trading Fee: 0%
                           </span>
                           <span className="font-mono text-white font-bold">
-                            0% (Non-custodial pool)
+                            No fee charged by the deployed contract
                           </span>
                         </div>
                       </div>
