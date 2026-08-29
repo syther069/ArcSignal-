@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createWalletClient, decodeEventLog, http, createPublicClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
-import { fetchCryptoMarkets } from '@/lib/coingecko';
+import { fetchFreshCryptoPrices } from '@/lib/coingecko';
 import { fetchCompletedFixtures } from '@/lib/apifootball';
 import { authorizeCronRequest } from '@/lib/cron-auth';
 import { getSql } from '@/lib/db';
@@ -160,9 +160,9 @@ export async function POST(req: Request) {
   }
 
   // ── 2. Pre-fetch live crypto prices once ─────────────────────────────────
-  let coins: Awaited<ReturnType<typeof fetchCryptoMarkets>> = [];
+  let coins: Awaited<ReturnType<typeof fetchFreshCryptoPrices>> = [];
   try {
-    coins = await fetchCryptoMarkets();
+    coins = await fetchFreshCryptoPrices();
   } catch (err) {
     errors.push(`CoinGecko fetch failed: ${err instanceof Error ? err.message : String(err)}`);
   }
