@@ -9,7 +9,7 @@ import {
   useWriteContract,
   usePublicClient,
 } from 'wagmi';
-import { type Address } from 'viem';
+import { decodeEventLog, type Address } from 'viem';
 import {
   Wallet,
   TrendingUp,
@@ -324,6 +324,28 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success' || receipt.to?.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) {
         throw new Error('Profile transaction was not confirmed successfully on ArcSignal.');
+      }
+      const hasMatchingProfileEvent = receipt.logs.some((log) => {
+        if (log.address.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) return false;
+        try {
+          const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: log.data, topics: log.topics });
+          if (decoded.eventName !== 'ProfileUpdated') return false;
+          const args = decoded.args as {
+            user: string;
+            username: string;
+            bio: string;
+            avatarUrl: string;
+          };
+          return args.user.toLowerCase() === targetAddress.toLowerCase()
+            && args.username === newUsername
+            && args.bio === editForm.bio
+            && args.avatarUrl === editForm.avatarUrl;
+        } catch {
+          return false;
+        }
+      });
+      if (!hasMatchingProfileEvent) {
+        throw new Error('Confirmed transaction did not contain the expected ArcSignal profile event.');
       }
 
       toast.success('Profile confirmed on-chain.');

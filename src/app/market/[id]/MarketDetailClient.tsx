@@ -9,7 +9,7 @@ import { MarketTimeline } from '@/components/markets/MarketTimeline';
 import { CountdownTimer } from '@/components/markets/CountdownTimer';
 import { Market, StakeSide } from '@/types';
 import { useReadContract, useAccount, usePublicClient, useWalletClient } from 'wagmi';
-import { formatUnits } from 'viem';
+import { decodeEventLog, formatUnits } from 'viem';
 import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
 import toast from 'react-hot-toast';
 import {
@@ -151,6 +151,22 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success' || receipt.to?.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) {
         throw new Error('Claim transaction was not confirmed successfully on ArcSignal.');
+      }
+      const hasMatchingClaimEvent = receipt.logs.some((log) => {
+        if (log.address.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) return false;
+        try {
+          const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: log.data, topics: log.topics });
+          if (decoded.eventName !== 'Claimed') return false;
+          const args = decoded.args as { marketId: string; user: string; amount: bigint };
+          return args.marketId === market.marketId
+            && args.user.toLowerCase() === address.toLowerCase()
+            && args.amount > 0n;
+        } catch {
+          return false;
+        }
+      });
+      if (!hasMatchingClaimEvent) {
+        throw new Error('Confirmed transaction did not contain the expected ArcSignal claim event.');
       }
       toast.success('Winnings claimed!', { id: toastId });
       await Promise.all([refetchMarket(), refetchFollow(), refetchFade(), refetchClaimed()]);
@@ -513,7 +529,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                             Protocol Trading Fee
                           </span>
                           <span className="font-mono text-white font-bold">
-                            0.5% (Non-custodial pool)
+                            0% (Non-custodial pool)
                           </span>
                         </div>
                       </div>

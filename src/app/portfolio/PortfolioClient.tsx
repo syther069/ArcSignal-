@@ -5,7 +5,7 @@ import Sidebar from '@/components/layout/Sidebar';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
 import type { Market } from '@/lib/types';
-import { formatUnits } from 'viem';
+import { decodeEventLog, formatUnits } from 'viem';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { TrendingUp, TrendingDown, Clock, Trophy, Coins, BarChart3, AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
@@ -293,6 +293,22 @@ export default function PortfolioClient() {
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success' || receipt.to?.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) {
         throw new Error('The claim transaction was not confirmed successfully on ArcSignal. No funds were claimed.');
+      }
+      const hasMatchingClaimEvent = receipt.logs.some((log) => {
+        if (log.address.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) return false;
+        try {
+          const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: log.data, topics: log.topics });
+          if (decoded.eventName !== 'Claimed') return false;
+          const args = decoded.args as { marketId: string; user: string; amount: bigint };
+          return args.marketId === marketId
+            && args.user.toLowerCase() === address.toLowerCase()
+            && args.amount > 0n;
+        } catch {
+          return false;
+        }
+      });
+      if (!hasMatchingClaimEvent) {
+        throw new Error('The confirmed transaction did not contain the expected ArcSignal claim event.');
       }
       setClaimTxHashes(prev => ({ ...prev, [marketId]: hash }));
 

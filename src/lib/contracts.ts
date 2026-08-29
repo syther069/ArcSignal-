@@ -13,7 +13,7 @@ export const arcTestnet = {
   id: Number(process.env.NEXT_PUBLIC_ARC_TESTNET_CHAIN_ID ?? fallbackArcChainId),
   name: 'ARC Testnet',
   network: 'arc-testnet',
-  nativeCurrency: { name: 'ARC', symbol: 'ARC', decimals: 18 },
+  nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
   rpcUrls: {
     default: { http: [browserRpcUrl] },
     public: { http: [browserRpcUrl] },

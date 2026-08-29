@@ -3,6 +3,7 @@ import { getSql } from '@/lib/db';
 import { publicClient, ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
 import { decodeEventLog, type Address } from 'viem';
 import { calculateParimutuelPnL, deriveMarketStatus, mapCategory } from '@/lib/parimutuel-math';
+import { getChainMarketSnapshot } from '@/lib/market-source';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,6 +77,7 @@ async function readPositionFromTransaction(txHash: string, address: string) {
   }
 
   const stakedLog = receipt.logs.find((log) => {
+    if (log.address.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) return false;
     try {
       const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: log.data, topics: log.topics });
       if (decoded.eventName !== 'Staked') return false;
@@ -107,6 +109,80 @@ async function readPositionFromTransaction(txHash: string, address: string) {
     : false;
 
   return positionFromChain(market, side, args.amount, claimed);
+}
+
+async function readPositionsFromChainSnapshot(address: string) {
+  const snapshot = await getChainMarketSnapshot();
+  const contracts = snapshot.markets.flatMap((market) => [
+    {
+      address: ARCSIGNAL_ADDRESS,
+      abi: ARCSIGNAL_ABI,
+      functionName: 'followStakes' as const,
+      args: [market.marketId, address as Address] as const,
+    },
+    {
+      address: ARCSIGNAL_ADDRESS,
+      abi: ARCSIGNAL_ABI,
+      functionName: 'fadeStakes' as const,
+      args: [market.marketId, address as Address] as const,
+    },
+    {
+      address: ARCSIGNAL_ADDRESS,
+      abi: ARCSIGNAL_ABI,
+      functionName: 'claimed' as const,
+      args: [market.marketId, address as Address] as const,
+    },
+  ]);
+  const reads = await publicClient.multicall({
+    contracts,
+    allowFailure: true,
+  });
+
+  const positions: ReturnType<typeof positionFromChain>[] = [];
+  let failedMarkets = 0;
+  for (let index = 0; index < snapshot.markets.length; index += 1) {
+    const followResult = reads[index * 3];
+    const fadeResult = reads[index * 3 + 1];
+    const claimedResult = reads[index * 3 + 2];
+    if (
+      followResult.status !== 'success'
+      || fadeResult.status !== 'success'
+      || claimedResult.status !== 'success'
+    ) {
+      failedMarkets += 1;
+      continue;
+    }
+
+    const market = snapshot.markets[index];
+    const followStake = followResult.result as bigint;
+    const fadeStake = fadeResult.result as bigint;
+    const claimed = claimedResult.result as boolean;
+    const chainMarket: ChainMarket = {
+      marketId: market.marketId,
+      category: market.category,
+      question: market.question ?? market.marketId,
+      resolutionTime: BigInt(market.resolutionTime),
+      followPool: market.followPool,
+      fadePool: market.fadePool,
+      resolved: market.resolved,
+      outcome: market.outcome === 'FOLLOW' ? 1 : market.outcome === 'FADE' ? 2 : 0,
+    };
+
+    if (followStake > 0n) {
+      positions.push(positionFromChain(chainMarket, 0, followStake, claimed));
+    }
+    if (fadeStake > 0n) {
+      positions.push(positionFromChain(chainMarket, 1, fadeStake, claimed));
+    }
+  }
+
+  return {
+    positions,
+    complete: snapshot.complete && failedMarkets === 0,
+    failedMarkets,
+    coveredMarkets: snapshot.markets.length,
+    fetchedAt: snapshot.fetchedAt,
+  };
 }
 
 export async function GET(req: Request) {
@@ -221,17 +297,35 @@ export async function GET(req: Request) {
     });
   } catch (error) {
     console.error('Portfolio index unavailable:', error);
-    return NextResponse.json({
-      source: 'unavailable',
-      complete: false,
-      positions: [],
-      error: 'Portfolio is temporarily unavailable',
-    }, {
-      status: 503,
-      headers: {
-        'Cache-Control': 'private, no-store',
-        'Retry-After': '30',
-      },
-    });
+    try {
+      const fallback = await readPositionsFromChainSnapshot(address);
+      return NextResponse.json({
+        source: 'arc-chain',
+        complete: fallback.complete,
+        positions: fallback.positions,
+        coveredMarkets: fallback.coveredMarkets,
+        failedMarkets: fallback.failedMarkets,
+        fetchedAt: fallback.fetchedAt,
+        warning: fallback.complete
+          ? undefined
+          : 'Portfolio recovery covers the latest bounded ARC market snapshot.',
+      }, {
+        headers: { 'Cache-Control': 'private, no-store' },
+      });
+    } catch (chainError) {
+      console.error('Portfolio ARC fallback unavailable:', chainError);
+      return NextResponse.json({
+        source: 'unavailable',
+        complete: false,
+        positions: [],
+        error: 'Portfolio is temporarily unavailable',
+      }, {
+        status: 503,
+        headers: {
+          'Cache-Control': 'private, no-store',
+          'Retry-After': '30',
+        },
+      });
+    }
   }
 }

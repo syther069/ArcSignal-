@@ -9,6 +9,7 @@ import { Market, StakeSide } from '@/types';
 import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { clearMarketCache } from '@/lib/markets';
+import { calculateArcGasReserveUsdc, calculateMaxArcStakeForAllowance } from '@/lib/arc-gas';
 import { useWallet } from '@/hooks/useWallet';
 import toast from 'react-hot-toast';
 import {
@@ -32,7 +33,7 @@ function friendlyError(err: unknown): string {
   if (lower.includes('user rejected') || lower.includes('user denied') || lower.includes('rejected the request'))
     return 'Transaction cancelled — you rejected the request in your wallet.';
   if (lower.includes('insufficient funds') || lower.includes('exceeds the balance'))
-    return 'Insufficient ARC for gas fees. Please top up your wallet.';
+    return 'Insufficient USDC for the stake and ARC network gas. Reduce the amount or top up.';
   if (lower.includes('insufficient usdc') || lower.includes('insufficient balance'))
     return 'Insufficient USDC balance for this stake.';
   if (lower.includes('allowance') || lower.includes('approve first'))
@@ -74,6 +75,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [estimatedGas, setEstimatedGas] = useState<string | null>(null);
+  const [gasReserve, setGasReserve] = useState(10_000n);
 
   useEffect(() => {
     if (isOpen) setSelectedSide(side);
@@ -149,11 +151,13 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const fadeProbability = 100 - followProbability;
   const impliedProbability = isFollow ? followProbability : fadeProbability;
   const entryPriceCents = impliedProbability;
-  const payoutMultiplier = 100 / impliedProbability;
-  const platformFeeRate = 0.005; // 0.5% Protocol Fee
-  const platformFee = parsedAmount * platformFeeRate;
-  const netStake = Math.max(parsedAmount - platformFee, 0);
-  const estimatedWin = netStake * payoutMultiplier;
+  const newFollowPool = isFollow ? market.followPool + parsedAmount : market.followPool;
+  const newFadePool = !isFollow ? market.fadePool + parsedAmount : market.fadePool;
+  const winningPool = isFollow ? newFollowPool : newFadePool;
+  const totalPool = newFollowPool + newFadePool;
+  const poolShare = winningPool > 0 ? (parsedAmount / winningPool) * 100 : 0;
+  const estimatedWin = winningPool > 0 ? (parsedAmount / winningPool) * totalPool : 0;
+  const payoutMultiplier = parsedAmount > 0 ? estimatedWin / parsedAmount : 0;
   const profit = estimatedWin - parsedAmount;
   
   const nowSeconds = Math.floor(Date.now() / 1000);
@@ -173,14 +177,15 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const minStake = 1;
   const hasAmount = parsedAmount > 0;
   const belowMinimum = hasAmount && parsedAmount < minStake;
-  const insufficientBalance = hasAmount && amountBigInt > usdcBalanceBigInt;
+  const availableForStake = usdcBalanceBigInt > gasReserve ? usdcBalanceBigInt - gasReserve : 0n;
+  const insufficientBalance = hasAmount && amountBigInt > availableForStake;
   
   const validationMessage = marketClosed
     ? 'This market has closed. Trading is disabled.'
     : belowMinimum
       ? `Minimum stake: ${minStake.toFixed(2)} USDC`
       : insufficientBalance
-        ? `Insufficient balance. You have ${Number(usdcBalanceFormatted).toFixed(2)} USDC.`
+        ? `Insufficient USDC after reserving ${Number(formatUnits(gasReserve, 6)).toFixed(4)} USDC for ARC gas.`
         : null;
         
   const canContinue = step === 'idle' && hasAmount && !validationMessage && !isWrongNetwork;
@@ -194,11 +199,6 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
           ? 'Insufficient USDC Balance'
           : 'Review Position';
 
-  const newFollowPool = isFollow ? market.followPool + parsedAmount : market.followPool;
-  const newFadePool   = !isFollow ? market.fadePool + parsedAmount : market.fadePool;
-  const winningPool   = isFollow ? newFollowPool : newFadePool;
-  const poolShare     = winningPool > 0 ? (netStake / winningPool) * 100 : 0;
-
   const handleQuickAdd = (addAmount: number) => {
     const current = parseFloat(amount) || 0;
     const nextVal = (current + addAmount).toFixed(2);
@@ -207,10 +207,34 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   };
 
   const handleMax = async () => {
-    const latest = await refetchBalance();
-    const balance = (latest.data as bigint | undefined) ?? 0n;
-    setAmount(formatUnits(balance, 6));
-    setError(null);
+    if (!publicClient || !address) return;
+    try {
+      const [latest, allowance, gasPrice] = await Promise.all([
+        refetchBalance(),
+        publicClient.readContract({
+          address: USDC_ADDRESS,
+          abi: USDC_ABI,
+          functionName: 'allowance',
+          args: [address, ARCSIGNAL_ADDRESS],
+        }),
+        publicClient.getGasPrice(),
+      ]);
+      const balance = (latest.data as bigint | undefined) ?? 0n;
+      const { reserve, maxStake } = calculateMaxArcStakeForAllowance(
+        balance,
+        allowance,
+        gasPrice,
+      );
+      setGasReserve(reserve);
+      setAmount(formatUnits(maxStake, 6));
+      setError(maxStake < parseUnits('1', 6)
+        ? 'Balance is too low after reserving USDC for ARC gas.'
+        : null);
+    } catch (err) {
+      const message = friendlyError(err);
+      setError(message);
+      toast.error(message);
+    }
   };
 
   const handleApprove = async () => {
@@ -228,17 +252,33 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
     try {
       setError(null);
       setStep('approving');
-      const approveHash = await walletClient.writeContract({
+      const [freshBalance, gasPrice] = await Promise.all([
+        publicClient.readContract({
+          address: USDC_ADDRESS,
+          abi: USDC_ABI,
+          functionName: 'balanceOf',
+          args: [address],
+        }),
+        publicClient.getGasPrice(),
+      ]);
+      const reserve = calculateArcGasReserveUsdc(gasPrice, true);
+      setGasReserve(reserve);
+      if (freshBalance < amountBigInt + reserve) {
+        throw new Error(`Insufficient USDC balance for the stake plus ${formatUnits(reserve, 6)} USDC reserved for ARC gas.`);
+      }
+      const { request } = await publicClient.simulateContract({
+        account: address,
         address: USDC_ADDRESS,
         abi: USDC_ABI,
         functionName: 'approve',
         args: [ARCSIGNAL_ADDRESS, amountBigInt],
       });
+      const approveHash = await walletClient.writeContract(request);
       const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
-      if (approveReceipt.status !== 'success') {
+      if (approveReceipt.status !== 'success' || approveReceipt.to?.toLowerCase() !== USDC_ADDRESS.toLowerCase()) {
         throw new Error('USDC approval transaction failed on-chain.');
       }
-      await refetchAllowance();
+      await Promise.all([refetchBalance(), refetchAllowance()]);
       toast.success('USDC approved successfully!');
       setStep('idle');
     } catch (err: any) {
@@ -272,7 +312,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         throw new Error('ArcSignal contract address is not configured.');
       }
 
-      const [freshBalance, freshAllowance] = await Promise.all([
+      const [freshBalance, freshAllowance, gasPrice] = await Promise.all([
         publicClient.readContract({
           address: USDC_ADDRESS,
           abi: USDC_ABI,
@@ -285,11 +325,14 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
           functionName: 'allowance',
           args: [address, ARCSIGNAL_ADDRESS],
         }),
+        publicClient.getGasPrice(),
       ]);
 
-      if (freshBalance < amountBigInt) {
+      const reserve = calculateArcGasReserveUsdc(gasPrice, false);
+      setGasReserve(reserve);
+      if (freshBalance < amountBigInt + reserve) {
         await refetchBalance();
-        throw new Error(`Insufficient USDC balance. You have ${formatUnits(freshBalance, 6)} USDC but need ${amountStr} USDC.`);
+        throw new Error(`Insufficient USDC balance. You need ${amountStr} USDC plus ${formatUnits(reserve, 6)} USDC reserved for ARC gas.`);
       }
 
       if (freshAllowance < amountBigInt) {
@@ -313,7 +356,6 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         functionName: 'stake',
         args: [market.marketId, selectedSide, amountBigInt],
       });
-      const gasPrice = await publicClient.getGasPrice();
       setEstimatedGas(formatEther(gas * gasPrice));
 
       const stakeHash = await walletClient.writeContract(request);
@@ -507,8 +549,8 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                   <span className="text-white font-bold tabular-nums">{amountStr} USDC</span>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <span className="text-[#94a3b8] font-sans">Protocol Fee (0.5%)</span>
-                  <span className="text-[#94a3b8] tabular-nums">-{platformFee.toFixed(2)} USDC</span>
+                    <span className="text-[#94a3b8] font-sans">Contract Fee</span>
+                    <span className="text-[#94a3b8] tabular-nums">0.00 USDC</span>
                 </div>
                 <div className="flex justify-between gap-4">
                   <span className="text-[#94a3b8] font-sans">Estimated Pool Share</span>
@@ -528,7 +570,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
               </div>
 
               <p className="font-sans text-[11px] text-[#64748b] leading-relaxed">
-                Payouts are non-custodial estimates calculated from current pool shares. Final payout is determined upon oracle settlement.
+                  Payouts are non-custodial estimates calculated from current pool shares. The contract charges no platform fee. Final payout is determined upon oracle settlement.
               </p>
 
               {isWrongNetwork && (
@@ -623,10 +665,10 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
               <div className={`rounded-xl border ${accent.border} ${accent.bg} ${accent.ring} p-4 space-y-2.5 transition-all`}>
                 <div className="flex items-center justify-between font-mono">
                   <span className="text-[10px] uppercase tracking-widest text-[#94a3b8] font-bold">
-                    Entry Odds & Conviction
+                     AI Conviction & Pool Estimate
                   </span>
                   <span className={`text-xs font-bold ${accent.text} tabular-nums`}>
-                    {accent.label} @ {entryPriceCents.toFixed(0)}c
+                     {accent.label} signal · {entryPriceCents.toFixed(0)}%
                   </span>
                 </div>
 
@@ -635,12 +677,12 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                     <div className="text-2xl font-bold font-mono text-white tabular-nums tracking-tight">
                       {payoutMultiplier.toFixed(2)}x
                     </div>
-                    <div className="text-[11px] text-[#94a3b8] font-sans">Potential payout multiplier</div>
+                    <div className="text-[11px] text-[#94a3b8] font-sans">Current pool payout multiplier</div>
                   </div>
                   
                   <div className="text-right text-xs font-mono text-[#94a3b8] space-y-0.5">
-                    <div>Implied Odds: <strong className="text-white">{impliedProbability.toFixed(0)}%</strong></div>
-                    <div className="text-[10px] opacity-70">Formula: Stake × (100 / {impliedProbability.toFixed(0)})</div>
+                    <div>AI Conviction: <strong className="text-white">{impliedProbability.toFixed(0)}%</strong></div>
+                    <div className="text-[10px] opacity-70">Payout: stake share × total pool</div>
                   </div>
                 </div>
               </div>
@@ -713,6 +755,9 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                     </span>
                   )}
                 </div>
+                <p className="font-mono text-[10px] text-[#64748b]">
+                  MAX keeps at least {Number(formatUnits(gasReserve, 6)).toFixed(4)} USDC available for ARC network gas.
+                </p>
               </div>
 
               {/* Payout Breakdown Specifications */}
@@ -727,8 +772,8 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-[#94a3b8] font-sans">Platform Protocol Fee (0.5%)</span>
-                  <span className="text-[#94a3b8] tabular-nums">-{platformFee.toFixed(2)} USDC</span>
+                  <span className="text-[#94a3b8] font-sans">Contract Fee</span>
+                  <span className="text-[#94a3b8] tabular-nums">0.00 USDC</span>
                 </div>
 
                 <div className="flex justify-between items-center">
@@ -775,7 +820,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                   {estimatedGas && (
                     <div className="flex justify-between gap-3">
                       <span>Est. Gas</span>
-                      <span className="text-white tabular-nums">~{Number(estimatedGas).toFixed(6)} ARC</span>
+                      <span className="text-white tabular-nums">~{Number(estimatedGas).toFixed(6)} USDC</span>
                     </div>
                   )}
                   <div className="flex justify-between gap-3">
