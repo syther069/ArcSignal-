@@ -1,21 +1,20 @@
 import { NextResponse } from 'next/server';
+import { authorizeCronRequest } from '@/lib/cron-auth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const auth = req.headers.get('authorization');
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authorization = authorizeCronRequest(req);
+  if (!authorization.ok) return authorization.response;
 
   try {
     const baseUrl = new URL(req.url).origin;
 
     const resolveRes = await fetch(`${baseUrl}/api/cron/resolve`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.CRON_SECRET}` }
+      headers: { Authorization: `Bearer ${authorization.secret}` },
     });
     const resolveText = await resolveRes.text();
     let resolveData: unknown = null;

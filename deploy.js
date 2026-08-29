@@ -1,6 +1,5 @@
-const { createWalletClient, createPublicClient, http, encodeDeployData } = require('viem');
+const { createWalletClient, createPublicClient, http } = require('viem');
 const { privateKeyToAccount } = require('viem/accounts');
-const path = require('path');
 
 const arcTestnet = {
   id: 5042002,
@@ -17,19 +16,27 @@ const arcTestnet = {
 const artifact = require('./out/ARCSignal.sol/ARCSignal.json');
 
 const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
-const PRIVATE_KEY = '0xdc36300fd2f94d3fbfcbc751a8f87f8a64d76c0cca634858ab8fb7ea876b3d29';
+const RPC_URL = process.env.ARC_RPC_URL || 'https://rpc.testnet.arc.network';
+
+function getDeployerPrivateKey() {
+  const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
+  if (!privateKey || !/^0x[a-fA-F0-9]{64}$/.test(privateKey)) {
+    throw new Error('DEPLOYER_PRIVATE_KEY must be configured as a 32-byte hex secret');
+  }
+  return privateKey;
+}
 
 async function main() {
-  const account = privateKeyToAccount(PRIVATE_KEY);
+  const account = privateKeyToAccount(getDeployerPrivateKey());
   
   const publicClient = createPublicClient({
     chain: arcTestnet,
-    transport: http(),
+    transport: http(RPC_URL),
   });
 
   const walletClient = createWalletClient({
     chain: arcTestnet,
-    transport: http(),
+    transport: http(RPC_URL),
     account,
   });
 
@@ -45,13 +52,6 @@ async function main() {
     console.error('ERROR: Deployer has no native balance for gas. Please fund the wallet first.');
     process.exit(1);
   }
-
-  // Encode deployment data: bytecode + constructor args
-  const deployData = encodeDeployData({
-    abi: artifact.abi,
-    bytecode: artifact.bytecode.object,
-    args: [USDC_ADDRESS],
-  });
 
   console.log('Sending deployment transaction...');
   

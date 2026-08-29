@@ -5,6 +5,7 @@ import { arcTestnet, publicClient, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/li
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchUpcomingFixtures } from '@/lib/apifootball';
 import { generateCryptoAnalysis, generateFootballAnalysis } from '@/lib/gemini';
+import { authorizeCronRequest } from '@/lib/cron-auth';
 import type { Hash } from 'viem';
 
 const CONTRACT_ADDRESS = ARCSIGNAL_ADDRESS;
@@ -19,10 +20,8 @@ function resolutionTimestamp(hoursFromNow: number): bigint {
 }
 
 export async function POST(req: Request) {
-  const auth = req.headers.get('authorization');
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authorization = authorizeCronRequest(req);
+  if (!authorization.ok) return authorization.response;
 
   const privateKey = process.env.RESOLVER_PRIVATE_KEY;
   if (!privateKey || !/^0x[a-fA-F0-9]{64}$/.test(privateKey)) {

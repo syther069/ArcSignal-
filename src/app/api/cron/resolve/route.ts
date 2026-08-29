@@ -4,6 +4,7 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { fetchCryptoMarkets } from '@/lib/coingecko';
 import { fetchCompletedFixtures } from '@/lib/apifootball';
+import { authorizeCronRequest } from '@/lib/cron-auth';
 import { getSql } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -66,10 +67,8 @@ async function readWithRetry<T>(label: string, read: () => Promise<T>): Promise<
 }
 
 export async function POST(req: Request) {
-  const auth = req.headers.get('authorization');
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authorization = authorizeCronRequest(req);
+  if (!authorization.ok) return authorization.response;
 
   const url = new URL(req.url);
   const timeframeParam = url.searchParams.get('timeframe')?.trim();
@@ -82,7 +81,9 @@ export async function POST(req: Request) {
   }
 
   const privateKey = process.env.RESOLVER_PRIVATE_KEY;
-  if (!privateKey) return NextResponse.json({ error: 'No resolver private key configured' }, { status: 500 });
+  if (!privateKey || !/^0x[a-fA-F0-9]{64}$/.test(privateKey)) {
+    return NextResponse.json({ error: 'Resolver wallet is not configured' }, { status: 503 });
+  }
 
   const account = privateKeyToAccount(privateKey as `0x${string}`);
   const walletClient = createWalletClient({

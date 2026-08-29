@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { decodeEventLog, http, createPublicClient } from 'viem';
 import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import { authorizeCronRequest } from '@/lib/cron-auth';
 import { getSql } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -56,9 +57,8 @@ async function withRpcBackoff<T>(label: string, fn: () => Promise<T>): Promise<T
 }
 
 async function sync(req: Request) {
-  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authorization = authorizeCronRequest(req);
+  if (!authorization.ok) return authorization.response;
 
   try {
     const sql = getSql();

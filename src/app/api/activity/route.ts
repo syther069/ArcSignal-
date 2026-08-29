@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
-import { getMarketsFromChain, serializeMarket } from '@/lib/markets';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +15,6 @@ export interface ActivityItem {
 }
 
 export async function GET() {
-  // 1. Try fetching from Neon DB positions_index
   try {
     const sql = getSql();
     const rows = await sql`
@@ -35,68 +33,35 @@ export async function GET() {
       limit 12
     `;
 
-    if (rows.length > 0) {
-      const activities: ActivityItem[] = rows.map((row, idx) => ({
-        id: `${row.market_id}-${row.wallet_address}-${row.side}-${idx}`,
-        marketId: row.market_id,
-        walletAddress: row.wallet_address,
-        side: Number(row.side),
-        amountUsdc: Number(BigInt(String(row.amount))) / 1e6,
-        question: row.question,
-        category: row.category,
-      }));
-
-      return NextResponse.json(
-        { activities, source: 'neon' },
-        {
-          headers: {
-            'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=40',
-          },
-        }
-      );
-    }
-  } catch {
-    // Neon not configured or empty; continue to on-chain fallback
-  }
-
-  // 2. Fallback: generate dynamic activity from active chain markets
-  try {
-    const chainMarkets = await getMarketsFromChain(false, { limit: 12, offset: 0 });
-    const serialized = chainMarkets.map(serializeMarket);
-    
-    // Pick active markets with stakes or recent markets
-    const activeWithPools = serialized.filter(m => Number(m.followPool) > 0 || Number(m.fadePool) > 0);
-    const candidateMarkets = activeWithPools.length > 0 ? activeWithPools : serialized.slice(0, 6);
-
-    const activities: ActivityItem[] = candidateMarkets.map((m, idx) => {
-      const followPoolNum = Number(m.followPool) / 1e6;
-      const fadePoolNum = Number(m.fadePool) / 1e6;
-      const isFollow = followPoolNum >= fadePoolNum;
-      const poolAmount = isFollow ? (followPoolNum || 50) : (fadePoolNum || 25);
-      
-      const pseudoWallet = `0x${m.marketId.replace(/[^a-fA-F0-9]/g, '').padEnd(40, 'a').slice(0, 40)}`;
-
-      return {
-        id: `activity-${m.marketId}-${idx}`,
-        marketId: m.marketId,
-        walletAddress: pseudoWallet,
-        side: isFollow ? 0 : 1,
-        amountUsdc: Math.round(poolAmount * 100) / 100,
-        question: m.question ?? m.marketId,
-        category: m.category,
-      };
-    });
+    const activities: ActivityItem[] = rows.map((row, idx) => ({
+      id: `${row.market_id}-${row.wallet_address}-${row.side}-${idx}`,
+      marketId: String(row.market_id),
+      walletAddress: String(row.wallet_address),
+      side: Number(row.side),
+      amountUsdc: Number(BigInt(String(row.amount))) / 1e6,
+      question: String(row.question),
+      category: String(row.category),
+    }));
 
     return NextResponse.json(
-      { activities, source: 'chain' },
+      { activities, source: 'neon' },
       {
         headers: {
           'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=40',
         },
       }
     );
-  } catch (err) {
-    console.error('Failed to get activity feed:', err);
-    return NextResponse.json({ activities: [], fallback: true }, { status: 503 });
+  } catch (error) {
+    console.error('Activity index unavailable:', error);
+    return NextResponse.json(
+      { activities: [], source: 'unavailable', error: 'Activity is temporarily unavailable' },
+      {
+        status: 503,
+        headers: {
+          'Cache-Control': 'no-store',
+          'Retry-After': '30',
+        },
+      },
+    );
   }
 }

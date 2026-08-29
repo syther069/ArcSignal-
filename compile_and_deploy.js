@@ -16,7 +16,15 @@ const arcTestnet = {
 };
 
 const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
-const PRIVATE_KEY = '0xdc36300fd2f94d3fbfcbc751a8f87f8a64d76c0cca634858ab8fb7ea876b3d29';
+const RPC_URL = process.env.ARC_RPC_URL || 'https://rpc.testnet.arc.network';
+
+function getDeployerPrivateKey() {
+  const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
+  if (!privateKey || !/^0x[a-fA-F0-9]{64}$/.test(privateKey)) {
+    throw new Error('DEPLOYER_PRIVATE_KEY must be configured as a 32-byte hex secret');
+  }
+  return privateKey;
+}
 
 // Read the contract source
 const contractSource = fs.readFileSync('./src/contracts/ArcSignal.sol', 'utf8');
@@ -94,9 +102,9 @@ async function main() {
   // Deploy
   console.log('=== Deploying to Arc Testnet ===\n');
   
-  const account = privateKeyToAccount(PRIVATE_KEY);
-  const publicClient = createPublicClient({ chain: arcTestnet, transport: http() });
-  const walletClient = createWalletClient({ chain: arcTestnet, transport: http(), account });
+  const account = privateKeyToAccount(getDeployerPrivateKey());
+  const publicClient = createPublicClient({ chain: arcTestnet, transport: http(RPC_URL) });
+  const walletClient = createWalletClient({ chain: arcTestnet, transport: http(RPC_URL), account });
 
   console.log('Deploying from:', account.address);
   console.log('USDC address baked in:', USDC_ADDRESS);

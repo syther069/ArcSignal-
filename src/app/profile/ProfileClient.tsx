@@ -224,6 +224,18 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Choose a JPEG, PNG, or WebP image');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Profile images must be 2 MB or smaller');
+      e.target.value = '';
+      return;
+    }
+
     // Show local preview immediately
     const localUrl = URL.createObjectURL(file);
     setAvatarPreview(localUrl);
@@ -238,14 +250,20 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
         body: formData,
       });
       const json = await res.json();
-      if (json.success && json.url) {
-        setEditForm(f => ({ ...f, avatarUrl: json.url }));
-        setAvatarPreview(json.url);
+      if (!res.ok || !json.success || !json.url) {
+        throw new Error(json.error || 'Profile image upload failed');
       }
+
+      setEditForm(f => ({ ...f, avatarUrl: json.url }));
+      setAvatarPreview(json.url);
     } catch (err) {
-      console.error('Upload failed, keeping local preview', err);
+      URL.revokeObjectURL(localUrl);
+      setAvatarPreview(editForm.avatarUrl || null);
+      toast.error(err instanceof Error ? err.message : 'Profile image upload failed');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
     }
-    setIsUploading(false);
   };
 
 
