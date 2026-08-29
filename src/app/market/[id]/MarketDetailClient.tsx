@@ -560,6 +560,11 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                   <Zap size={18} className="text-[#ddb7ff]" />
                 </div>
 
+                <div className="flex items-center justify-between rounded-xl border border-[#4fdbc8]/20 bg-[#4fdbc8]/5 px-3 py-2 font-mono text-[11px]">
+                  <span className="text-[#94a3b8] uppercase tracking-wider">Protocol Trading Fee</span>
+                  <span className="font-bold text-[#4fdbc8]">0%</span>
+                </div>
+
                 {/* Pool Status Visualizer */}
                 <div className="space-y-2 font-mono">
                   <div className="flex items-center justify-between text-xs font-semibold">
