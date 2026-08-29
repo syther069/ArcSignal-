@@ -155,12 +155,14 @@ contract ARCSignal is Ownable {
         if (bytes(oldUsername).length > 0) {
             delete usernameToAddress[oldUsername];
         }
-        
+
         if (bytes(username).length > 0) {
-            require(usernameToAddress[username] == address(0) || usernameToAddress[username] == msg.sender, "Username taken");
+            require(
+                usernameToAddress[username] == address(0) || usernameToAddress[username] == msg.sender, "Username taken"
+            );
             usernameToAddress[username] = msg.sender;
         }
-        
+
         profiles[msg.sender] = UserProfile(username, bio, avatarUrl);
         emit ProfileUpdated(msg.sender, username, bio, avatarUrl);
     }
@@ -168,7 +170,7 @@ contract ARCSignal is Ownable {
     function getAddressByUsername(string calldata username) external view returns (address) {
         return usernameToAddress[username];
     }
-    
+
     function getProfile(address user) external view returns (UserProfile memory) {
         return profiles[user];
     }

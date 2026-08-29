@@ -14,17 +14,17 @@ contract PredictionPass is ERC721, Ownable {
 
     function mint() external returns (uint256) {
         require(!hasMinted[msg.sender], "Already minted a pass");
-        
+
         uint256 tokenId = _nextTokenId;
         _nextTokenId++;
-        
+
         hasMinted[msg.sender] = true;
         _safeMint(msg.sender, tokenId);
-        
+
         emit PassMinted(msg.sender, tokenId);
         return tokenId;
     }
-    
+
     function hasPass(address user) external view returns (bool) {
         return hasMinted[user] || balanceOf(user) > 0;
     }
