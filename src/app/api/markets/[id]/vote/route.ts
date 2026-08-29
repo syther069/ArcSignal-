@@ -99,39 +99,49 @@ export async function POST(
         resolutionTime: bigint; followPool: bigint; fadePool: bigint; resolved: boolean; outcome: number;
       };
 
-      await sql`
-        insert into markets_index
-          (market_id, category, question, analysis_json, resolution_time, follow_pool, fade_pool, resolved, outcome, updated_block)
-        values
-          (${market.marketId}, ${market.category}, ${market.question}, ${market.analysisJson || null}, ${market.resolutionTime}, ${market.followPool}, ${market.fadePool}, ${market.resolved}, ${market.outcome}, ${blockNumber})
-        on conflict (market_id) do update set
-          category = excluded.category,
-          question = excluded.question,
-          analysis_json = excluded.analysis_json,
-          resolution_time = excluded.resolution_time,
-          follow_pool = excluded.follow_pool,
-          fade_pool = excluded.fade_pool,
-          resolved = excluded.resolved,
-          outcome = excluded.outcome,
-          updated_block = excluded.updated_block,
-          updated_at = now()
-      `;
-
-      await sql`
-        insert into indexed_events (transaction_hash, log_index, event_name, block_number)
-        values (${transactionHash}, ${logIndex}, 'Staked', ${blockNumber})
-        on conflict (transaction_hash, log_index) do nothing
-      `;
-
-      await sql`
-        insert into positions_index
-          (market_id, wallet_address, side, amount, first_staked_block, last_staked_block)
-        values
-          (${args.marketId}, ${args.user.toLowerCase()}, ${Number(args.side)}, ${args.amount}, ${blockNumber}, ${blockNumber})
-        on conflict (market_id, wallet_address, side) do update set
-          amount = positions_index.amount + excluded.amount,
-          last_staked_block = excluded.last_staked_block
-      `;
+      await sql.transaction((tx) => [
+        tx`
+          insert into markets_index
+            (market_id, category, question, analysis_json, resolution_time, follow_pool, fade_pool,
+             resolved, outcome, created_block, updated_block)
+          values
+            (${market.marketId}, ${market.category}, ${market.question}, ${market.analysisJson || null},
+             ${market.resolutionTime}, ${market.followPool}, ${market.fadePool}, ${market.resolved},
+             ${market.outcome}, ${blockNumber}, ${blockNumber})
+          on conflict (market_id) do update set
+            category = excluded.category,
+            question = excluded.question,
+            analysis_json = excluded.analysis_json,
+            resolution_time = excluded.resolution_time,
+            follow_pool = excluded.follow_pool,
+            fade_pool = excluded.fade_pool,
+            resolved = excluded.resolved,
+            outcome = excluded.outcome,
+            created_block = case
+              when markets_index.created_block = 0 then excluded.created_block
+              else least(markets_index.created_block, excluded.created_block)
+            end,
+            updated_block = excluded.updated_block,
+            updated_at = now()
+          where excluded.updated_block >= markets_index.updated_block
+        `,
+        tx`
+          with marker as (
+            insert into indexed_events (transaction_hash, log_index, event_name, block_number)
+            values (${transactionHash}, ${logIndex}, 'Staked', ${blockNumber})
+            on conflict (transaction_hash, log_index) do nothing
+            returning 1
+          )
+          insert into positions_index
+            (market_id, wallet_address, side, amount, first_staked_block, last_staked_block)
+          select ${args.marketId}, ${args.user.toLowerCase()}, ${Number(args.side)}, ${args.amount},
+            ${blockNumber}, ${blockNumber}
+          from marker
+          on conflict (market_id, wallet_address, side) do update set
+            amount = positions_index.amount + excluded.amount,
+            last_staked_block = greatest(positions_index.last_staked_block, excluded.last_staked_block)
+        `,
+      ], { isolationLevel: 'Serializable' });
     } catch (indexError) {
       console.warn('Immediate portfolio indexing failed; background indexer will retry:', indexError);
     }

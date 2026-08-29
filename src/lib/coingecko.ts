@@ -28,7 +28,19 @@ function getHeaders(): HeadersInit {
   return apiKey ? { 'x-cg-demo-api-key': apiKey } : {};
 }
 
-function assertCryptoData(value: unknown): CryptoData[] {
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function isNonNegativeFiniteNumber(value: unknown): value is number {
+  return isFiniteNumber(value) && value >= 0;
+}
+
+function isPositiveFiniteNumber(value: unknown): value is number {
+  return isFiniteNumber(value) && value > 0;
+}
+
+export function assertCryptoData(value: unknown): CryptoData[] {
   if (!Array.isArray(value)) {
     throw new Error('Invalid CoinGecko response format');
   }
@@ -37,14 +49,18 @@ function assertCryptoData(value: unknown): CryptoData[] {
     const data = item as Partial<CryptoData>;
     if (
       typeof data.id !== 'string' ||
+      data.id.trim().length === 0 ||
       typeof data.symbol !== 'string' ||
-      typeof data.current_price !== 'number' ||
-      typeof data.price_change_percentage_24h !== 'number' ||
-      typeof data.market_cap !== 'number' ||
-      typeof data.market_cap_rank !== 'number' ||
-      typeof data.total_volume !== 'number' ||
-      typeof data.high_24h !== 'number' ||
-      typeof data.low_24h !== 'number'
+      data.symbol.trim().length === 0 ||
+      !isPositiveFiniteNumber(data.current_price) ||
+      !isFiniteNumber(data.price_change_percentage_24h) ||
+      !isNonNegativeFiniteNumber(data.market_cap) ||
+      !Number.isInteger(data.market_cap_rank) ||
+      !isPositiveFiniteNumber(data.market_cap_rank) ||
+      !isNonNegativeFiniteNumber(data.total_volume) ||
+      !isPositiveFiniteNumber(data.high_24h) ||
+      !isPositiveFiniteNumber(data.low_24h) ||
+      data.high_24h < data.low_24h
     ) {
       throw new Error('CoinGecko returned incomplete market data');
     }
@@ -97,7 +113,7 @@ async function fetchBinanceFallback(): Promise<CryptoData[]> {
 
   const tickerMap = new Map(data.map((t) => [t.symbol, t]));
 
-  return symbols.map((s, idx) => {
+  return assertCryptoData(symbols.map((s, idx) => {
     const t = tickerMap.get(s.pair);
     if (!t) throw new Error(`Missing ticker data for ${s.pair}`);
     return {
@@ -111,7 +127,7 @@ async function fetchBinanceFallback(): Promise<CryptoData[]> {
       high_24h: parseFloat(t.highPrice),
       low_24h: parseFloat(t.lowPrice),
     };
-  });
+  }));
 }
 
 export async function fetchCryptoMarkets(): Promise<CryptoData[]> {

@@ -227,7 +227,12 @@ async function sync(req: Request) {
             analysis_json = excluded.analysis_json, resolution_time = excluded.resolution_time,
             follow_pool = excluded.follow_pool, fade_pool = excluded.fade_pool,
             resolved = excluded.resolved, outcome = excluded.outcome, status = excluded.status,
+            created_block = case
+              when markets_index.created_block = 0 then excluded.created_block
+              else least(markets_index.created_block, excluded.created_block)
+            end,
             updated_block = excluded.updated_block, updated_at = now()
+          where excluded.updated_block >= markets_index.updated_block
         `);
 
         for (const event of events) {
