@@ -43,6 +43,8 @@ export default function Navbar() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  if (pathname.startsWith('/docs')) return null;
+
   const navLinks = [
     { name: 'Markets', href: '/markets' },
     { name: 'Portfolio', href: '/portfolio' },

@@ -2,13 +2,15 @@
 
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { useWallet } from '@/hooks/useWallet';
 
 export default function NetworkSwitcher() {
+  const pathname = usePathname();
   const { mounted, isWrongNetwork, switchChain } = useWallet();
   const [dismissed, setDismissed] = useState(false);
 
-  if (!mounted || !isWrongNetwork || dismissed) {
+  if (pathname.startsWith('/docs') || !mounted || !isWrongNetwork || dismissed) {
     return null;
   }
 

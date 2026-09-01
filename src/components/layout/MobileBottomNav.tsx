@@ -15,6 +15,8 @@ const mobileNavItems = [
 export default function MobileBottomNav() {
   const pathname = usePathname();
 
+  if (pathname.startsWith('/docs')) return null;
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[#0f172a] border-t border-[#1e293b] flex items-center justify-around px-2 py-2 safe-area-inset-bottom">
       {mobileNavItems.map((item) => {
