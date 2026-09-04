@@ -531,6 +531,9 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                           <span className="font-mono text-white font-bold">
                             No fee charged by the deployed contract
                           </span>
+                          <p className="font-mono text-[10px] text-[#94a3b8]">
+                            Network fees are paid in native USDC on Arc.
+                          </p>
                         </div>
                       </div>
                     </div>

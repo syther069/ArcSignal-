@@ -11,7 +11,8 @@ import {
   X,
 } from 'lucide-react';
 import { useAccount } from 'wagmi';
-import { formatUnits, type EIP1193Provider } from 'viem';
+import type { EIP1193Provider } from 'viem';
+import { formatCircleGasFee } from '@/lib/circle-fees';
 import {
   bridgeUsdcToArc,
   canRetryCircleBridge,
@@ -55,7 +56,7 @@ function friendlyCircleError(error: unknown) {
     return 'You cancelled the wallet request. No funds were moved.';
   }
   if (message.includes('insufficient')) {
-    return 'The source wallet needs enough USDC and native gas to complete this bridge.';
+    return 'The source wallet needs enough USDC and source-chain gas to complete this bridge.';
   }
   if (message.includes('chain') || message.includes('network')) {
     return 'Your wallet could not switch to the required network. Add the source network and retry.';
@@ -81,10 +82,12 @@ function summarizeEstimate(estimate: Awaited<ReturnType<typeof estimateBridgeUsd
   const gas = estimate.gasFees
     .map((fee) => {
       if (!fee.fees) return `${fee.name}: unavailable`;
-      const nativeFee = Number(formatUnits(BigInt(fee.fees.fee), 18));
-      return `${fee.name}: ~${nativeFee.toPrecision(3)} native`;
+      const nativeFee = formatCircleGasFee(fee.fees.fee);
+      return nativeFee
+        ? `${fee.name}: ~${nativeFee} ${fee.token}`
+        : `${fee.name}: unavailable`;
     })
-    .join(' · ') || 'Wallet will quote network gas';
+    .join(' · ') || 'Wallet will quote the network fee';
   return { protocol, gas };
 }
 
@@ -273,7 +276,8 @@ export default function FundUSDCModal({
               {fees && (
                 <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-xs">
                   <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Protocol fee</span><span className="text-right text-white">{fees.protocol}</span></div>
-                  <div className="mt-2 flex justify-between gap-4"><span className="text-[#94a3b8]">Network gas</span><span className="text-right text-white">{fees.gas}</span></div>
+                  <div className="mt-2 flex justify-between gap-4"><span className="text-[#94a3b8]">Network fee</span><span className="text-right text-white">{fees.gas}</span></div>
+                  <p className="mt-2 text-[10px] text-[#64748b]">Arc destination fees are paid in native USDC.</p>
                 </div>
               )}
 

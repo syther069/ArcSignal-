@@ -1,11 +1,11 @@
 ## Before you start
 
-You need an EVM-compatible wallet, ARC Testnet gas, and testnet USDC. These are test assets and have no monetary value.
+You need an EVM-compatible wallet and testnet USDC on ARC Testnet. USDC pays both Arc network fees and ERC-20 staking transfers. These are test assets and have no monetary value.
 
 :::definitions
 Network | ARC Testnet
 Chain ID | 5042002
-Native currency | ARC
+Native currency | USDC
 RPC fallback | https://rpc.testnet.arc.network
 Block explorer | https://testnet.arcscan.app
 :::
@@ -20,11 +20,11 @@ Open [ArcSignal markets](/markets) and choose **Connect wallet**. Connecting exp
 
 If the wallet is on another chain, use the network switch prompt to select ARC Testnet. Always verify the chain ID in the wallet before approving or staking.
 
-## Fund gas and USDC
+## Fund USDC
 
-ARC pays network transaction fees. USDC is the asset transferred into prediction pools. They have different jobs, so a wallet needs enough of both for a complete workflow.
+The same underlying USDC balance pays Arc network fees and ERC-20 staking transfers. Native gas accounting uses 18 decimals; the ERC-20 staking interface uses 6 decimals. They are not separate tokens — a wallet needs enough USDC to cover the stake plus the USDC network fee.
 
-The configured testnet USDC contract uses six decimals. Do not send another token merely because its symbol also says USDC.
+The configured testnet USDC contract uses six decimals for application transfers. Do not send another token merely because its symbol also says USDC. Wallet libraries may internally label native gas as ETH; Arc network fees are paid in USDC.
 
 ## Confirm the addresses
 
@@ -33,4 +33,3 @@ Before signing an approval, compare the spender shown by the wallet with the ARC
 ## Next step
 
 With the correct network and test assets available, continue to [Your first prediction](/docs/first-prediction).
-

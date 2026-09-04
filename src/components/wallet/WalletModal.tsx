@@ -422,7 +422,7 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
           <div className="mt-2 flex items-center gap-2.5 rounded-xl border border-[#4fdbc8]/20 bg-[#4fdbc8]/5 px-3 py-2 text-[11px] leading-tight text-[#cbd5e1]">
             <ShieldCheck className="h-4 w-4 shrink-0 text-[#4fdbc8]" />
             <span>
-              <strong className="text-[#4fdbc8]">Sign-in only.</strong> No transaction or gas fee.
+              <strong className="text-[#4fdbc8]">Sign-in only.</strong> No transaction or network fee.
             </span>
           </div>
 

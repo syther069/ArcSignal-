@@ -15,8 +15,8 @@ Claim | A user-signed transaction that transfers an eligible winning payout from
 Owner | The address with permission to create, resolve, and cancel markets.
 Resolver | The off-chain operator that evaluates data and submits an owner-authorized resolution transaction.
 Indexer | An off-chain service that reconstructs market and position views from contract events for faster application reads.
-ARC | The native gas currency configured for ARC Testnet.
-USDC | The six-decimal ERC-20 test token used for stakes and payouts in the current deployment.
+Arc | The Layer-1 network ArcSignal is deployed on (ARC Testnet, chain ID 5042002). Native network fees are paid in USDC, not a separate gas token.
+USDC | Native gas token on Arc (18-decimal accounting) and the ERC-20 token used for stakes and payouts (6 decimals). Both interfaces share the same underlying balance.
 :::
 
 ## Status labels
@@ -32,4 +32,3 @@ Reference | Canonical explanatory material rather than a feature status.
 ## Terms ArcSignal does not currently claim
 
 **Decentralized oracle resolution** is not the current model. **Node operator** is not an implemented role. **Public API** does not mean the internal Next.js routes; no supported, versioned developer API is currently offered.
-

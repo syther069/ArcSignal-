@@ -651,6 +651,11 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming, 
             )}
           </button>
         )}
+        {canClaim && (
+          <p className="text-center font-mono text-[10px] text-[#64748b]">
+            Network fee paid in native USDC on Arc.
+          </p>
+        )}
         {claimTxHash && <Link href={`/transaction/${claimTxHash}`} className="inline-flex min-h-[44px] items-center justify-center gap-2 text-xs text-[#c4b5fd] hover:text-white transition-colors"><ExternalLink size={13} /> Verify claim transaction</Link>}
       </div>
     </div>

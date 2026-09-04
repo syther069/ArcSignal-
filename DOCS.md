@@ -37,7 +37,7 @@ Browse the documentation in the running app at `/docs` or directly in the markdo
 - **[How ArcSignal Works](./content/docs/how-it-works.md)** (`/docs/how-it-works`) — High-level protocol loop, AI signals, pari-mutuel mechanics, resolution, and claims.
 
 ### Getting Started
-- **[Getting Started](./content/docs/getting-started.md)** (`/docs/getting-started`) — Network configuration, wallet setup, and ARC Testnet faucet.
+- **[Getting Started](./content/docs/getting-started.md)** (`/docs/getting-started`) — Network configuration, wallet setup, USDC-native network fees, and ARC Testnet faucet.
 - **[First Prediction](./content/docs/first-prediction.md)** (`/docs/first-prediction`) — Step-by-step walkthrough of staking USDC on Follow or Fade.
 
 ### Mechanics

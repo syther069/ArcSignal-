@@ -26,7 +26,7 @@ Pool-based returns change as new stakes arrive. Displayed probabilities are not 
 
 ## Wallet and approval risk
 
-Users sign USDC approvals and contract transactions. A wrong chain, token, spender, or malicious wallet prompt can expose assets. Confirm every address and keep approvals limited to the amount needed when practical.
+Users sign USDC approvals and contract transactions. Network fees are paid in native USDC on Arc. A wrong chain, token, spender, or malicious wallet prompt can expose assets. Confirm every address and keep approvals limited to the amount needed when practical.
 
 ## Operational and indexing risk
 

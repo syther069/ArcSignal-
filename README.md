@@ -4,7 +4,7 @@ USDC prediction markets on ARC Testnet. Traders take a **Follow** or **Fade**
 position, and resolved pools settle pari-mutually on-chain.
 
 - Production: [arc-signal.xyz](https://arc-signal.xyz)
-- Network: ARC Testnet (`5042002`)
+- Network: ARC Testnet (`5042002`); native currency is USDC
 - ArcSignal contract: `0x4f33115a18fe6a181be98610ddde3fab71efabed`
 - Testnet USDC: `0x3600000000000000000000000000000000000000`
 

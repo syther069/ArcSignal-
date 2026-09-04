@@ -45,7 +45,7 @@ export const docsArticles: DocsArticle[] = [
   {
     slug: 'getting-started',
     title: 'Getting started',
-    description: 'Connect an EVM wallet, switch to ARC Testnet, and obtain testnet funds.',
+    description: 'Connect an EVM wallet, switch to ARC Testnet, and obtain testnet USDC. Network fees are paid in USDC.',
     section: 'start',
     order: 2,
     status: 'testnet',

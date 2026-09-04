@@ -17,7 +17,7 @@ Follow and Fade are relative to the stored AI thesis. Confirm whether the thesis
 
 ## Approve USDC
 
-If the ARCSignal contract does not already have enough allowance, the application asks for an ERC-20 approval. This is a separate wallet transaction and costs ARC gas.
+If the ARCSignal contract does not already have enough allowance, the application asks for an ERC-20 approval. This is a separate wallet transaction and costs a USDC network fee.
 
 Review the token, spender, amount, and chain in the wallet. An approval does not place the prediction; it only authorizes the later transfer.
 
