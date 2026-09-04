@@ -2,7 +2,7 @@
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, type State } from 'wagmi';
-import { queryClient, wagmiConfig } from '@/lib/arc';
+import { queryClient, wagmiConfig } from '@/lib/wallet-config';
 
 export function Web3ProviderClient({
   children,

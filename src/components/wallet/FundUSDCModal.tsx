@@ -1,0 +1,334 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  ArrowDown,
+  Check,
+  ExternalLink,
+  Loader2,
+  RefreshCw,
+  X,
+} from 'lucide-react';
+import { useAccount } from 'wagmi';
+import { formatUnits, type EIP1193Provider } from 'viem';
+import {
+  bridgeUsdcToArc,
+  canRetryCircleBridge,
+  createBrowserWalletViemAdapter,
+  estimateBridgeUsdc,
+  retryBridgeUsdc,
+  supportedFundingSourceChains,
+  type BrowserWalletViemAdapter,
+  type CircleBridgeResult,
+  type CircleBridgeProgress,
+  type FundingSourceChain,
+} from '@/lib/circle-app-kit';
+
+type FlowState =
+  | 'idle'
+  | 'estimating'
+  | 'ready'
+  | 'preparing'
+  | 'signature'
+  | 'bridging'
+  | 'confirming'
+  | 'complete'
+  | 'error';
+
+type FeeSummary = {
+  protocol: string;
+  gas: string;
+};
+
+export interface FundUSDCModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onFunded?: () => void | Promise<void>;
+  suggestedAmount?: string;
+}
+
+function friendlyCircleError(error: unknown) {
+  const raw = error instanceof Error ? error.message : String(error);
+  const message = raw.toLowerCase();
+  if (message.includes('user rejected') || message.includes('user denied')) {
+    return 'You cancelled the wallet request. No funds were moved.';
+  }
+  if (message.includes('insufficient')) {
+    return 'The source wallet needs enough USDC and native gas to complete this bridge.';
+  }
+  if (message.includes('chain') || message.includes('network')) {
+    return 'Your wallet could not switch to the required network. Add the source network and retry.';
+  }
+  return raw.split(/(?:Details:|Docs:|Version:)/i)[0].trim().slice(0, 180) ||
+    'Circle App Kit could not complete the bridge. Please retry.';
+}
+
+function flowFromProgress(progress: CircleBridgeProgress): FlowState {
+  const name = progress.name.toLowerCase();
+  if (progress.state === 'error') return 'error';
+  if (name.includes('attestation') || name.includes('mint')) return 'confirming';
+  if (name.includes('burn')) return 'bridging';
+  if (name.includes('approve')) return 'signature';
+  return 'preparing';
+}
+
+function summarizeEstimate(estimate: Awaited<ReturnType<typeof estimateBridgeUsdc>>): FeeSummary {
+  const protocol = estimate.fees
+    .filter((fee) => fee.amount != null && Number(fee.amount) > 0)
+    .map((fee) => `${fee.amount} ${fee.token}`)
+    .join(' + ') || 'No protocol fee quoted';
+  const gas = estimate.gasFees
+    .map((fee) => {
+      if (!fee.fees) return `${fee.name}: unavailable`;
+      const nativeFee = Number(formatUnits(BigInt(fee.fees.fee), 18));
+      return `${fee.name}: ~${nativeFee.toPrecision(3)} native`;
+    })
+    .join(' · ') || 'Wallet will quote network gas';
+  return { protocol, gas };
+}
+
+export default function FundUSDCModal({
+  isOpen,
+  onClose,
+  onFunded,
+  suggestedAmount = '',
+}: FundUSDCModalProps) {
+  const { address, connector, isConnected } = useAccount();
+  const [sourceChain, setSourceChain] = useState<FundingSourceChain>('Ethereum_Sepolia');
+  const [amount, setAmount] = useState(suggestedAmount);
+  const [flow, setFlow] = useState<FlowState>('idle');
+  const [fees, setFees] = useState<FeeSummary | null>(null);
+  const [steps, setSteps] = useState<CircleBridgeProgress[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [adapter, setAdapter] = useState<BrowserWalletViemAdapter | null>(null);
+  const [failedResult, setFailedResult] = useState<CircleBridgeResult | null>(null);
+
+  const numericAmount = Number(amount);
+  const validAmount = Number.isFinite(numericAmount) && numericAmount > 0;
+  const isBusy = ['estimating', 'preparing', 'signature', 'bridging', 'confirming'].includes(flow);
+  const source = useMemo(
+    () => supportedFundingSourceChains.find((chain) => chain.id === sourceChain),
+    [sourceChain],
+  );
+
+  if (!isOpen) return null;
+
+  const getAdapter = async () => {
+    if (!connector) throw new Error('Connect a browser wallet first.');
+    const provider = await connector.getProvider();
+    if (!provider) throw new Error('The connected wallet did not expose a signing provider.');
+    const next = await createBrowserWalletViemAdapter(provider as EIP1193Provider);
+    setAdapter(next);
+    return next;
+  };
+
+  const updateProgress = (progress: CircleBridgeProgress) => {
+    setFlow(flowFromProgress(progress));
+    setSteps((current) => {
+      const index = current.findIndex((step) => step.name === progress.name);
+      if (index === -1) return [...current, progress];
+      return current.map((step, stepIndex) => stepIndex === index ? progress : step);
+    });
+  };
+
+  const handleEstimate = async () => {
+    if (!validAmount) return;
+    try {
+      setError(null);
+      setFlow('estimating');
+      const walletAdapter = adapter ?? await getAdapter();
+      const estimate = await estimateBridgeUsdc({
+        adapter: walletAdapter,
+        sourceChain,
+        amount,
+      });
+      setFees(summarizeEstimate(estimate));
+      setFlow('ready');
+    } catch (estimateError) {
+      setError(friendlyCircleError(estimateError));
+      setFlow('error');
+    }
+  };
+
+  const handleBridge = async () => {
+    if (!validAmount) return;
+    try {
+      setError(null);
+      setSteps([]);
+      setFailedResult(null);
+      setFlow('preparing');
+      const walletAdapter = adapter ?? await getAdapter();
+      const result = await bridgeUsdcToArc(
+        { adapter: walletAdapter, sourceChain, amount },
+        updateProgress,
+      );
+      setSteps(result.steps);
+      if (result.state !== 'success') {
+        const failed = result.steps.find((step) => step.state === 'error');
+        setFailedResult(canRetryCircleBridge(result) ? result : null);
+        setError(friendlyCircleError(failed?.errorMessage ?? 'The bridge did not complete.'));
+        setFlow('error');
+        return;
+      }
+      setFlow('complete');
+      await onFunded?.();
+    } catch (bridgeError) {
+      setError(friendlyCircleError(bridgeError));
+      setFlow('error');
+    }
+  };
+
+  const handleRetryBridge = async () => {
+    if (!failedResult || !adapter) return;
+    try {
+      setError(null);
+      setFlow('preparing');
+      const result = await retryBridgeUsdc(failedResult, adapter, updateProgress);
+      setSteps(result.steps);
+      if (result.state !== 'success') {
+        const failed = result.steps.find((step) => step.state === 'error');
+        setFailedResult(canRetryCircleBridge(result) ? result : null);
+        setError(friendlyCircleError(failed?.errorMessage ?? 'The bridge retry did not complete.'));
+        setFlow('error');
+        return;
+      }
+      setFailedResult(null);
+      setFlow('complete');
+      await onFunded?.();
+    } catch (retryError) {
+      setError(friendlyCircleError(retryError));
+      setFlow('error');
+    }
+  };
+
+  const resetReview = () => {
+    setFlow('idle');
+    setFees(null);
+    setSteps([]);
+    setError(null);
+    setFailedResult(null);
+  };
+
+  const handleClose = () => {
+    resetReview();
+    onClose();
+  };
+
+  const timeline = [
+    { key: 'preparing', label: 'Preparing route' },
+    { key: 'signature', label: 'Wallet signatures' },
+    { key: 'bridging', label: 'Burning source USDC' },
+    { key: 'confirming', label: 'Minting on Arc' },
+    { key: 'complete', label: 'Funds available' },
+  ] as const;
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+      <div role="dialog" aria-modal="true" aria-labelledby="fund-usdc-title" className="relative flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#151515] shadow-[0_24px_80px_rgba(0,0,0,0.8)]">
+        <div className="h-0.5 bg-gradient-to-r from-transparent via-[#ddb7ff] to-transparent" />
+        <div className="flex items-start justify-between border-b border-white/10 p-5">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#ddb7ff]">Circle Arc App Kit</p>
+            <h2 id="fund-usdc-title" className="mt-1 text-xl font-bold text-white">Fund your Arc wallet</h2>
+            <p className="mt-1 text-sm text-[#94a3b8]">Bridge testnet USDC directly into ArcSignal.</p>
+          </div>
+          <button aria-label="Close funding modal" disabled={isBusy} onClick={handleClose} className="rounded-full p-2 text-[#94a3b8] hover:bg-white/5 hover:text-white disabled:opacity-40">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto p-5">
+          {!isConnected || !address ? (
+            <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-200">
+              Connect a wallet before choosing a funding route.
+            </div>
+          ) : (
+            <>
+              <label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-[#94a3b8]">From</label>
+              <select value={sourceChain} disabled={isBusy || flow === 'complete'} onChange={(event) => { setSourceChain(event.target.value as FundingSourceChain); resetReview(); }} className="w-full rounded-xl border border-white/10 bg-[#202020] px-4 py-3 text-sm text-white outline-none focus:border-[#ddb7ff]/60">
+                {supportedFundingSourceChains.map((chain) => <option key={chain.id} value={chain.id}>{chain.name}</option>)}
+              </select>
+
+              <div className="flex justify-center py-3 text-[#ddb7ff]"><ArrowDown size={18} /></div>
+
+              <div className="rounded-xl border border-[#ddb7ff]/20 bg-[#ddb7ff]/[0.06] p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-wider text-[#94a3b8]">To</p>
+                    <p className="mt-1 font-semibold text-white">Arc Testnet</p>
+                  </div>
+                  <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 font-mono text-[10px] text-emerald-300">5042002</span>
+                </div>
+                <p className="mt-3 truncate font-mono text-xs text-[#94a3b8]">{address}</p>
+              </div>
+
+              <label className="mb-2 mt-5 block font-mono text-[10px] uppercase tracking-wider text-[#94a3b8]">Amount</label>
+              <div className="flex items-center rounded-xl border border-white/10 bg-[#202020] px-4 focus-within:border-[#ddb7ff]/60">
+                <input inputMode="decimal" value={amount} disabled={isBusy || flow === 'complete'} onChange={(event) => { setAmount(event.target.value); resetReview(); }} placeholder="0.00" className="min-w-0 flex-1 bg-transparent py-3 text-lg font-semibold text-white outline-none" />
+                <span className="font-mono text-xs font-bold text-[#ddb7ff]">USDC</span>
+              </div>
+              <p className="mt-2 text-xs text-[#64748b]">Your wallet will switch to {source?.name} for approval and burning, then to Arc for minting.</p>
+
+              {fees && (
+                <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-xs">
+                  <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Protocol fee</span><span className="text-right text-white">{fees.protocol}</span></div>
+                  <div className="mt-2 flex justify-between gap-4"><span className="text-[#94a3b8]">Network gas</span><span className="text-right text-white">{fees.gas}</span></div>
+                </div>
+              )}
+
+              {(isBusy || flow === 'complete' || steps.length > 0) && (
+                <div className="mt-5 space-y-3">
+                  {timeline.map((item, index) => {
+                    const currentOrder = timeline.findIndex((entry) => entry.key === flow);
+                    const done = flow === 'complete' || index < currentOrder;
+                    const active = item.key === flow;
+                    return (
+                      <div key={item.key} className="flex items-center gap-3 text-sm">
+                        <span className={`flex h-6 w-6 items-center justify-center rounded-full border ${done ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300' : active ? 'border-[#ddb7ff]/50 bg-[#ddb7ff]/10 text-[#ddb7ff]' : 'border-white/10 text-[#64748b]'}`}>
+                          {done ? <Check size={13} /> : active ? <Loader2 size={13} className="animate-spin" /> : index + 1}
+                        </span>
+                        <span className={done || active ? 'text-white' : 'text-[#64748b]'}>{item.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {steps.some((step) => step.explorerUrl) && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {steps.filter((step) => step.explorerUrl).map((step) => (
+                    <a key={`${step.name}-${step.txHash}`} href={step.explorerUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-white/10 px-3 py-1.5 text-xs text-[#ddb7ff] hover:bg-white/5">
+                      {step.name} <ExternalLink size={11} />
+                    </a>
+                  ))}
+                </div>
+              )}
+
+              {error && (
+                <div className="mt-4 flex gap-3 rounded-xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">
+                  <AlertCircle size={17} className="mt-0.5 shrink-0" /><span>{error}</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="border-t border-white/10 p-5">
+          {flow === 'complete' ? (
+            <button onClick={handleClose} className="w-full rounded-xl bg-emerald-300 py-3.5 text-sm font-bold text-[#121212]">Done</button>
+          ) : flow === 'ready' ? (
+            <button onClick={handleBridge} className="w-full rounded-xl bg-[#ddb7ff] py-3.5 text-sm font-bold text-[#121212] hover:bg-[#ead7ff]">Bridge {amount} USDC to Arc</button>
+          ) : flow === 'error' ? (
+            <button onClick={failedResult ? handleRetryBridge : handleEstimate} disabled={!validAmount || !isConnected} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#ddb7ff] py-3.5 text-sm font-bold text-[#121212] disabled:opacity-40"><RefreshCw size={15} /> {failedResult ? 'Retry bridge' : 'Retry estimate'}</button>
+          ) : (
+            <button onClick={handleEstimate} disabled={!validAmount || !isConnected || isBusy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#ddb7ff] py-3.5 text-sm font-bold text-[#121212] disabled:cursor-not-allowed disabled:opacity-40">
+              {flow === 'estimating' ? <><Loader2 size={15} className="animate-spin" /> Estimating route...</> : 'Review bridge'}
+            </button>
+          )}
+          <a href="https://faucet.circle.com/" target="_blank" rel="noreferrer" className="mt-3 flex items-center justify-center gap-1 text-xs text-[#64748b] hover:text-[#ddb7ff]">Need source testnet USDC? Open Circle Faucet <ExternalLink size={11} /></a>
+        </div>
+      </div>
+    </div>
+  );
+}

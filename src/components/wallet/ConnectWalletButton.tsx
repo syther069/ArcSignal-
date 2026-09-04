@@ -5,6 +5,7 @@ import { Wallet, ChevronDown, LogOut, AlertTriangle, Loader2, Copy, Check, Shiel
 import { useWallet } from '@/hooks/useWallet';
 import { arcTestnet } from '@/lib/contracts';
 import WalletModal from './WalletModal';
+import { useFundUSDCModalLoader } from '@/hooks/useFundUSDCModalLoader';
 
 export default function ConnectWalletButton() {
   const { 
@@ -20,6 +21,8 @@ export default function ConnectWalletButton() {
   } = useWallet();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFundModalOpen, setIsFundModalOpen] = useState(false);
+  const { FundUSDCModal, loadFundUSDCModal } = useFundUSDCModalLoader();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
   
@@ -78,6 +81,7 @@ export default function ConnectWalletButton() {
   // STATE 3: Connected — show dropdown trigger
   if (isConnected && shortAddress) {
     return (
+      <>
       <div className="relative" ref={dropdownRef}>
         <button 
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -132,14 +136,15 @@ export default function ConnectWalletButton() {
                 <span className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-[#94a3b8]">Native Balance</span>
                 <div className="flex items-center justify-between text-sm font-semibold text-white">
                   <span className="font-mono">{Number(balance.formatted).toFixed(4)} {balance.symbol}</span>
-                  <a 
-                    href="https://faucet.circle.com/" 
-                    target="_blank" 
-                    rel="noreferrer" 
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      void loadFundUSDCModal().then(() => setIsFundModalOpen(true));
+                    }}
                     className="rounded-full bg-[#ddb7ff]/15 hover:bg-[#ddb7ff]/25 border border-[#ddb7ff]/30 px-2.5 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-[#ddb7ff] transition-all"
                   >
                     Get USDC
-                  </a>
+                  </button>
                 </div>
               </div>
             )}
@@ -158,6 +163,11 @@ export default function ConnectWalletButton() {
           </div>
         )}
       </div>
+      {isFundModalOpen && FundUSDCModal && <FundUSDCModal
+        isOpen={isFundModalOpen}
+        onClose={() => setIsFundModalOpen(false)}
+      />}
+      </>
     );
   }
 

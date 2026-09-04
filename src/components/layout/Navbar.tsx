@@ -11,13 +11,14 @@ import Image from 'next/image';
 import { Bell, Menu, X, Plus } from 'lucide-react';
 import { useUnclaimedWinnings } from '@/hooks/useUnclaimedWinnings';
 import toast from 'react-hot-toast';
+import { useFundUSDCModalLoader } from '@/hooks/useFundUSDCModalLoader';
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const unclaimedCount = useUnclaimedWinnings();
-  const { data: usdcRaw } = useReadContract({
+  const { data: usdcRaw, refetch: refetchUsdc } = useReadContract({
     address: USDC_ADDRESS,
     abi: USDC_ABI,
     functionName: 'balanceOf',
@@ -42,6 +43,13 @@ export default function Navbar() {
   }, [usdcBalance]);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [fundingOpen, setFundingOpen] = useState(false);
+  const { FundUSDCModal, loadFundUSDCModal } = useFundUSDCModalLoader();
+
+  const openFunding = async () => {
+    await loadFundUSDCModal();
+    setFundingOpen(true);
+  };
 
   if (pathname.startsWith('/docs')) return null;
 
@@ -96,15 +104,13 @@ export default function Navbar() {
                 <span className="text-sm font-[family-name:var(--font-jetbrains-mono)] text-[#e5e2e1]">
                   {usdcBalance} USDC
                 </span>
-                <a
-                  href="https://faucet.circle.com/"
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  onClick={() => { void openFunding(); }}
                   className="w-5 h-5 rounded-md bg-[#ddb7ff]/10 hover:bg-[#ddb7ff]/20 text-[#ddb7ff] flex items-center justify-center transition-colors border border-[#ddb7ff]/20"
-                  title="Get Testnet USDC"
+                  title="Bridge testnet USDC to Arc"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                </a>
+                </button>
               </div>
             )}
             <div className="opacity-90 hover:opacity-100 transition-opacity">
@@ -145,6 +151,13 @@ export default function Navbar() {
             <ConnectWalletButton />
           </div>
         </div>
+      )}
+      {fundingOpen && FundUSDCModal && (
+        <FundUSDCModal
+          isOpen
+          onClose={() => setFundingOpen(false)}
+          onFunded={async () => { await refetchUsdc(); }}
+        />
       )}
     </header>
   );

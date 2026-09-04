@@ -18,6 +18,8 @@
     "ops:scheduler": "npx tsx scripts/operations/scheduler.ts"
   },
   "dependencies": {
+    "@circle-fin/adapter-viem-v2": "^1.17.1",
+    "@circle-fin/app-kit": "^1.14.0",
     "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/typography": "^0.5.20",
     "@tanstack/react-query": "^5.41.0",
@@ -33,7 +35,7 @@
     "tailwindcss": "3.4.4",
     "typescript": "5.4.5",
     "unstorage": "^1.17.5",
-    "viem": "2.23.10",
+    "viem": "2.37.4",
     "wagmi": "2.14.16"
   },
   "devDependencies": {

@@ -11,6 +11,7 @@ import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { clearMarketCache } from '@/lib/markets';
 import { calculateArcGasReserveUsdc, calculateMaxArcStakeForAllowance } from '@/lib/arc-gas';
 import { useWallet } from '@/hooks/useWallet';
+import { useFundUSDCModalLoader } from '@/hooks/useFundUSDCModalLoader';
 import toast from 'react-hot-toast';
 import {
   X,
@@ -76,6 +77,8 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const [txHash, setTxHash] = useState<string | null>(null);
   const [estimatedGas, setEstimatedGas] = useState<string | null>(null);
   const [gasReserve, setGasReserve] = useState(10_000n);
+  const [fundingOpen, setFundingOpen] = useState(false);
+  const { FundUSDCModal, loadFundUSDCModal } = useFundUSDCModalLoader();
 
   useEffect(() => {
     if (isOpen) setSelectedSide(side);
@@ -450,6 +453,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   };
 
   return (
+    <>
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
       {/* Modal Card */}
       <div className="bg-[#141414] border border-white/[0.1] shadow-[0_20px_60px_rgba(0,0,0,0.9),0_0_40px_rgba(183,109,255,0.08)] w-full max-w-md rounded-2xl relative overflow-hidden flex flex-col max-h-[92vh]">
@@ -758,6 +762,17 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                 <p className="font-mono text-[10px] text-[#64748b]">
                   MAX keeps at least {Number(formatUnits(gasReserve, 6)).toFixed(4)} USDC available for ARC network gas.
                 </p>
+                {insufficientBalance && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void loadFundUSDCModal().then(() => setFundingOpen(true));
+                    }}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#ddb7ff]/30 bg-[#ddb7ff]/10 py-2.5 text-xs font-bold text-[#ddb7ff] transition-colors hover:bg-[#ddb7ff]/20"
+                  >
+                    Fund USDC on Arc <ArrowRight size={14} />
+                  </button>
+                )}
               </div>
 
               {/* Payout Breakdown Specifications */}
@@ -874,5 +889,14 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
 
       </div>
     </div>
+    {fundingOpen && FundUSDCModal && <FundUSDCModal
+      isOpen
+      onClose={() => setFundingOpen(false)}
+      suggestedAmount={amount}
+      onFunded={async () => {
+        await refetchBalance();
+      }}
+    />}
+    </>
   );
 }
