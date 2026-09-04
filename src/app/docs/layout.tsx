@@ -8,10 +8,10 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
   const searchRecords = getDocsSearchIndex();
 
   return (
-    <div className="min-h-screen bg-[#09090d] text-slate-100 selection:bg-violet-500/30 selection:text-violet-200">
+    <div className="min-h-screen bg-[#131313] text-[#e5e2e1] font-[family-name:var(--font-inter)] selection:bg-[#ddb7ff]/20 selection:text-[#ddb7ff]">
       <a
         href="#main-content"
-        className="fixed left-4 top-3 z-[120] -translate-y-24 rounded-lg bg-violet-300 px-4 py-2 text-sm font-bold text-slate-950 transition-transform focus:translate-y-0 shadow-lg"
+        className="fixed left-4 top-3 z-[120] -translate-y-24 rounded-lg bg-[#ddb7ff] px-4 py-2 text-xs font-bold text-[#121212] transition-transform focus:translate-y-0 shadow-lg"
       >
         Skip to content
       </a>
@@ -19,9 +19,8 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
       <DocsSearch records={searchRecords} />
       <div className="flex min-h-screen pt-16">
         <DocsSidebar />
-        <main className="min-w-0 flex-1 overflow-x-hidden">{children}</main>
+        <main className="min-w-0 flex-1 overflow-x-hidden bg-[#131313]">{children}</main>
       </div>
     </div>
   );
 }
-

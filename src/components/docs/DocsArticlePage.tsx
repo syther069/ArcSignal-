@@ -10,23 +10,23 @@ import DocsTableOfContents from './DocsTableOfContents';
 const statusBadgeStyles: Record<DocsArticle['status'], { label: string; classes: string }> = {
   implemented: {
     label: 'Live on Testnet',
-    classes: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.15)]',
+    classes: 'border-white/10 bg-white/5 text-[#e5e2e1]',
   },
   planned: {
     label: 'Planned Architecture',
-    classes: 'border-amber-500/30 bg-amber-500/10 text-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.1)]',
+    classes: 'border-[#3a3939] bg-[#1c1b1b] text-[#94a3b8]',
   },
   testnet: {
     label: 'ARC Testnet Only',
-    classes: 'border-violet-500/30 bg-violet-500/10 text-violet-300 shadow-[0_0_12px_rgba(168,85,247,0.15)]',
+    classes: 'border-[#ddb7ff]/30 bg-[#ddb7ff]/10 text-[#ddb7ff]',
   },
   risk: {
-    label: 'Security & Trust Risk',
-    classes: 'border-rose-500/30 bg-rose-500/10 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.15)]',
+    label: 'Security & Trust Notice',
+    classes: 'border-[#ddb7ff]/30 bg-[#ddb7ff]/10 text-[#ddb7ff]',
   },
   reference: {
     label: 'Protocol Reference',
-    classes: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.15)]',
+    classes: 'border-white/10 bg-white/5 text-[#94a3b8]',
   },
 };
 
@@ -67,18 +67,18 @@ export default function DocsArticlePage({
   return (
     <div className="mx-auto flex w-full max-w-7xl justify-center px-4 py-8 sm:px-8 sm:py-12 lg:px-12 xl:gap-14">
       {/* Central Article Column (~720-760px wide) */}
-      <article id="main-content" className="w-full max-w-[760px] min-w-0">
+      <article id="main-content" className="w-full max-w-[760px] min-w-0 font-[family-name:var(--font-inter)]">
         <DocsBreadcrumbs title={article.title} isOverview={isOverview} />
 
         {/* Article Header */}
-        <header className="mb-10 border-b border-white/10 pb-8">
+        <header className="mb-10 border-b border-[#1e293b] pb-8">
           <div className="mb-4 flex flex-wrap items-center gap-2.5">
-            <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-400/80">
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-semibold uppercase tracking-[0.16em] text-[#ddb7ff]">
               Protocol Documentation
             </span>
-            <span className="text-slate-600 font-mono text-xs">•</span>
+            <span className="text-[#94a3b8]/50 font-[family-name:var(--font-jetbrains-mono)] text-xs">•</span>
             <span
-              className={`rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider ${statusMeta.classes}`}
+              className={`rounded-full border px-2.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-semibold uppercase tracking-wider ${statusMeta.classes}`}
             >
               {statusMeta.label}
             </span>
@@ -88,7 +88,7 @@ export default function DocsArticlePage({
             {article.title}
           </h1>
 
-          <p className="mt-4 text-base sm:text-lg leading-relaxed text-slate-300 font-sans">
+          <p className="mt-4 text-base sm:text-lg leading-relaxed text-[#94a3b8] font-[family-name:var(--font-inter)]">
             {article.description}
           </p>
         </header>
@@ -103,7 +103,7 @@ export default function DocsArticlePage({
               <h2 id="choose-path" className="font-[family-name:var(--font-hanken)] text-xl font-bold text-white">
                 Choose your path
               </h2>
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-sm text-[#94a3b8] font-[family-name:var(--font-inter)]">
                 ArcSignal establishes distinct boundaries for market participants, researchers, and developers. Select your primary journey:
               </p>
             </div>

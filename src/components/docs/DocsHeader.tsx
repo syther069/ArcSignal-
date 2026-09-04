@@ -8,59 +8,79 @@ import { openDocsSearch } from './DocsSearch';
 
 export default function DocsHeader() {
   return (
-    <header className="fixed inset-x-0 top-0 z-[60] h-16 border-b border-white/[0.08] bg-[#09090d]/90 backdrop-blur-xl">
+    <header className="fixed inset-x-0 top-0 z-[60] h-16 border-b border-[#1e293b] bg-[#131313] shadow-2xl shadow-black/40">
       <div className="flex h-full items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Brand */}
-        <div className="flex items-center gap-3">
+        {/* Left: Brand + Nav Links */}
+        <div className="flex items-center gap-8">
           <Link
             href="/"
-            className="flex items-center gap-2.5 rounded-lg py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 group"
+            className="flex items-center gap-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ddb7ff] group"
           >
             <Image
-              src="/logo.png"
-              alt="ArcSignal"
-              width={28}
-              height={28}
-              className="h-7 w-7 object-contain transition-transform group-hover:scale-105"
+              src="/logo.webp"
+              alt="ArcSignal Logo"
+              width={32}
+              height={32}
+              className="w-8 h-8 object-contain transition-transform group-hover:scale-105"
               priority
             />
-            <span className="font-[family-name:var(--font-hanken)] text-lg font-bold tracking-tight text-white">
+            <span className="font-[family-name:var(--font-hanken)] text-xl font-bold tracking-tight text-[#e5e2e1]">
               ArcSignal
             </span>
+            <span className="ml-1 rounded-md bg-[#ddb7ff]/10 border border-[#ddb7ff]/20 px-2 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-semibold uppercase tracking-wider text-[#ddb7ff]">
+              Docs
+            </span>
           </Link>
-          <div className="hidden h-4 w-px bg-white/15 sm:block" aria-hidden="true" />
-          <Link
-            href="/docs"
-            className="hidden items-center gap-1.5 rounded-md px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-wider text-cyan-400 hover:text-cyan-300 sm:inline-flex"
-          >
-            Docs
-          </Link>
+
+          <nav className="hidden xl:flex items-center gap-7">
+            <Link
+              href="/markets"
+              className="text-sm font-medium text-[#94a3b8] hover:text-[#e5e2e1] transition-colors"
+            >
+              Markets
+            </Link>
+            <Link
+              href="/portfolio"
+              className="text-sm font-medium text-[#94a3b8] hover:text-[#e5e2e1] transition-colors"
+            >
+              Portfolio
+            </Link>
+            <Link
+              href="/analytics"
+              className="text-sm font-medium text-[#94a3b8] hover:text-[#e5e2e1] transition-colors"
+            >
+              Analytics
+            </Link>
+            <Link
+              href="/docs"
+              className="text-sm font-medium text-[#ddb7ff] border-b-2 border-[#ddb7ff] py-5"
+            >
+              Docs
+            </Link>
+          </nav>
         </div>
 
-        {/* Header Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Quick search button for mobile / tablet */}
+        {/* Right: Search + Action Button */}
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={openDocsSearch}
-            className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-400 hover:border-violet-500/40 hover:bg-white/[0.06] hover:text-white lg:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+            className="flex items-center gap-2 rounded-lg border border-[#1e293b] bg-[#1c1b1b] px-3 py-1.5 text-xs text-[#94a3b8] hover:border-[#3a3939] hover:text-[#e5e2e1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ddb7ff] transition-colors"
             aria-label="Search documentation"
           >
-            <Search className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="hidden xs:inline">Search</span>
-            <kbd className="font-mono text-[10px] text-slate-500">⌘K</kbd>
+            <Search className="h-3.5 w-3.5 text-[#94a3b8]" aria-hidden="true" />
+            <span className="hidden sm:inline">Search docs</span>
+            <kbd className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#94a3b8]/80 bg-[#131313] px-1.5 py-0.5 rounded border border-[#1e293b]">⌘K</kbd>
           </button>
 
-          {/* Explore markets primary action */}
           <Link
             href="/markets"
-            className="inline-flex items-center gap-1.5 rounded-full border border-violet-400/30 bg-violet-500/10 px-3.5 py-1.5 text-xs font-semibold text-violet-200 transition-all duration-150 hover:border-violet-400/60 hover:bg-violet-500/20 hover:text-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#ddb7ff] px-4 py-2 text-xs font-bold text-[#121212] transition-colors hover:bg-[#ead7ff] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ddb7ff]"
           >
             <span>Explore markets</span>
             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </Link>
 
-          {/* Mobile hamburger menu */}
           <DocsMobileMenu />
         </div>
       </div>

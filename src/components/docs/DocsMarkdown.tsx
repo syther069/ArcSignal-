@@ -58,20 +58,19 @@ function MarkdownBlock({ content }: { content: string }) {
     <Markdown
       components={{
         h2: ({ children }) => {
-
           const text = textFromChildren(children);
           const id = slugifyHeading(text);
           return (
             <h2
               id={id}
-              className="group mb-4 mt-12 scroll-mt-24 font-[family-name:var(--font-hanken)] text-2xl font-bold tracking-tight text-white border-b border-white/[0.06] pb-3"
+              className="group mb-4 mt-12 scroll-mt-24 font-[family-name:var(--font-hanken)] text-2xl font-bold tracking-tight text-white border-b border-[#1e293b] pb-3"
             >
               <a
                 href={`#${id}`}
-                className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ddb7ff]"
               >
                 <span>{children}</span>
-                <span className="text-violet-400/0 transition-colors group-hover:text-violet-400 font-mono text-lg" aria-hidden="true">
+                <span className="text-[#ddb7ff]/0 transition-colors group-hover:text-[#ddb7ff] font-[family-name:var(--font-jetbrains-mono)] text-lg" aria-hidden="true">
                   #
                 </span>
               </a>
@@ -84,30 +83,30 @@ function MarkdownBlock({ content }: { content: string }) {
           return (
             <h3
               id={id}
-              className="mb-3 mt-8 scroll-mt-24 font-[family-name:var(--font-hanken)] text-lg font-bold text-slate-100"
+              className="mb-3 mt-8 scroll-mt-24 font-[family-name:var(--font-hanken)] text-lg font-bold text-[#e5e2e1]"
             >
               {children}
             </h3>
           );
         },
         p: ({ children }) => (
-          <p className="my-4 text-[15px] sm:text-base leading-relaxed text-slate-300 font-sans font-normal">
+          <p className="my-4 text-[15px] sm:text-base leading-relaxed text-[#e5e2e1] font-[family-name:var(--font-inter)] font-normal">
             {children}
           </p>
         ),
         strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
         ul: ({ children }) => (
-          <ul className="my-4 list-disc space-y-2 pl-6 text-[15px] leading-relaxed text-slate-300 marker:text-violet-400">
+          <ul className="my-4 list-disc space-y-2 pl-6 text-[15px] leading-relaxed text-[#e5e2e1] marker:text-[#ddb7ff] font-[family-name:var(--font-inter)]">
             {children}
           </ul>
         ),
         ol: ({ children }) => (
-          <ol className="my-4 list-decimal space-y-2.5 pl-6 text-[15px] leading-relaxed text-slate-300 marker:font-mono marker:text-violet-400">
+          <ol className="my-4 list-decimal space-y-2.5 pl-6 text-[15px] leading-relaxed text-[#e5e2e1] marker:font-[family-name:var(--font-jetbrains-mono)] marker:text-[#ddb7ff] font-[family-name:var(--font-inter)]">
             {children}
           </ol>
         ),
         li: ({ children }) => <li className="pl-1">{children}</li>,
-        hr: () => <hr className="my-10 border-white/10" />,
+        hr: () => <hr className="my-10 border-[#1e293b]" />,
         a: ({ href = '', children }) => {
           const external = href.startsWith('http');
           if (external) {
@@ -116,7 +115,7 @@ function MarkdownBlock({ content }: { content: string }) {
                 href={href}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-cyan-300 underline decoration-cyan-500/40 underline-offset-4 hover:decoration-cyan-300 hover:text-cyan-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                className="inline-flex items-center gap-1 text-[#ddb7ff] underline decoration-[#ddb7ff]/40 underline-offset-4 hover:decoration-[#ddb7ff] hover:text-[#ead7ff] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ddb7ff]"
               >
                 {children}
                 <ExternalLink className="h-3 w-3 shrink-0" aria-hidden="true" />
@@ -126,7 +125,7 @@ function MarkdownBlock({ content }: { content: string }) {
           return (
             <Link
               href={href}
-              className="text-cyan-300 underline decoration-cyan-500/40 underline-offset-4 hover:decoration-cyan-300 hover:text-cyan-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+              className="text-[#ddb7ff] underline decoration-[#ddb7ff]/40 underline-offset-4 hover:decoration-[#ddb7ff] hover:text-[#ead7ff] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ddb7ff]"
             >
               {children}
             </Link>
@@ -136,7 +135,7 @@ function MarkdownBlock({ content }: { content: string }) {
           <code
             className={
               className ??
-              'rounded border border-white/10 bg-white/[0.05] px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[0.87em] text-violet-200'
+              'rounded border border-[#1e293b] bg-[#1c1b1b] px-1.5 py-0.5 font-[family-name:var(--font-jetbrains-mono)] text-[0.87em] text-[#ddb7ff]'
             }
           >
             {children}
@@ -153,18 +152,18 @@ function MarkdownBlock({ content }: { content: string }) {
           return <pre>{children}</pre>;
         },
         blockquote: ({ children }) => (
-          <blockquote className="my-6 border-l-2 border-violet-400/60 bg-white/[0.02] py-2 pl-5 pr-4 italic text-slate-300 rounded-r-lg">
+          <blockquote className="my-6 border-l-2 border-[#ddb7ff] bg-[#1c1b1b] py-2 pl-5 pr-4 italic text-[#94a3b8] rounded-r-lg font-[family-name:var(--font-inter)]">
             {children}
           </blockquote>
         ),
         table: ({ children }) => (
-          <div className="my-6 overflow-x-auto rounded-xl border border-white/10 bg-white/[0.02]">
-            <table className="w-full text-left text-sm text-slate-300">{children}</table>
+          <div className="my-6 overflow-x-auto rounded-xl border border-[#1e293b] bg-[#1c1b1b] custom-scrollbar">
+            <table className="w-full text-left text-sm text-[#e5e2e1] font-[family-name:var(--font-inter)]">{children}</table>
           </div>
         ),
-        thead: ({ children }) => <thead className="border-b border-white/10 bg-white/[0.03] text-xs font-mono uppercase tracking-wider text-slate-400">{children}</thead>,
-        th: ({ children }) => <th className="px-4 py-3 font-semibold">{children}</th>,
-        td: ({ children }) => <td className="border-b border-white/5 px-4 py-3">{children}</td>,
+        thead: ({ children }) => <thead className="border-b border-[#1e293b] bg-[#131313] text-xs font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider text-[#94a3b8]">{children}</thead>,
+        th: ({ children }) => <th className="px-4 py-3 font-semibold text-[#e5e2e1]">{children}</th>,
+        td: ({ children }) => <td className="border-b border-[#1e293b]/50 px-4 py-3">{children}</td>,
       }}
     >
       {content}
