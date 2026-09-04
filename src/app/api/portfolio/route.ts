@@ -73,7 +73,7 @@ function positionFromChain(
 async function readPositionFromTransaction(txHash: string, address: string) {
   const receipt = await publicClient.getTransactionReceipt({ hash: txHash as `0x${string}` });
   if (receipt.status !== 'success' || receipt.to?.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) {
-    throw new Error('The stake transaction is not confirmed successfully on the ArcSignal contract.');
+    throw new Error('The stake transaction was not finalized successfully on the ArcSignal contract.');
   }
 
   const stakedLog = receipt.logs.find((log) => {
@@ -190,7 +190,7 @@ export async function GET(req: Request) {
   const address = url.searchParams.get('address') ?? '';
   if (!isAddress(address)) return NextResponse.json({ error: 'Valid wallet address is required' }, { status: 400 });
 
-  // A freshly confirmed trade can arrive before Neon/background indexing. Read
+  // A freshly finalized trade can arrive before Neon/background indexing. Read
   // the receipt directly when the client supplies the transaction hash so the
   // portfolio does not briefly show a false empty state.
   const txHash = url.searchParams.get('txHash')?.trim();

@@ -32,8 +32,10 @@ Users sign USDC approvals and contract transactions. Network fees are paid in na
 
 The interface uses indexed data for speed with chain fallbacks. A delayed index, RPC inconsistency, database outage, or provider failure can make the UI appear stale even when the chain transaction succeeded.
 
+Arc has deterministic sub-second finality, so the indexer normally waits for one confirmation (`INDEX_CONFIRMATIONS=1`) rather than an Ethereum-style confirmation window. Operators can raise that value if RPC lag, provider inconsistency, or production policy requires it. Receipt status, contract address, and expected events are still verified before crediting a stake, claim, or profile update.
+
 :::important Source of truth
-Use the wallet receipt and ARC Testnet explorer to confirm a transaction. The contract state is authoritative; UI caches and indexed records are conveniences.
+Use the wallet receipt and ARC Testnet explorer to confirm a transaction. Arc finality is typically sub-second. The contract state is authoritative; UI caches and indexed records are conveniences.
 :::
 
 ## Before any mainnet consideration

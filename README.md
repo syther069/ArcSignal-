@@ -98,9 +98,12 @@ fail CI without misrepresenting existing advisories as resolved.
 ## Data and transaction integrity
 
 - ARC RPC receipts and matching ArcSignal events are authoritative for
-  transaction confirmation.
+  transaction finality. Arc has deterministic finality; one confirmation is
+  normally enough.
+- The indexer defaults to `INDEX_CONFIRMATIONS=1` (one block behind the latest
+  observed head). Operators may raise this for RPC lag or conservative policy.
 - External testnet explorers are not treated as proof.
-- Neon is the preferred indexed source.
+- Neon is a fast read model, not the source of truth.
 - When Neon is unavailable, public reads use bounded ARC snapshots rather than
   unbounded log scans or per-market RPC storms.
 - Empty, incomplete, and unavailable data states are reported explicitly; the

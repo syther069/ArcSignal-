@@ -289,10 +289,10 @@ export default function PortfolioClient() {
         args: [marketId],
       });
       const hash = await walletClient.writeContract(request);
-      toast.loading('Transaction submitted, confirming…', { id: toastId });
+      toast.loading('Finalizing on Arc…', { id: toastId });
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success' || receipt.to?.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) {
-        throw new Error('The claim transaction was not confirmed successfully on ArcSignal. No funds were claimed.');
+        throw new Error('The claim transaction was not finalized successfully on ArcSignal. No funds were claimed.');
       }
       const hasMatchingClaimEvent = receipt.logs.some((log) => {
         if (log.address.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) return false;
@@ -308,7 +308,7 @@ export default function PortfolioClient() {
         }
       });
       if (!hasMatchingClaimEvent) {
-        throw new Error('The confirmed transaction did not contain the expected ArcSignal claim event.');
+        throw new Error('The finalized transaction did not contain the expected ArcSignal claim event.');
       }
       setClaimTxHashes(prev => ({ ...prev, [marketId]: hash }));
 

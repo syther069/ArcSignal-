@@ -64,7 +64,7 @@ export async function POST(
     }
 
     if (!receipt || receipt.status !== 'success') {
-      return NextResponse.json({ success: false, error: 'Transaction failed or unconfirmed on-chain' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Transaction failed or was not finalized on Arc' }, { status: 400 });
     }
 
     if (!receipt.to || receipt.to.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) {
@@ -75,10 +75,10 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'No event logs found in transaction receipt' }, { status: 400 });
     }
 
-    // The background indexer may be behind by millions of blocks. Index this
-    // verified stake immediately so the trader's portfolio is available as
-    // soon as the transaction is confirmed. Database failures must not turn a
-    // successful on-chain trade into a failed UI confirmation.
+    // The background indexer may be behind. Index this verified stake immediately
+    // so the trader's portfolio is available as soon as the transaction is
+    // finalized on Arc. Database failures must not turn a successful on-chain
+    // trade into a failed UI result.
     try {
       const stakedLog = receipt.logs.find((log) => {
         if (log.address.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) return false;

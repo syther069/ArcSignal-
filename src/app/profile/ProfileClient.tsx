@@ -323,7 +323,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
       const hash = await writeContractAsync(request);
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success' || receipt.to?.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) {
-        throw new Error('Profile transaction was not confirmed successfully on ArcSignal.');
+        throw new Error('Profile transaction was not finalized successfully on ArcSignal.');
       }
       const hasMatchingProfileEvent = receipt.logs.some((log) => {
         if (log.address.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) return false;
@@ -345,10 +345,10 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
         }
       });
       if (!hasMatchingProfileEvent) {
-        throw new Error('Confirmed transaction did not contain the expected ArcSignal profile event.');
+        throw new Error('The finalized transaction did not contain the expected ArcSignal profile event.');
       }
 
-      toast.success('Profile confirmed on-chain.');
+      toast.success('Profile finalized on Arc.');
       setIsEditing(false);
       setLocalProfile({ username: newUsername, bio: editForm.bio, avatarUrl: editForm.avatarUrl });
     } catch (e: any) {
@@ -730,7 +730,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
                   fontFamily: 'Inter, sans-serif',
                 }}
               >
-                {isUploading ? 'Uploading...' : isConfirmingProfile ? 'Confirming on ARC...' : isSaving ? 'Sign in Wallet...' : 'Save Profile'}
+                {isUploading ? 'Uploading...' : isConfirmingProfile ? 'Finalizing on Arc...' : isSaving ? 'Sign in Wallet...' : 'Save Profile'}
               </button>
             </div>
           </div>

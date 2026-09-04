@@ -13,6 +13,11 @@ connected address on Arc Testnet through Circle CCTP. Arc Testnet is the fixed
 destination; bridging from Arc back to the same chain is intentionally not
 offered.
 
+The destination uses Circle's Forwarding Service. Circle submits the Arc mint
+transaction and deducts the disclosed forwarding fee included in the estimate,
+so a new wallet can receive its first Arc USDC without already holding USDC for
+Arc gas.
+
 The bridge flow does not require a Circle API key or entity secret. The browser
 wallet signs every approval, burn, and destination transaction. Never expose a
 Circle API key, entity secret, or wallet private key through a `NEXT_PUBLIC_`
@@ -51,7 +56,7 @@ Browse the documentation in the running app at `/docs` or directly in the markdo
 
 ### Architecture & APIs
 - **[Smart Contracts](./content/docs/contracts.md)** (`/docs/contracts`) — ARC Testnet deployed addresses, verified ABI, and contract security properties.
-- **[Public API (Planned)](./content/docs/api.md)** (`/docs/api`) — Planned developer API reference and current internal REST endpoints.
+- **[Public API (Planned)](./content/docs/api.md)** (`/docs/api`) — Planned developer API reference, current internal REST endpoints, and Arc one-confirmation indexing.
 
 ### Trust, Security & Reference
 - **[Security & Risks](./content/docs/security-and-risks.md)** (`/docs/security-and-risks`) — Comprehensive disclosure of smart contract, oracle, operational, and capital risks.

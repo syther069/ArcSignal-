@@ -7,7 +7,14 @@ import {
 } from '@/lib/indexer-helpers';
 
 describe('indexer helpers', () => {
-  it('indexes only the configured finalized head', () => {
+  it('follows one block behind the latest head at Arc’s default confirmation depth', () => {
+    expect(finalizedBlock(100n, 1n)).toBe(99n);
+    expect(finalizedBlock(1n, 1n)).toBe(0n);
+    expect(finalizedBlock(0n, 1n)).toBe(0n);
+    expect(readPositiveInteger(undefined, 1, 'INDEX_CONFIRMATIONS')).toBe(1);
+  });
+
+  it('still honors a conservative confirmation override', () => {
     expect(finalizedBlock(100n, 12n)).toBe(88n);
     expect(finalizedBlock(12n, 12n)).toBe(0n);
     expect(chunkEnd(50n, 88n, 20n)).toBe(69n);

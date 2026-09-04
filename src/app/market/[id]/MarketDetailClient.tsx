@@ -147,10 +147,10 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
         args: [market.marketId],
       });
       const hash = await walletClient.writeContract(request);
-      toast.loading('Transaction submitted, confirming…', { id: toastId });
+      toast.loading('Finalizing on Arc…', { id: toastId });
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success' || receipt.to?.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) {
-        throw new Error('Claim transaction was not confirmed successfully on ArcSignal.');
+        throw new Error('Claim transaction was not finalized successfully on ArcSignal.');
       }
       const hasMatchingClaimEvent = receipt.logs.some((log) => {
         if (log.address.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) return false;
@@ -166,7 +166,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
         }
       });
       if (!hasMatchingClaimEvent) {
-        throw new Error('Confirmed transaction did not contain the expected ArcSignal claim event.');
+        throw new Error('The finalized transaction did not contain the expected ArcSignal claim event.');
       }
       toast.success('Winnings claimed!', { id: toastId });
       await Promise.all([refetchMarket(), refetchFollow(), refetchFade(), refetchClaimed()]);

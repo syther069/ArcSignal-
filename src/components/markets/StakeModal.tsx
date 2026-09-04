@@ -915,7 +915,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                 {step === 'staking' || step === 'confirming' ? (
                   <>
                     <span className="animate-spin text-sm leading-none">↻</span>
-                    <span>{step === 'confirming' ? 'Confirming on-chain...' : 'Submitting Stake...'}</span>
+                    <span>{step === 'confirming' ? 'Finalizing on Arc...' : 'Submitting Stake...'}</span>
                   </>
                 ) : (
                   <span>{ctaLabel}</span>

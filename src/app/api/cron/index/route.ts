@@ -120,7 +120,7 @@ async function sync(req: Request) {
   try {
     const chunkSize = BigInt(readPositiveInteger(process.env.INDEX_CHUNK_SIZE, 9_000, 'INDEX_CHUNK_SIZE'));
     const maxChunks = readPositiveInteger(process.env.INDEX_MAX_CHUNKS_PER_RUN, 8, 'INDEX_MAX_CHUNKS_PER_RUN');
-    const confirmations = BigInt(readPositiveInteger(process.env.INDEX_CONFIRMATIONS, 12, 'INDEX_CONFIRMATIONS'));
+    const confirmations = BigInt(readPositiveInteger(process.env.INDEX_CONFIRMATIONS, 1, 'INDEX_CONFIRMATIONS'));
     const configuredStart = BigInt(process.env.ARCSIGNAL_DEPLOYMENT_BLOCK ?? '50346816');
     if (configuredStart < 0n) throw new Error('ARCSIGNAL_DEPLOYMENT_BLOCK must not be negative');
     const minimumLastBlock = configuredStart - 1n;

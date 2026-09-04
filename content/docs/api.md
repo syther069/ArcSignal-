@@ -18,13 +18,21 @@ GET /api/football/live
 
 ## Transaction tracking
 
-The application posts a confirmed stake transaction to an internal route so it can verify the receipt, confirm the ARCSignal contract and `Staked` event, update the index, and refresh relevant pages.
+The application posts a finalized stake transaction to an internal route so it can verify the receipt, confirm the ARCSignal contract and `Staked` event, update the index, and refresh relevant pages.
 
 ```text
 POST /api/markets/:id/vote
 ```
 
 This route does not place the on-chain stake for the user. The wallet transaction must already have succeeded.
+
+## Indexing model
+
+Arc has deterministic sub-second finality and no reorganization risk after a block is committed. A single confirmation is sufficient for app-level indexing.
+
+The background indexer therefore defaults to `INDEX_CONFIRMATIONS=1`: it follows one block behind the latest observed head. Arc RPC receipts and matching ArcSignal events remain authoritative. Neon is a fast read model, not the source of truth.
+
+`INDEX_CONFIRMATIONS` is an operational safety knob. Operators may raise it if RPC lag, provider inconsistency, or production policy requires a more conservative lag.
 
 ## Private operational routes
 
