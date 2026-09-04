@@ -7,3 +7,5 @@ node_modules
 .env*
 cache/
 out/
+.agents/
+skills-lock.json
