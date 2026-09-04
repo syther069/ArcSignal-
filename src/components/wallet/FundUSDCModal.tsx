@@ -68,7 +68,11 @@ function friendlyCircleError(error: unknown) {
 function flowFromProgress(progress: CircleBridgeProgress): FlowState {
   const name = progress.name.toLowerCase();
   if (progress.state === 'error') return 'error';
-  if (name.includes('attestation') || name.includes('mint')) return 'confirming';
+  if (
+    name.includes('attestation') ||
+    name.includes('forward') ||
+    name.includes('mint')
+  ) return 'confirming';
   if (name.includes('burn')) return 'bridging';
   if (name.includes('approve')) return 'signature';
   return 'preparing';
@@ -222,7 +226,7 @@ export default function FundUSDCModal({
     { key: 'preparing', label: 'Preparing route' },
     { key: 'signature', label: 'Wallet signatures' },
     { key: 'bridging', label: 'Burning source USDC' },
-    { key: 'confirming', label: 'Minting on Arc' },
+    { key: 'confirming', label: 'Circle forwarding to Arc' },
     { key: 'complete', label: 'Funds available' },
   ] as const;
 
@@ -271,7 +275,7 @@ export default function FundUSDCModal({
                 <input inputMode="decimal" value={amount} disabled={isBusy || flow === 'complete'} onChange={(event) => { setAmount(event.target.value); resetReview(); }} placeholder="0.00" className="min-w-0 flex-1 bg-transparent py-3 text-lg font-semibold text-white outline-none" />
                 <span className="font-mono text-xs font-bold text-[#ddb7ff]">USDC</span>
               </div>
-              <p className="mt-2 text-xs text-[#64748b]">Your wallet will switch to {source?.name} for approval and burning, then to Arc for minting.</p>
+              <p className="mt-2 text-xs text-[#64748b]">Your wallet signs approval and burning on {source?.name}. Circle forwards the mint to Arc, so you do not need an existing Arc gas balance.</p>
 
               {fees && (
                 <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-xs">

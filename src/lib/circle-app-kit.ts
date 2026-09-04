@@ -77,17 +77,29 @@ type BridgeInput = {
   amount: string;
 };
 
+function createBridgeParams({ adapter, sourceChain, amount }: BridgeInput) {
+  return {
+    from: { adapter, chain: sourceChain },
+    to: {
+      adapter,
+      chain: ARC_CIRCLE_CHAIN,
+      // Arc uses USDC for gas. Forwarding lets a new Arc wallet receive its
+      // first USDC without already needing USDC to submit the destination mint.
+      useForwarder: true,
+    },
+    amount,
+    token: 'USDC' as const,
+  };
+}
+
 export async function estimateBridgeUsdc({
   adapter,
   sourceChain,
   amount,
 }: BridgeInput): Promise<BridgeEstimateResult> {
-  return circleAppKit.estimateBridge({
-    from: { adapter, chain: sourceChain },
-    to: { adapter, chain: ARC_CIRCLE_CHAIN },
-    amount,
-    token: 'USDC',
-  });
+  return circleAppKit.estimateBridge(
+    createBridgeParams({ adapter, sourceChain, amount }),
+  );
 }
 
 export async function bridgeUsdcToArc(
@@ -101,12 +113,7 @@ export async function bridgeUsdcToArc(
 
   circleAppKit.on('*', handler);
   try {
-    return await circleAppKit.bridge({
-      from: { adapter: input.adapter, chain: input.sourceChain },
-      to: { adapter: input.adapter, chain: ARC_CIRCLE_CHAIN },
-      amount: input.amount,
-      token: 'USDC',
-    });
+    return await circleAppKit.bridge(createBridgeParams(input));
   } finally {
     circleAppKit.off('*', handler);
   }
