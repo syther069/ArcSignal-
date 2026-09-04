@@ -1,13 +1,16 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import {
   AlertCircle,
   ArrowDown,
+  ArrowRight,
   Check,
   ExternalLink,
   Loader2,
   RefreshCw,
+  ShieldCheck,
   X,
 } from 'lucide-react';
 import { useAccount } from 'wagmi';
@@ -41,6 +44,10 @@ type FeeSummary = {
   protocol: string;
   gas: string;
 };
+
+const subscribeToClient = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 export interface FundUSDCModalProps {
   isOpen: boolean;
@@ -110,6 +117,11 @@ export default function FundUSDCModal({
   const [error, setError] = useState<string | null>(null);
   const [adapter, setAdapter] = useState<BrowserWalletViemAdapter | null>(null);
   const [failedResult, setFailedResult] = useState<CircleBridgeResult | null>(null);
+  const canUseDOM = useSyncExternalStore(
+    subscribeToClient,
+    getClientSnapshot,
+    getServerSnapshot,
+  );
 
   const numericAmount = Number(amount);
   const validAmount = Number.isFinite(numericAmount) && numericAmount > 0;
@@ -119,7 +131,14 @@ export default function FundUSDCModal({
     [sourceChain],
   );
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
 
   const getAdapter = async () => {
     if (!connector) throw new Error('Connect a browser wallet first.');
@@ -209,17 +228,42 @@ export default function FundUSDCModal({
     }
   };
 
-  const resetReview = () => {
+  const resetReview = useCallback(() => {
     setFlow('idle');
     setFees(null);
     setSteps([]);
     setError(null);
     setFailedResult(null);
-  };
+  }, []);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     resetReview();
     onClose();
+  }, [onClose, resetReview]);
+
+  useEffect(() => {
+    if (!isOpen || isBusy) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') handleClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleClose, isBusy, isOpen]);
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (isBusy || flow === 'complete') return;
+    if (flow === 'ready') {
+      void handleBridge();
+      return;
+    }
+    if (flow === 'error' && failedResult) {
+      void handleRetryBridge();
+      return;
+    }
+    void handleEstimate();
   };
 
   const timeline = [
@@ -230,17 +274,37 @@ export default function FundUSDCModal({
     { key: 'complete', label: 'Funds available' },
   ] as const;
 
-  return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-      <div role="dialog" aria-modal="true" aria-labelledby="fund-usdc-title" className="relative flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#151515] shadow-[0_24px_80px_rgba(0,0,0,0.8)]">
-        <div className="h-0.5 bg-gradient-to-r from-transparent via-[#ddb7ff] to-transparent" />
+  if (!isOpen || !canUseDOM) return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-[#050506]/90 p-4 backdrop-blur-lg"
+      onMouseDown={(event) => {
+        event.stopPropagation();
+        if (event.target === event.currentTarget && !isBusy) handleClose();
+      }}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <form
+        onSubmit={handleSubmit}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="fund-usdc-title"
+        aria-describedby="fund-usdc-description"
+        aria-busy={isBusy}
+        className="relative flex max-h-[92vh] w-full max-w-[34rem] flex-col overflow-hidden rounded-[1.35rem] border border-[#ddb7ff]/20 bg-[#121214] shadow-[0_32px_100px_rgba(0,0,0,0.82),0_0_80px_rgba(194,132,252,0.06)]"
+      >
+        <div className="h-px bg-gradient-to-r from-transparent via-[#ddb7ff]/90 to-transparent" />
         <div className="flex items-start justify-between border-b border-white/10 p-5">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#ddb7ff]">Circle Arc App Kit</p>
-            <h2 id="fund-usdc-title" className="mt-1 text-xl font-bold text-white">Fund your Arc wallet</h2>
-            <p className="mt-1 text-sm text-[#94a3b8]">Bridge testnet USDC directly into ArcSignal.</p>
+            <div className="flex items-center gap-2.5">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#ddb7ff]">Arc settlement route</p>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-[#94a3b8]">Testnet</span>
+            </div>
+            <h2 id="fund-usdc-title" className="mt-2 text-xl font-semibold tracking-[-0.02em] text-white">Fund your Arc wallet</h2>
+            <p id="fund-usdc-description" className="mt-1 text-sm text-[#94a3b8]">Move USDC to Arc through Circle&apos;s native infrastructure.</p>
           </div>
-          <button aria-label="Close funding modal" disabled={isBusy} onClick={handleClose} className="rounded-full p-2 text-[#94a3b8] hover:bg-white/5 hover:text-white disabled:opacity-40">
+          <button type="button" aria-label="Close funding modal" disabled={isBusy} onClick={handleClose} className="rounded-full border border-transparent p-2 text-[#94a3b8] transition hover:border-white/10 hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ddb7ff]/70 disabled:opacity-40">
             <X size={18} />
           </button>
         </div>
@@ -252,14 +316,14 @@ export default function FundUSDCModal({
             </div>
           ) : (
             <>
-              <label className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-[#94a3b8]">From</label>
-              <select value={sourceChain} disabled={isBusy || flow === 'complete'} onChange={(event) => { setSourceChain(event.target.value as FundingSourceChain); resetReview(); }} className="w-full rounded-xl border border-white/10 bg-[#202020] px-4 py-3 text-sm text-white outline-none focus:border-[#ddb7ff]/60">
+              <label htmlFor="circle-source-chain" className="mb-2 block font-mono text-[10px] uppercase tracking-wider text-[#94a3b8]">From</label>
+              <select id="circle-source-chain" autoFocus value={sourceChain} disabled={isBusy || flow === 'complete'} onChange={(event) => { setSourceChain(event.target.value as FundingSourceChain); resetReview(); }} className="w-full rounded-xl border border-white/10 bg-[#1b1b1e] px-4 py-3 text-sm text-white outline-none transition focus:border-[#ddb7ff]/60 focus:ring-2 focus:ring-[#ddb7ff]/10">
                 {supportedFundingSourceChains.map((chain) => <option key={chain.id} value={chain.id}>{chain.name}</option>)}
               </select>
 
               <div className="flex justify-center py-3 text-[#ddb7ff]"><ArrowDown size={18} /></div>
 
-              <div className="rounded-xl border border-[#ddb7ff]/20 bg-[#ddb7ff]/[0.06] p-4">
+              <div className="rounded-xl border border-[#ddb7ff]/20 bg-gradient-to-br from-[#ddb7ff]/[0.08] to-transparent p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-mono text-[10px] uppercase tracking-wider text-[#94a3b8]">To</p>
@@ -270,9 +334,9 @@ export default function FundUSDCModal({
                 <p className="mt-3 truncate font-mono text-xs text-[#94a3b8]">{address}</p>
               </div>
 
-              <label className="mb-2 mt-5 block font-mono text-[10px] uppercase tracking-wider text-[#94a3b8]">Amount</label>
-              <div className="flex items-center rounded-xl border border-white/10 bg-[#202020] px-4 focus-within:border-[#ddb7ff]/60">
-                <input inputMode="decimal" value={amount} disabled={isBusy || flow === 'complete'} onChange={(event) => { setAmount(event.target.value); resetReview(); }} placeholder="0.00" className="min-w-0 flex-1 bg-transparent py-3 text-lg font-semibold text-white outline-none" />
+              <label htmlFor="circle-bridge-amount" className="mb-2 mt-5 block font-mono text-[10px] uppercase tracking-wider text-[#94a3b8]">Amount</label>
+              <div className="flex items-center rounded-xl border border-white/10 bg-[#1b1b1e] px-4 transition focus-within:border-[#ddb7ff]/60 focus-within:ring-2 focus-within:ring-[#ddb7ff]/10">
+                <input id="circle-bridge-amount" inputMode="decimal" value={amount} disabled={isBusy || flow === 'complete'} onChange={(event) => { setAmount(event.target.value); resetReview(); }} placeholder="0.00" className="min-w-0 flex-1 bg-transparent py-3 text-lg font-semibold text-white outline-none" />
                 <span className="font-mono text-xs font-bold text-[#ddb7ff]">USDC</span>
               </div>
               <p className="mt-2 text-xs text-[#64748b]">Your wallet signs approval and burning on {source?.name}. Circle forwards the mint to Arc, so you do not need an existing Arc gas balance.</p>
@@ -286,7 +350,7 @@ export default function FundUSDCModal({
               )}
 
               {(isBusy || flow === 'complete' || steps.length > 0) && (
-                <div className="mt-5 space-y-3">
+                <div aria-live="polite" className="mt-5 space-y-3 rounded-xl border border-white/10 bg-black/20 p-4">
                   {timeline.map((item, index) => {
                     const currentOrder = timeline.findIndex((entry) => entry.key === flow);
                     const done = flow === 'complete' || index < currentOrder;
@@ -314,7 +378,7 @@ export default function FundUSDCModal({
               )}
 
               {error && (
-                <div className="mt-4 flex gap-3 rounded-xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-200">
+                <div role="alert" className="mt-4 flex gap-3 rounded-xl border border-[#ddb7ff]/25 bg-[#ddb7ff]/[0.07] p-4 text-sm text-[#ead7ff]">
                   <AlertCircle size={17} className="mt-0.5 shrink-0" /><span>{error}</span>
                 </div>
               )}
@@ -324,19 +388,23 @@ export default function FundUSDCModal({
 
         <div className="border-t border-white/10 p-5">
           {flow === 'complete' ? (
-            <button onClick={handleClose} className="w-full rounded-xl bg-emerald-300 py-3.5 text-sm font-bold text-[#121212]">Done</button>
+            <button type="button" onClick={handleClose} className="w-full rounded-xl bg-[#ddb7ff] py-3.5 text-sm font-bold text-[#121212] transition hover:bg-[#ead7ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ddb7ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#121214]">Done</button>
           ) : flow === 'ready' ? (
-            <button onClick={handleBridge} className="w-full rounded-xl bg-[#ddb7ff] py-3.5 text-sm font-bold text-[#121212] hover:bg-[#ead7ff]">Bridge {amount} USDC to Arc</button>
+            <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#ddb7ff] py-3.5 text-sm font-bold text-[#121212] transition hover:bg-[#ead7ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ddb7ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#121214]">Bridge {amount} USDC to Arc <ArrowRight size={15} /></button>
           ) : flow === 'error' ? (
-            <button onClick={failedResult ? handleRetryBridge : handleEstimate} disabled={!validAmount || !isConnected} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#ddb7ff] py-3.5 text-sm font-bold text-[#121212] disabled:opacity-40"><RefreshCw size={15} /> {failedResult ? 'Retry bridge' : 'Retry estimate'}</button>
+            <button type="submit" disabled={!validAmount || !isConnected} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#ddb7ff] py-3.5 text-sm font-bold text-[#121212] transition hover:bg-[#ead7ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ddb7ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#121214] disabled:cursor-not-allowed disabled:opacity-40"><RefreshCw size={15} /> {failedResult ? 'Retry bridge' : 'Retry estimate'}</button>
           ) : (
-            <button onClick={handleEstimate} disabled={!validAmount || !isConnected || isBusy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#ddb7ff] py-3.5 text-sm font-bold text-[#121212] disabled:cursor-not-allowed disabled:opacity-40">
+            <button type="submit" disabled={!validAmount || !isConnected || isBusy} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#ddb7ff] py-3.5 text-sm font-bold text-[#121212] transition hover:bg-[#ead7ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ddb7ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#121214] disabled:cursor-not-allowed disabled:opacity-40">
               {flow === 'estimating' ? <><Loader2 size={15} className="animate-spin" /> Estimating route...</> : 'Review bridge'}
             </button>
           )}
-          <a href="https://faucet.circle.com/" target="_blank" rel="noreferrer" className="mt-3 flex items-center justify-center gap-1 text-xs text-[#64748b] hover:text-[#ddb7ff]">Need source testnet USDC? Open Circle Faucet <ExternalLink size={11} /></a>
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-[#64748b]">
+            <span className="inline-flex items-center gap-1.5"><ShieldCheck size={12} /> Circle CCTP settlement</span>
+            <a href="https://faucet.circle.com/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 transition hover:text-[#ddb7ff]">Get testnet USDC <ExternalLink size={11} /></a>
+          </div>
         </div>
-      </div>
-    </div>
+      </form>
+    </div>,
+    document.body,
   );
 }
