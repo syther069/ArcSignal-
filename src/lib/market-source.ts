@@ -1,5 +1,5 @@
 import type { Market } from './types';
-import { getIndexedMarkets } from './indexed-markets';
+import { getIndexedMarkets, getMarketIndexHealth } from './indexed-markets';
 import { getMarketsFromChain } from './markets';
 
 export type MarketSource = 'neon' | 'arc-chain';
@@ -11,9 +11,10 @@ export interface MarketSnapshot {
   fetchedAt: string;
 }
 
-const CHAIN_SNAPSHOT_LIMIT = 60;
+const CHAIN_SNAPSHOT_LIMIT = 160;
 const CHAIN_SNAPSHOT_TTL_MS = 60_000;
 const CHAIN_SNAPSHOT_TIMEOUT_MS = 12_000;
+const INDEX_FRESHNESS_TTL_MS = 10 * 60_000;
 
 let cachedChainSnapshot: MarketSnapshot | null = null;
 let chainSnapshotInFlight: Promise<MarketSnapshot> | null = null;
@@ -77,21 +78,72 @@ export async function getMarketSnapshot(
   limit: number,
   offset: number,
 ): Promise<MarketSnapshot> {
-  try {
-    const markets = await getIndexedMarkets(limit, offset);
-    if (markets.length > 0) {
-      return {
-        markets,
-        source: 'neon',
-        complete: markets.length < limit,
-        fetchedAt: new Date().toISOString(),
-      };
-    }
-  } catch (error) {
-    console.warn('Markets index unavailable; using ARC chain snapshot:', error);
+  const requestedCount = Math.min(offset + limit, 10_300);
+  const [indexedResult, healthResult] = await Promise.allSettled([
+    getIndexedMarkets(requestedCount, 0),
+    getMarketIndexHealth(),
+  ]);
+
+  const indexedMarkets = indexedResult.status === 'fulfilled' ? indexedResult.value : [];
+  const indexHealth = healthResult.status === 'fulfilled' ? healthResult.value : null;
+  const indexIsFresh = indexHealth !== null
+    && Date.now() - indexHealth.updatedAtMs <= INDEX_FRESHNESS_TTL_MS;
+
+  if (indexedResult.status === 'rejected') {
+    console.warn('Markets index unavailable; using ARC chain snapshot:', indexedResult.reason);
+  }
+  if (healthResult.status === 'rejected') {
+    console.warn('Market index health unavailable; verifying against ARC chain:', healthResult.reason);
   }
 
-  const chainSnapshot = await getChainMarketSnapshot();
+  if (indexedMarkets.length > 0 && indexIsFresh) {
+    return {
+      markets: indexedMarkets.slice(offset, offset + limit),
+      source: 'neon',
+      complete: indexedMarkets.length < requestedCount,
+      fetchedAt: new Date().toISOString(),
+    };
+  }
+
+  let chainSnapshot: MarketSnapshot | null = null;
+  try {
+    chainSnapshot = await getChainMarketSnapshot();
+  } catch (error) {
+    console.warn('ARC chain snapshot unavailable; using markets index:', error);
+  }
+
+  if (indexedMarkets.length > 0 && chainSnapshot) {
+    // Chain values override indexed rows for the newest bounded window. This
+    // prevents a lagging index cursor from hiding newly generated markets.
+    const merged = new Map(indexedMarkets.map((market) => [market.marketId, market]));
+    for (const market of chainSnapshot.markets) merged.set(market.marketId, market);
+    const markets = [...merged.values()]
+      .sort((a, b) => b.resolutionTime - a.resolutionTime)
+      .slice(offset, offset + limit);
+
+    return {
+      markets,
+      source: 'neon',
+      complete: indexedMarkets.length < requestedCount && chainSnapshot.complete,
+      fetchedAt: new Date().toISOString(),
+    };
+  }
+
+  if (indexedMarkets.length > 0) {
+    return {
+      markets: indexedMarkets.slice(offset, offset + limit),
+      source: 'neon',
+      complete: indexedMarkets.length < requestedCount,
+      fetchedAt: new Date().toISOString(),
+    };
+  }
+
+  if (!chainSnapshot) {
+    throw indexedResult.status === 'rejected'
+      ? indexedResult.reason
+      : new Error('No market data source is available');
+  }
+
   return {
     ...chainSnapshot,
     markets: chainSnapshot.markets.slice(offset, offset + limit),

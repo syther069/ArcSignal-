@@ -15,6 +15,9 @@ import {
   assertFreshGenerationObservation,
   ORACLE_POLICY_VERSION,
 } from '@/lib/oracle-policy';
+import { upsertGeneratedMarketIndex } from '@/lib/indexed-markets';
+import { clearChainMarketSnapshotCache } from '@/lib/market-source';
+import { clearMarketCache } from '@/lib/markets';
 
 const CONTRACT_ADDRESS = ARCSIGNAL_ADDRESS;
 
@@ -59,6 +62,7 @@ export async function POST(req: Request) {
   const created: string[] = [];
   const skipped: string[] = [];
   const errors: string[] = [];
+  const indexWarnings: string[] = [];
   let totalCombinations = 0;
   const now = Math.floor(Date.now() / 1000);
 
@@ -265,6 +269,22 @@ export async function POST(req: Request) {
             });
             if (!createdEvent) throw new Error(`MarketCreated event missing for ${job.marketId}`);
             created.push(`[CRYPTO] ${job.question} (Tx: ${hash})`);
+            if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
+              try {
+                await upsertGeneratedMarketIndex({
+                  marketId: job.marketId,
+                  category: 'CRYPTO',
+                  question: job.question,
+                  analysisJson: JSON.stringify(analysisWithSubType),
+                  resolutionTime: job.resolutionTime,
+                  createdBlock: receipt.blockNumber,
+                });
+              } catch (indexError) {
+                indexWarnings.push(
+                  `[${job.marketId}] immediate index update failed: ${indexError instanceof Error ? indexError.message : String(indexError)}`,
+                );
+              }
+            }
             await new Promise(r => setTimeout(r, 1200));
           } catch (err) {
             errors.push(`[${symbolUpper}] ${job.timeframe.label}: ${err instanceof Error ? err.message : String(err)}`);
@@ -330,6 +350,22 @@ export async function POST(req: Request) {
           });
           if (!createdEvent) throw new Error(`MarketCreated event missing for ${marketId}`);
           created.push(`[FOOTBALL] ${question}`);
+          if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
+            try {
+              await upsertGeneratedMarketIndex({
+                marketId,
+                category: 'FOOTBALL',
+                question,
+                analysisJson: JSON.stringify(analysis),
+                resolutionTime,
+                createdBlock: receipt.blockNumber,
+              });
+            } catch (indexError) {
+              indexWarnings.push(
+                `[${marketId}] immediate index update failed: ${indexError instanceof Error ? indexError.message : String(indexError)}`,
+              );
+            }
+          }
         } catch (err) {
           errors.push(`[FOOTBALL] ${fixture.homeTeam} vs ${fixture.awayTeam}: ${err instanceof Error ? err.message : String(err)}`);
         }
@@ -339,10 +375,16 @@ export async function POST(req: Request) {
     errors.push(`[FOOTBALL] Fixtures generation skipped/failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
+  if (created.length > 0) {
+    clearMarketCache();
+    clearChainMarketSnapshotCache();
+  }
+
   return NextResponse.json({
     created,
     skipped,
     errors,
+    indexWarnings,
     summary: `${created.length} created, ${skipped.length} skipped, ${errors.length} failed`,
     totalCombinations,
   });
