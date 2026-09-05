@@ -1,5 +1,7 @@
 'use client';
 
+import { tradingDesign, useTradingMotion } from '@/components/layout/TradingDesign';
+
 import React, { useMemo, useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Link from 'next/link';
@@ -80,6 +82,7 @@ export default function AnalyticsClient({
   resolvedMarkets,
   markets
 }: AnalyticsClientProps) {
+  const animateCharts = useTradingMotion();
   const [range, setRange] = useState<'7d' | '30d' | 'all'>('all');
 
   const {
@@ -148,34 +151,34 @@ export default function AnalyticsClient({
   }, [filteredMarkets]);
 
   return (
-    <div className="flex min-h-screen bg-[#131313]">
+    <div data-trading-analytics className={`${tradingDesign} flex min-h-screen bg-[#131313]`}>
       <style dangerouslySetInnerHTML={{ __html: `
-        .chart-grid {
-          background-image: linear-gradient(to right, #1e293b 1px, transparent 1px),
-                            linear-gradient(to bottom, #1e293b 1px, transparent 1px);
+        .{
+          background-image: linear-gradient(to right, #403947 1px, transparent 1px),
+                            linear-gradient(to bottom, #403947 1px, transparent 1px);
           background-size: 24px 24px;
         }
-        .bg-surface-charcoal { background-color: #1c1b1b; }
-        .border-border-subtle { border-color: #1e293b; }
-        .text-primary { color: #ddb7ff; }
-        .text-tertiary { color: #4fdbc8; }
-        .text-error { color: #ffb4ab; }
-        .text-text-muted { color: #94a3b8; }
-        .font-code-sm { font-family: var(--font-jetbrains-mono), monospace; font-size: 0.875rem; }
-        .font-label-caps { font-family: var(--font-inter), sans-serif; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
-        .font-headline-md { font-family: var(--font-hanken), sans-serif; font-size: 1.125rem; font-weight: 700; }
-        .font-headline-lg { font-family: var(--font-hanken), sans-serif; font-size: 1.5rem; font-weight: 700; }
+        [data-trading-analytics] .bg-surface-charcoal { background-color: #1c1b1b; }
+        [data-trading-analytics] .border-border-subtle { border-color: #403947; }
+        [data-trading-analytics] .text-primary { color: #ddb7ff; }
+        [data-trading-analytics] .text-tertiary { color: #4fdbc8; }
+        [data-trading-analytics] .text-error { color: #ffb4ab; }
+        [data-trading-analytics] .text-text-muted { color: #b0abb5; }
+        [data-trading-analytics] .font-code-sm { font-family: var(--font-jetbrains-mono), monospace; font-size: 0.875rem; }
+        [data-trading-analytics] .font-label-caps { font-family: var(--font-inter), sans-serif; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        [data-trading-analytics] .font-headline-md { font-family: var(--font-hanken), sans-serif; font-size: 1.125rem; font-weight: 600; }
+        [data-trading-analytics] .font-headline-lg { font-family: var(--font-hanken), sans-serif; font-size: 1.5rem; font-weight: 600; }
 
         /* Stat card system */
-        .stat-card-title {
+        [data-trading-analytics] .stat-card-title {
           font-family: var(--font-inter), sans-serif;
-          font-size: 0.72rem;
+          font-size: 13px;
           font-weight: 500;
           text-transform: uppercase;
           letter-spacing: 0.1em;
-          color: #64748b;
+          color: #b0abb5;
         }
-        .stat-card-icon {
+        [data-trading-analytics] .stat-card-icon {
           font-size: 16px;
           width: 32px;
           height: 32px;
@@ -185,59 +188,59 @@ export default function AnalyticsClient({
           border-radius: 6px;
           font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
           flex-shrink: 0;
-          line-height: 1;
+          line-height: 1.3;
           padding: 0;
           text-align: center;
         }
-        .stat-card-value {
+        [data-trading-analytics] .stat-card-value {
           font-family: var(--font-jetbrains-mono), monospace;
-          font-size: 2rem;
-          font-weight: 700;
+          font-size: 28px;
+          font-weight: 600;
           letter-spacing: -0.02em;
-          line-height: 1;
+          line-height: 1.3;
         }
-        .stat-card-subtext {
+        [data-trading-analytics] .stat-card-subtext {
           font-family: var(--font-inter), sans-serif;
-          font-size: 0.7rem;
+          font-size: 13px;
           text-transform: uppercase;
           letter-spacing: 0.08em;
-          color: #475569;
+          color: #b0abb5;
           margin-top: 6px;
         }
-        .stat-card-empty {
+        [data-trading-analytics] .stat-card-empty {
           font-family: var(--font-jetbrains-mono), monospace;
           font-size: 1.5rem;
           font-weight: 600;
-          color: #334155;
+          color: #b0abb5;
           letter-spacing: -0.02em;
         }
       `}} />
       
       <Sidebar />
 
-      <main className="flex-1 lg:ml-[264px] pt-24 pb-16 overflow-y-auto min-h-screen">
+      <main className="flex-1 lg:ml-[264px] pt-24 pb-28 min-w-0 min-h-screen">
         <div className="max-w-[1440px] mx-auto w-full px-4 lg:px-8">
 
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="font-label-caps text-text-muted">Analytics overview</p>
+            <h1 className="text-[#f1eef4]">Analytics</h1>
             <p className="mt-1 text-xs text-text-muted">Metrics are based on indexed on-chain activity.</p>
           </div>
           <div className="flex items-center gap-1 rounded-full border border-border-subtle bg-surface-charcoal p-1" aria-label="Analytics time range">
             {([['7d', '7D'], ['30d', '30D'], ['all', 'All time']] as const).map(([value, label]) => (
-              <button key={value} onClick={() => setRange(value)} aria-pressed={range === value} className={`min-h-[40px] rounded-full px-4 text-xs font-medium transition-colors ${range === value ? 'bg-[#ddb7ff] text-[#131313]' : 'text-text-muted hover:text-white'}`}>{label}</button>
+              <button key={value} onClick={() => setRange(value)} aria-pressed={range === value} className={`min-h-[40px] rounded-full px-4 text-xs font-medium transition-colors ${range === value ? 'bg-[#ddb7ff] text-[#131313]' : 'text-text-muted hover:text-[#f1eef4]'}`}>{label}</button>
             ))}
           </div>
         </div>
         
         {/* Section 1: Stat Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8 min-h-[160px]">
+        <div className="grid grid-cols-2 md:grid-cols-3 2xl:grid-cols-6 gap-4 mb-8 min-h-[160px]">
           <StatCardCustom
             title="Total Volume Staked"
             value={rangeStats.totalVolume ? `${rangeStats.totalVolume.toFixed(2)} USDC` : null}
             emptyMsg="—"
             icon="monitoring"
-            accent={{ color: '#c4b5fd', bg: 'rgba(196,181,253,0.09)' }}
+            accent={{ color: '#ddb7ff', bg: 'rgba(221,183,255,0.09)' }}
           />
           <StatCardCustom
             title="Active Markets"
@@ -252,36 +255,36 @@ export default function AnalyticsClient({
             value={rangeStats.accuracy !== null ? `${rangeStats.accuracy}%` : null}
             emptyMsg="—"
             icon="psychology"
-            accent={{ color: '#fbbf24', bg: 'rgba(251,191,36,0.09)' }}
+            accent={{ color: '#f2c66d', bg: 'rgba(242,198,109,0.09)' }}
           />
           <StatCardCustom
             title="Markets Resolved"
             value={rangeStats.resolvedMarkets}
             emptyMsg="—"
             icon="done_all"
-            accent={{ color: '#86efac', bg: 'rgba(134,239,172,0.09)' }}
+            accent={{ color: '#4fdbc8', bg: 'rgba(79,219,200,0.09)' }}
           />
           <StatCardCustom
             title="Cancelled"
             value={rangeStats.cancelledMarkets}
             emptyMsg="0"
             icon="block"
-            accent={{ color: '#fbbf24', bg: 'rgba(251,191,36,0.09)' }}
+            accent={{ color: '#f2c66d', bg: 'rgba(242,198,109,0.09)' }}
           />
           <StatCardCustom
             title="Avg Liquidity"
             value={`${rangeStats.averageLiquidity.toFixed(2)} USDC`}
             emptyMsg="0 USDC"
             icon="waterfall_chart"
-            accent={{ color: '#7dd3fc', bg: 'rgba(125,211,252,0.09)' }}
+            accent={{ color: '#ddb7ff', bg: 'rgba(221,183,255,0.09)' }}
           />
         </div>
 
         {/* Section 2: Bento Grid top */}
         <div className="grid grid-cols-12 gap-6 mb-6">
-          <div className="col-span-12 lg:col-span-8 bg-surface-charcoal border border-border-subtle p-6 rounded relative overflow-hidden chart-grid min-h-[360px] flex flex-col">
+          <div className="col-span-12 lg:col-span-8 bg-surface-charcoal border border-border-subtle p-5 sm:p-6 rounded-xl relative overflow-hidden min-h-[360px] flex flex-col">
             <h3 className="font-headline-lg text-primary mb-6">AI Performance Accuracy</h3>
-            <div className="flex-1 w-full">
+            <div className="h-[280px] min-w-0 w-full">
               {filteredResolvedMarkets.length === 0 ? (
                 <div className="h-full flex items-center justify-center text-text-muted font-code-sm">
                   No resolved markets in this range
@@ -289,18 +292,18 @@ export default function AnalyticsClient({
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={filteredResolvedMarkets} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <XAxis dataKey="resolutionDate" stroke="#94a3b8" tick={{ fontSize: 12 }} label={{ value: 'Resolution date', position: 'insideBottom', offset: -4, fill: '#64748b', fontSize: 10 }} />
-                    <YAxis domain={[0, 100]} stroke="#94a3b8" tick={{ fontSize: 12 }} unit="%" />
-                    <Tooltip contentStyle={{ backgroundColor: '#1c1b1b', borderColor: '#1e293b' }} formatter={(value, name) => [`${value ?? '—'}%`, name === 'cryptoAccuracy' ? 'Crypto accuracy' : 'Football accuracy']} />
-                    <Line type="monotone" dataKey="cryptoAccuracy" stroke="#ddb7ff" strokeWidth={2} dot={false} />
-                    <Line type="monotone" dataKey="footballAccuracy" stroke="#4fdbc8" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                    <XAxis dataKey="resolutionDate" stroke="#b0abb5" tick={{ fontSize: 12 }} label={{ value: 'Resolution date', position: 'insideBottom', offset: -4, fill: '#b0abb5', fontSize: 10 }} />
+                    <YAxis domain={[0, 100]} stroke="#b0abb5" tick={{ fontSize: 12 }} unit="%" />
+                    <Tooltip contentStyle={{ backgroundColor: '#1c1b1b', borderColor: '#403947' }} formatter={(value, name) => [`${value ?? '—'}%`, name === 'cryptoAccuracy' ? 'Crypto accuracy' : 'Football accuracy']} />
+                    <Line isAnimationActive={animateCharts} animationDuration={250} animationEasing="ease-out" type="monotone" dataKey="cryptoAccuracy" stroke="#ddb7ff" strokeWidth={2} dot={false} />
+                    <Line isAnimationActive={animateCharts} animationDuration={250} animationEasing="ease-out" type="monotone" dataKey="footballAccuracy" stroke="#4fdbc8" strokeWidth={2} strokeDasharray="5 5" dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               )}
             </div>
           </div>
 
-          <div className="col-span-12 lg:col-span-4 bg-surface-charcoal border border-border-subtle p-6 rounded flex flex-col items-center min-h-[360px]">
+          <div className="col-span-12 lg:col-span-4 bg-surface-charcoal border border-border-subtle p-5 sm:p-6 rounded-xl flex flex-col items-center min-h-[360px]">
             <h3 className="font-headline-lg text-primary w-full text-left mb-auto">Follow vs Fade</h3>
             {(stats.totalStakes === 0 && !totalStakedUsdc) ? (
               <div className="flex-1 flex items-center justify-center text-text-muted font-code-sm">
@@ -311,7 +314,7 @@ export default function AnalyticsClient({
                 <div className="relative w-48 h-48 my-auto">
                   <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
                     <path
-                      className="text-tertiary"
+                      className="text-[#f3a6c8]"
                       strokeDasharray={`${fadePercent}, 100`}
                       d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                       fill="none"
@@ -334,7 +337,7 @@ export default function AnalyticsClient({
                 </div>
                 <div className="flex gap-6 w-full justify-center mt-auto font-label-caps">
                   <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-primary"></div> FOLLOW {followPercent}%</div>
-                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-tertiary"></div> FADE {fadePercent}%</div>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#f3a6c8]"></div> FADE {fadePercent}%</div>
                 </div>
               </>
             )}
@@ -343,9 +346,9 @@ export default function AnalyticsClient({
 
         {/* Section 3: Bento Grid bottom */}
         <div className="grid grid-cols-12 gap-6 mb-6">
-          <div className="col-span-12 lg:col-span-8 bg-surface-charcoal border border-border-subtle p-6 rounded min-h-[320px] flex flex-col">
+          <div className="col-span-12 lg:col-span-8 bg-surface-charcoal border border-border-subtle p-5 sm:p-6 rounded-xl min-h-[320px] flex flex-col">
             <h3 className="font-headline-lg text-primary mb-6">Top Markets by Volume</h3>
-            <div className="flex-1 w-full">
+            <div className="h-[280px] min-w-0 w-full">
               {(filteredMarkets.length === 0 || filteredMarkets.every(m => (Number(m.followPool) + Number(m.fadePool)) === 0)) ? (
                 <div className="h-full flex items-center justify-center text-text-muted font-code-sm">
                   No stakes placed yet
@@ -354,16 +357,16 @@ export default function AnalyticsClient({
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={topMarketsByVolume} layout="vertical" margin={{ left: 0 }}>
                     <XAxis type="number" hide />
-                    <YAxis type="category" dataKey={(m) => m.title?.length > 40 ? m.title.substring(0, 40) + '...' : m.title} width={180} tick={{ fill: '#e5e2e1', fontSize: 11 }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#1c1b1b', borderColor: '#1e293b' }} formatter={(val) => `${val} USDC`} />
-                    <Bar dataKey={(m) => m.followPool + m.fadePool} fill="#ddb7ff" radius={[0, 4, 4, 0]} barSize={24} />
+                    <YAxis type="category" dataKey={(m) => m.title?.length > 40 ? m.title.substring(0, 40) + '...' : m.title} width={180} tick={{ fill: '#f1eef4', fontSize: 11 }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1c1b1b', borderColor: '#403947' }} formatter={(val) => `${val} USDC`} />
+                    <Bar isAnimationActive={animateCharts} animationDuration={250} animationEasing="ease-out" dataKey={(m) => m.followPool + m.fadePool} fill="#ddb7ff" radius={[0, 4, 4, 0]} barSize={24} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
             </div>
           </div>
 
-          <div className="col-span-12 lg:col-span-4 bg-surface-charcoal border border-border-subtle p-6 rounded min-h-[320px] flex flex-col">
+          <div className="col-span-12 lg:col-span-4 bg-surface-charcoal border border-border-subtle p-5 sm:p-6 rounded-xl min-h-[320px] flex flex-col">
             <h3 className="font-headline-lg text-primary mb-6">Recent Resolved</h3>
             <div className="flex flex-col gap-4 flex-1">
               {filteredResolvedMarkets.length === 0 ? (
@@ -391,7 +394,7 @@ export default function AnalyticsClient({
         </div>
 
         {/* Section 4: Market Activity */}
-        <div className="col-span-12 bg-surface-charcoal border border-border-subtle p-6 rounded mt-6">
+        <div className="col-span-12 bg-surface-charcoal border border-border-subtle p-5 sm:p-6 rounded-xl mt-6">
           <h3 className="font-headline-lg text-primary mb-6">Market Activity</h3>
           {(filteredMarkets.length === 0) ? (
             <div className="w-full py-12 flex items-center justify-center text-text-muted font-code-sm">
@@ -414,10 +417,10 @@ export default function AnalyticsClient({
                   {filteredMarkets.map((m, i) => (
                     <tr key={i} className="border-b border-border-subtle/50 last:border-0 text-sm hover:bg-white/[0.02] transition-colors">
                       <td className="py-4 font-medium pr-4"><Link href={`/market/${m.marketId}`} className="hover:text-primary transition-colors">{m.title}</Link></td>
-                      <td className="py-4"><span className="bg-[#1e293b] text-text-muted px-2 py-1 rounded text-xs uppercase tracking-wider">{m.category}</span></td>
+                      <td className="py-4"><span className="bg-[#403947] text-text-muted px-2 py-1 rounded text-xs uppercase tracking-wider">{m.category}</span></td>
                       <td className="py-4 font-code-sm text-primary">{m.aiSignal || 'PENDING'}</td>
                       <td className="py-4 font-code-sm">{(m.followPool + m.fadePool).toLocaleString()} USDC</td>
-                      <td className="py-4"><span className="font-label-caps px-2 py-1 bg-[#1e293b] rounded">{m.outcome || 'PENDING'}</span></td>
+                      <td className="py-4"><span className="font-label-caps px-2 py-1 bg-[#403947] rounded">{m.outcome || 'PENDING'}</span></td>
                       <td className="py-4 font-code-sm text-text-muted">{m.resolutionDate || '-'}</td>
                     </tr>
                   ))}
@@ -427,7 +430,7 @@ export default function AnalyticsClient({
           )}
         </div>
 
-        <div className="mt-6 flex flex-col gap-2 border border-border-subtle bg-surface-charcoal px-4 py-3 text-[10px] font-label-caps text-text-muted md:flex-row md:items-center md:justify-between">
+        <div className="mt-6 flex flex-col gap-2 border border-border-subtle bg-surface-charcoal px-4 py-3 text-[13px] font-label-caps text-text-muted md:flex-row md:items-center md:justify-between">
           <span>DATA SOURCE: {stats.dataSource ?? 'ON-CHAIN INDEX'}</span>
           <span>{stats.dataAsOf ? `UPDATED ${new Date(stats.dataAsOf).toLocaleString()}` : 'LIVE DATA'}</span>
         </div>

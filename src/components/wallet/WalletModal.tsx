@@ -1,5 +1,7 @@
 'use client';
 
+import { tradingDesign, useTradingDialog } from '@/components/layout/TradingDesign';
+
 import React, { useEffect, useMemo, useState } from 'react';
 import { ExternalLink, Loader2, ShieldCheck, Wallet, X, ChevronRight, AlertCircle } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
@@ -128,7 +130,7 @@ function getErrorMessage(err: unknown): string {
 function WalletIcon({ brand, iconUrl }: { brand: WalletBrand; iconUrl?: string }) {
   if (iconUrl) {
     return (
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-[#141414] p-1.5 shadow-inner">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-[#1c1b1b] p-1.5 shadow-inner">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={iconUrl} alt={brand} className="h-full w-full object-contain rounded-lg" />
       </span>
@@ -136,7 +138,7 @@ function WalletIcon({ brand, iconUrl }: { brand: WalletBrand; iconUrl?: string }
   }
 
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-[#141414] shadow-inner">
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-[#1c1b1b] shadow-inner">
       {brand === 'metamask' && (
         <svg viewBox="0 0 318.6 318.6" width="22" height="22" role="img" fill="none">
           <path fill="#E17726" d="m274.1 35.5-99.5 73.9L194 65.4z" />
@@ -218,6 +220,7 @@ function WalletIcon({ brand, iconUrl }: { brand: WalletBrand; iconUrl?: string }
 }
 
 export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
+  const dialogRef = useTradingDialog(isOpen);
   const { connect, connectors } = useWallet();
   const [pendingUid, setPendingUid] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -318,33 +321,35 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-150"
+      className={`${tradingDesign} fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-[140ms]`}
       onClick={() => {
         if (!pendingUid) onClose();
       }}
     >
       <div
         role="dialog"
+        ref={dialogRef}
+        tabIndex={-1}
         aria-modal="true"
         aria-labelledby="wallet-modal-title"
-        className="relative flex w-full max-w-[390px] flex-col overflow-hidden rounded-2xl border border-white/[0.1] bg-[#141414] text-[#e5e2e1] shadow-[0_25px_60px_rgba(0,0,0,0.9),0_0_30px_rgba(183,109,255,0.12)]"
+        className="relative flex w-full max-w-[440px] max-h-[calc(100dvh-24px)] flex-col overflow-hidden rounded-2xl border border-white/[0.1] bg-[#1c1b1b] text-[#f1eef4] shadow-[0_25px_60px_rgba(0,0,0,0.9),0_0_30px_rgba(183,109,255,0.12)]"
         onClick={(event) => event.stopPropagation()}
       >
         {/* Glowing top line */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#ddb7ff] to-transparent z-10" />
 
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#18161f] px-5 py-4">
+        <div className="flex items-center justify-between border-b border-white/[0.08] bg-[#252229] px-5 py-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-[#ddb7ff] shrink-0">
               <Wallet size={17} strokeWidth={2} />
             </div>
             <div>
-              <h2 id="wallet-modal-title" className="font-display text-base font-bold tracking-tight text-white leading-tight">
+              <h2 id="wallet-modal-title" className="font-display text-xl font-semibold tracking-tight text-[#f1eef4] leading-tight">
                 Connect Wallet
               </h2>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#ddb7ff]">
-                ArcSignal Portal
+              <span className="font-mono text-[13px] font-bold uppercase tracking-wider text-[#ddb7ff]">
+                Choose a wallet to continue
               </span>
             </div>
           </div>
@@ -353,22 +358,22 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
             disabled={!!pendingUid}
             onClick={onClose}
             aria-label="Close modal"
-            className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[#94a3b8] transition-all hover:bg-white/10 hover:text-white disabled:opacity-50"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-[#b0abb5] transition-all hover:bg-white/10 hover:text-[#f1eef4] disabled:opacity-50"
           >
             <X size={15} />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-4 flex flex-col gap-2">
+        <div className="p-5 flex flex-col gap-3 min-h-0 overflow-y-auto">
           {errorMessage && (
-            <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2.5 text-xs text-rose-300 animate-in fade-in">
-              <AlertCircle size={14} className="shrink-0 text-rose-400" />
+            <div role="alert" className="flex items-center gap-2 rounded-xl border border-[#ffb4ab]/30 bg-[#ffb4ab]/10 px-3 py-2.5 text-xs text-[#ffb4ab] animate-in fade-in">
+              <AlertCircle size={14} className="shrink-0 text-[#ffb4ab]" />
               <span className="flex-1 leading-4">{errorMessage}</span>
             </div>
           )}
 
-          <div className="flex flex-col gap-1.5 max-h-[340px] overflow-y-auto custom-scrollbar pr-0.5">
+          <div className="flex flex-col gap-1.5 max-h-[min(400px,50dvh)] overflow-y-auto custom-scrollbar pr-0.5">
             {walletOptions.map((option) => {
               const isPending = pendingUid === option.key || (!!option.connector && pendingUid === option.connector.uid);
               const disabled = !!pendingUid && !isPending;
@@ -380,22 +385,22 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
                   type="button"
                   disabled={disabled}
                   onClick={() => handleConnect(option)}
-                  className="group flex w-full items-center justify-between rounded-xl border border-white/[0.06] bg-[#1c1b1b] px-3.5 py-2.5 text-left transition-all duration-150 hover:border-[#ddb7ff]/40 hover:bg-[#252424] hover:shadow-[0_0_15px_rgba(183,109,255,0.08)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="group flex w-full items-center justify-between rounded-xl border border-white/[0.06] bg-[#1c1b1b] px-4 py-4 text-left transition-all duration-[140ms] hover:border-[#ddb7ff]/40 hover:bg-[#252229] hover:shadow-[0_0_15px_rgba(183,109,255,0.08)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <WalletIcon brand={option.brand} iconUrl={option.iconUrl} />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-semibold text-white group-hover:text-[#ddb7ff] transition-colors">
+                        <span className="truncate text-sm font-semibold text-[#f1eef4] group-hover:text-[#ddb7ff] transition-colors">
                           {option.label}
                         </span>
                         {isRecent && (
-                          <span className="rounded-full bg-[#ddb7ff]/20 border border-[#ddb7ff]/30 px-1.5 py-0.2 font-mono text-[9px] font-bold uppercase text-[#ddb7ff]">
+                          <span className="rounded-full bg-[#ddb7ff]/20 border border-[#ddb7ff]/30 px-1.5 py-0.2 font-mono text-[13px] font-bold uppercase text-[#ddb7ff]">
                             Recent
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] text-[#94a3b8]">{option.description}</span>
+                      <span className="text-[13px] text-[#b0abb5]">{option.description}</span>
                     </div>
                   </div>
 
@@ -403,12 +408,12 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
                     {isPending ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-[#ddb7ff]/15 border border-[#ddb7ff]/30 px-2 py-0.5 text-xs font-semibold text-[#ddb7ff]">
                         <Loader2 size={11} className="animate-spin" />
-                        <span className="text-[11px]">Connecting</span>
+                        <span className="text-[13px]">Connecting</span>
                       </span>
                     ) : option.connector ? (
-                      <ChevronRight size={15} className="text-[#64748b] group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+                      <ChevronRight size={15} className="text-[#b0abb5] group-hover:text-[#f1eef4] group-hover:translate-x-0.5 transition-all" />
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.04] border border-white/[0.08] px-2 py-0.5 text-[10px] font-mono text-[#94a3b8] group-hover:text-white">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.04] border border-white/[0.08] px-2 py-0.5 text-[13px] font-mono text-[#b0abb5] group-hover:text-[#f1eef4]">
                         Install <ExternalLink size={10} />
                       </span>
                     )}
@@ -419,7 +424,7 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
           </div>
 
           {/* Security / Sign-in info badge */}
-          <div className="mt-2 flex items-center gap-2.5 rounded-xl border border-[#4fdbc8]/20 bg-[#4fdbc8]/5 px-3 py-2 text-[11px] leading-tight text-[#cbd5e1]">
+          <div className="mt-2 flex items-center gap-2.5 rounded-xl border border-[#4fdbc8]/20 bg-[#4fdbc8]/5 px-3 py-2 text-[13px] leading-tight text-[#f1eef4]">
             <ShieldCheck className="h-4 w-4 shrink-0 text-[#4fdbc8]" />
             <span>
               <strong className="text-[#4fdbc8]">Sign-in only.</strong> No transaction or network fee.
@@ -427,7 +432,7 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
           </div>
 
           {/* Footer Terms */}
-          <div className="mt-1 text-center text-[10px] text-[#64748b]">
+          <div className="mt-1 text-center text-[13px] text-[#b0abb5]">
             By connecting, you agree to{' '}
             <a href="/terms" className="text-[#ddb7ff] hover:underline">Terms</a>
             {' '}&{' '}

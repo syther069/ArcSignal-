@@ -1,5 +1,8 @@
 'use client';
 
+import ConnectWalletButton from '@/components/wallet/ConnectWalletButton';
+import { tradingDesign } from '@/components/layout/TradingDesign';
+
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
@@ -378,74 +381,75 @@ export default function PortfolioClient() {
 
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-screen bg-[#131313] text-[#e5e2e1]">
+    <div className={`${tradingDesign} flex min-h-screen bg-[#131313] text-[#f1eef4]`}>
       <Sidebar />
       <main className="lg:ml-[264px] pt-24 pb-20 flex-1 min-w-0">
         <div className="max-w-[1440px] mx-auto w-full px-4 md:px-8">
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="font-[family-name:var(--font-hanken)] text-3xl font-bold text-[#ddb7ff] mb-1">Portfolio</h1>
-          <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#94a3b8] tracking-widest uppercase">
+          <h1 className="font-[family-name:var(--font-hanken)] text-3xl font-semibold text-[#f1eef4] mb-1">Portfolio</h1>
+          <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#b0abb5] tracking-widest uppercase">
             On-Chain Positions · {address ? `${address.slice(0,6)}…${address.slice(-4)}` : 'Not connected'}
           </p>
         </div>
 
         {!address ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-            <div className="w-16 h-16 rounded-full bg-[#1c1b1b] border border-[#3a3939] flex items-center justify-center">
-              <AlertCircle size={28} className="text-[#94a3b8]" />
+            <div className="w-16 h-16 rounded-full bg-[#1c1b1b] border border-[#403947] flex items-center justify-center">
+              <AlertCircle size={28} className="text-[#b0abb5]" />
             </div>
-            <p className="font-[family-name:var(--font-hanken)] text-lg text-white">Connect your wallet</p>
-            <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#94a3b8]">to view your positions</p>
+            <p className="font-[family-name:var(--font-hanken)] text-lg text-[#f1eef4]">Connect your wallet</p>
+            <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#b0abb5]">to view your positions</p>
+            <ConnectWalletButton />
           </div>
         ) : loading ? (
           <>
             {/* ── Stats Bar Skeleton ─────────────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
                {Array.from({length: 4}).map((_, i) => (
-                 <div key={i} className="rounded-xl border border-[#3a3939] bg-[#1c1b1b] p-5 h-[100px] animate-pulse" />
+                 <div key={i} className="rounded-xl border border-[#403947] bg-[#1c1b1b] p-5 h-[100px] animate-pulse" />
                ))}
             </div>
 
             {/* ── Tabs Skeleton ──────────────────────────────────────────────────────── */}
-            <div className="flex items-center border border-[#3a3939] rounded-lg overflow-hidden mb-6 w-fit animate-pulse bg-[#1c1b1b]">
-               <div className="w-24 h-9 border-r border-[#3a3939]" />
-               <div className="w-32 h-9 border-r border-[#3a3939]" />
+            <div className="flex items-center border border-[#403947] rounded-lg overflow-hidden mb-6 w-fit animate-pulse bg-[#1c1b1b]">
+               <div className="w-24 h-9 border-r border-[#403947]" />
+               <div className="w-32 h-9 border-r border-[#403947]" />
                <div className="w-20 h-9" />
             </div>
 
             {/* ── Positions List Skeleton ────────────────────────────────────────────── */}
             <div className="flex flex-col gap-3">
                {Array.from({length: 3}).map((_, i) => (
-                 <div key={i} className="rounded-xl border border-[#3a3939] bg-[#1c1b1b] p-5 h-[146px] animate-pulse" />
+                 <div key={i} className="rounded-xl border border-[#403947] bg-[#1c1b1b] p-5 h-[146px] animate-pulse" />
                ))}
             </div>
           </>
         ) : (
           <>
             {/* ── Stats Bar (Unified Analytics Design System) ─────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
               <StatCardCustom
                 title="Total Staked"
                 value={`${stats.totalStaked.toFixed(2)} USDC`}
                 icon={<Coins size={16} />}
-                accent={{ color: '#c4b5fd', bg: 'rgba(196,181,253,0.09)' }}
+                accent={{ color: '#ddb7ff', bg: 'rgba(221,183,255,0.09)' }}
               />
               <StatCardCustom
                 title="Net P&L"
                 value={`${stats.totalPnl >= 0 ? '+' : ''}${stats.totalPnl.toFixed(2)} USDC`}
                 icon={stats.totalPnl >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
                 accent={{
-                  color: stats.totalPnl >= 0 ? '#86efac' : '#ffb4ab',
-                  bg: stats.totalPnl >= 0 ? 'rgba(134,239,172,0.09)' : 'rgba(255,180,171,0.09)'
+                  color: stats.totalPnl >= 0 ? '#4fdbc8' : '#ffb4ab',
+                  bg: stats.totalPnl >= 0 ? 'rgba(79,219,200,0.09)' : 'rgba(255,180,171,0.09)'
                 }}
               />
               <StatCardCustom
                 title="Win Rate"
                 value={`${stats.winRate.toFixed(1)}%`}
                 icon={<Trophy size={16} />}
-                accent={{ color: '#fbbf24', bg: 'rgba(251,191,36,0.09)' }}
+                accent={{ color: '#f2c66d', bg: 'rgba(242,198,109,0.09)' }}
               />
               <StatCardCustom
                 title="Unclaimed"
@@ -456,7 +460,7 @@ export default function PortfolioClient() {
             </div>
 
             {/* ── Tabs (Unified Primary Palette) ──────────────────────────────────────── */}
-            <div className="flex items-center gap-0 border border-[#3a3939] rounded-lg overflow-hidden mb-6 w-fit bg-[#1c1b1b]">
+            <div className="flex items-center gap-0 border border-[#403947] rounded-lg overflow-hidden mb-6 w-fit bg-[#1c1b1b]">
               {(['open', 'resolved', 'all'] as Tab[]).map(tab => (
                 <button
                   key={tab}
@@ -464,8 +468,8 @@ export default function PortfolioClient() {
                   aria-pressed={activeTab === tab}
                   className={`min-h-[44px] px-5 py-2.5 font-[family-name:var(--font-jetbrains-mono)] text-xs uppercase tracking-widest transition-all ${
                     activeTab === tab
-                      ? 'bg-[#ddb7ff] text-[#0f172a] font-bold'
-                      : 'bg-transparent text-[#94a3b8] hover:text-white hover:bg-white/5'
+                      ? 'bg-[#ddb7ff] text-[#240b35] font-bold'
+                      : 'bg-transparent text-[#b0abb5] hover:text-[#f1eef4] hover:bg-white/5'
                   }`}
                 >
                   {tab === 'open' ? `Open (${stats.openCount})` : tab === 'resolved' ? `Resolved (${stats.resolved})` : `All (${positions.length})`}
@@ -486,7 +490,7 @@ export default function PortfolioClient() {
                   if (groupPositions.length === 0) return null;
                   const title = group === 'action' ? 'Needs action' : group === 'open' ? 'Awaiting resolution' : 'Settlement history';
                   return <section key={group} className="space-y-3">
-                    <div className="flex items-center gap-3"><h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[11px] uppercase tracking-[0.18em] text-[#94a3b8]">{title}</h2><span className="text-[10px] text-[#64748b]">{groupPositions.length}</span></div>
+                    <div className="flex items-center gap-3"><h2 className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] uppercase tracking-[0.18em] text-[#b0abb5]">{title}</h2><span className="text-[13px] text-[#b0abb5]">{groupPositions.length}</span></div>
                     {groupPositions.map(pos => <PositionCard key={`${pos.market.marketId}-${pos.side}`} pos={pos} onClaim={handleClaim} claiming={!!claiming[pos.market.marketId]} claimTxHash={claimTxHashes[pos.market.marketId]} />)}
                   </section>;
                 })}
@@ -515,11 +519,11 @@ const StatCardCustom = React.memo(function StatCardCustom({
 }) {
   return (
     <div
-      className="bg-[#1c1b1b] border border-[#3a3939] relative overflow-hidden flex flex-col h-full rounded-xl p-5"
+      className="bg-[#1c1b1b] border border-[#403947] relative overflow-hidden flex flex-col h-full rounded-xl p-5"
       style={{ borderTop: `2px solid ${accent.color}` }}
     >
       <div className="flex items-start justify-between mb-3">
-        <span className="font-[family-name:var(--font-inter)] text-[0.72rem] font-medium uppercase tracking-[0.1em] text-[#64748b]">
+        <span className="font-[family-name:var(--font-inter)] text-[0.72rem] font-medium uppercase tracking-[0.1em] text-[#b0abb5]">
           {title}
         </span>
         <span
@@ -529,7 +533,7 @@ const StatCardCustom = React.memo(function StatCardCustom({
           {icon}
         </span>
       </div>
-      <div className="mt-auto font-[family-name:var(--font-jetbrains-mono)] text-2xl font-bold tracking-tight" style={{ color: accent.color }}>
+      <div className="mt-auto font-[family-name:var(--font-jetbrains-mono)] text-[28px] leading-9 font-medium tracking-tight break-words" style={{ color: accent.color }}>
         {value}
       </div>
     </div>
@@ -539,7 +543,6 @@ const StatCardCustom = React.memo(function StatCardCustom({
 const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming, claimTxHash }: { pos: Position; onClaim: (id: string) => void; claiming: boolean; claimTxHash?: string }) {
   const isFollow = pos.side === 0;
   const marketTitle = pos.market.question || pos.market.marketId;
-  const shortTitle = marketTitle.length > 70 ? marketTitle.slice(0, 70) + '…' : marketTitle;
 
   const followPoolUsdc = Number(formatUnits(pos.market.followPool as bigint, 6));
   const fadePoolUsdc   = Number(formatUnits(pos.market.fadePool   as bigint, 6));
@@ -555,10 +558,10 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming, 
   return (
     <div className={`rounded-xl border p-5 transition-all ${
       canClaim
-        ? 'border-[#34d399]/40 bg-[#34d399]/5 shadow-[0_0_24px_rgba(52,211,153,0.08)]'
+        ? 'border-[#4fdbc8]/40 bg-[#4fdbc8]/5 shadow-[0_0_24px_rgba(52,211,153,0.08)]'
         : pos.isResolved && pos.userWon === false
-        ? 'border-[#3a3939] bg-[#131313] opacity-75'
-        : 'border-[#3a3939] bg-[#131313]'
+        ? 'border-[#403947] bg-[#131313] opacity-75'
+        : 'border-[#403947] bg-[#131313]'
     }`}>
       <div className="flex flex-col gap-4">
 
@@ -566,69 +569,77 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming, 
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
             {/* Category */}
-            <span className={`px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border ${
+            <span className={`px-2 py-0.5 rounded text-[13px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border ${
               pos.market.category === 'FOOTBALL'
-                ? 'bg-[#38bdf8]/10 text-[#38bdf8] border-[#38bdf8]/20'
-                : 'bg-[#818cf8]/10 text-[#818cf8] border-[#818cf8]/20'
+                ? 'bg-[#ddb7ff]/10 text-[#ddb7ff] border-[#ddb7ff]/20'
+                : 'bg-[#ddb7ff]/10 text-[#ddb7ff] border-[#ddb7ff]/20'
             }`}>{pos.market.category}</span>
 
             {/* Status */}
             {!pos.isResolved && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#8e8e8e]/30 text-[#8e8e8e]">
+              <span className="px-2 py-0.5 rounded text-[13px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#b0abb5]/30 text-[#b0abb5]">
                 PENDING
               </span>
             )}
             {pos.isResolved && pos.userWon === true && !pos.claimed && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#34d399]/30 text-[#34d399] bg-[#34d399]/10">
+              <span className="px-2 py-0.5 rounded text-[13px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#4fdbc8]/30 text-[#4fdbc8] bg-[#4fdbc8]/10">
                 WON
               </span>
             )}
             {pos.isResolved && pos.userWon === true && pos.claimed && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#8e8e8e]/30 text-[#8e8e8e]">
+              <span className="px-2 py-0.5 rounded text-[13px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#b0abb5]/30 text-[#b0abb5]">
                 CLAIMED
               </span>
             )}
             {pos.isCancelled && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#fbbf24]/30 text-[#fbbf24] bg-[#fbbf24]/10">CANCELLED</span>
+              <span className="px-2 py-0.5 rounded text-[13px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#f2c66d]/30 text-[#f2c66d] bg-[#f2c66d]/10">CANCELLED</span>
             )}
             {pos.isResolved && !pos.isCancelled && pos.userWon === false && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#f87171]/30 text-[#f87171] bg-[#f87171]/10">
+              <span className="px-2 py-0.5 rounded text-[13px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#f3a6c8]/30 text-[#f3a6c8] bg-[#f3a6c8]/10">
                 LOST
               </span>
             )}
           </div>
 
           <div className="flex items-start justify-between gap-4">
-            <Link href={`/market/${pos.market.marketId}`} className="hover:text-[#a855f7] transition-colors flex-1">
-              <p className="font-[family-name:var(--font-hanken)] font-semibold text-white text-sm leading-snug">{shortTitle}</p>
+            <Link href={`/market/${pos.market.marketId}`} className="hover:text-[#b76dff] transition-colors flex-1">
+              <p className="font-[family-name:var(--font-hanken)] font-semibold text-[#f1eef4] text-[18px] leading-[26px]">{marketTitle}</p>
             </Link>
           </div>
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between font-[family-name:var(--font-jetbrains-mono)] text-[10px] uppercase tracking-widest text-[#64748b]"><span>Position progress</span><span className="text-[#ddb7ff]">{stageLabel}</span></div>
-          <div className="h-1.5 rounded-full bg-[#2a2929] overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-[#a855f7] to-[#ddb7ff]" style={{ width: `${stageProgress}%` }} /></div>
-          <p className="text-[11px] text-[#64748b]">{pos.isCancelled ? 'This market was cancelled. No outcome was recorded.' : pos.isResolved ? 'Settlement is complete.' : `Resolution target: ${new Date(pos.market.resolutionTime * 1000).toLocaleString()}`}</p>
+          <div className="flex items-center justify-between font-[family-name:var(--font-jetbrains-mono)] text-[13px] uppercase tracking-widest text-[#b0abb5]"><span>Position progress</span><span className="text-[#ddb7ff]">{stageLabel}</span></div>
+          <div className="h-1.5 rounded-full bg-[#252229] overflow-hidden"><div className="h-full rounded-full bg-[#ddb7ff]" style={{ width: `${stageProgress}%` }} /></div>
+          <p className="text-[13px] text-[#b0abb5]">{pos.isCancelled ? 'This market was cancelled. No outcome was recorded.' : pos.isResolved ? 'Settlement is complete.' : `Resolution target: ${new Date(pos.market.resolutionTime * 1000).toLocaleString()}`}</p>
         </div>
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <MiniStat label="Position" value={isFollow ? 'FOLLOW AI' : 'FADE AI'} color={isFollow ? '#34d399' : '#f87171'} />
+          <MiniStat label="Position" value={isFollow ? 'FOLLOW AI' : 'FADE AI'} color={isFollow ? '#4fdbc8' : '#f3a6c8'} />
           <MiniStat label="Staked" value={`${pos.stakeUsdc.toFixed(2)} USDC`} />
           <MiniStat label="Pool Odds" value={`${odds}×`} />
           {pos.isCancelled ? (
-            <MiniStat label="Settlement" value="Cancelled" color="#fbbf24" />
+            <MiniStat label="Settlement" value="Cancelled" color="#f2c66d" />
           ) : pos.isResolved ? (
             pos.userWon === true ? (
-              <MiniStat label="Payout" value={`+${pos.payout.toFixed(2)} USDC`} color="#34d399" />
+              <MiniStat label="Payout" value={`+${pos.payout.toFixed(2)} USDC`} color="#4fdbc8" />
             ) : (
-              <MiniStat label="P&L" value={`-${pos.stakeUsdc.toFixed(2)} USDC`} color="#f87171" />
+              <MiniStat label="P&L" value={`-${pos.stakeUsdc.toFixed(2)} USDC`} color="#f3a6c8" />
             )
           ) : (
-            <MiniStat label="Est. Payout" value={sidePool > 0 ? `${(pos.stakeUsdc * (totalPool / sidePool)).toFixed(2)} USDC` : '—'} color="#8e8e8e" />
+            <MiniStat label="Est. Payout" value={sidePool > 0 ? `${(pos.stakeUsdc * (totalPool / sidePool)).toFixed(2)} USDC` : '—'} color="#b0abb5" />
           )}
         </div>
 
+        {/* Claim progress reflects the existing wallet and receipt state. */}
+        {(canClaim || pos.claimed || claimTxHash) && (
+          <ol aria-label="Claim progress" aria-live="polite" className="grid grid-cols-3 gap-2 border-t border-[#403947] pt-4 text-[13px]">
+            <li className="text-[#ddb7ff]">1. Review payout</li>
+            <li className={claiming ? 'text-[#ddb7ff]' : 'text-[#b0abb5]'}>{claiming ? '2. Confirming…' : '2. Wallet confirmation'}</li>
+            <li className={pos.claimed || claimTxHash ? 'text-[#4fdbc8]' : 'text-[#b0abb5]'}>{pos.claimed || claimTxHash ? '3. Confirmed' : '3. Receipt'}</li>
+          </ol>
+        )}
         {/* Claim button */}
         {canClaim && (
           <button
@@ -636,9 +647,9 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming, 
             disabled={claiming}
             className="w-full min-h-[48px] py-3 rounded-lg font-[family-name:var(--font-jetbrains-mono)] text-sm font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             style={{
-              background: claiming ? '#1c1b1b' : 'linear-gradient(135deg, #a855f7, #34d399)',
-              color: 'white',
-              boxShadow: claiming ? 'none' : '0 0 20px rgba(168,85,247,0.3)',
+              background: claiming ? '#1c1b1b' : '#ddb7ff',
+              color: claiming ? '#b0abb5' : '#240b35',
+              boxShadow: 'none',
             }}
           >
             {claiming ? (
@@ -652,11 +663,11 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming, 
           </button>
         )}
         {canClaim && (
-          <p className="text-center font-mono text-[10px] text-[#64748b]">
+          <p className="text-center font-mono text-[13px] text-[#b0abb5]">
             Network fee paid in native USDC on Arc.
           </p>
         )}
-        {claimTxHash && <Link href={`/transaction/${claimTxHash}`} className="inline-flex min-h-[44px] items-center justify-center gap-2 text-xs text-[#c4b5fd] hover:text-white transition-colors"><ExternalLink size={13} /> Verify claim transaction</Link>}
+        {claimTxHash && <Link href={`/transaction/${claimTxHash}`} className="inline-flex min-h-[44px] items-center justify-center gap-2 text-xs text-[#ddb7ff] hover:text-[#f1eef4] transition-colors"><ExternalLink size={13} /> Verify claim transaction</Link>}
       </div>
     </div>
   );
@@ -664,9 +675,9 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming, 
 
 const MiniStat = React.memo(function MiniStat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div className="bg-[#0d0d0d] border border-[#3a3939] rounded-lg p-3">
-      <p className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] text-[#8e8e8e] uppercase tracking-widest mb-1">{label}</p>
-      <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm" style={{ color: color || '#e5e2e1' }}>{value}</p>
+    <div className="bg-[#1c1b1b] border border-[#403947] rounded-lg p-3">
+      <p className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] text-[#b0abb5] uppercase tracking-widest mb-1">{label}</p>
+      <p className="font-[family-name:var(--font-jetbrains-mono)] font-bold text-sm" style={{ color: color || '#f1eef4' }}>{value}</p>
     </div>
   );
 });
@@ -679,13 +690,13 @@ const EmptyState = React.memo(function EmptyState({ tab, onRetry }: { tab: Tab; 
   };
   const { title, sub } = msgs[tab];
   return (
-    <div className="flex flex-col items-center justify-center py-20 gap-4 text-center border border-[#3a3939] rounded-xl bg-[#131313]">
-      <Clock size={36} className="text-[#3a3939]" />
-      <p className="font-[family-name:var(--font-hanken)] text-lg text-white">{title}</p>
-      <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#8e8e8e] max-w-xs">{sub}</p>
+    <div className="flex flex-col items-center justify-center py-20 gap-4 text-center border border-[#403947] rounded-xl bg-[#131313]">
+      <Clock size={36} className="text-[#403947]" />
+      <p className="font-[family-name:var(--font-hanken)] text-lg text-[#f1eef4]">{title}</p>
+      <p className="font-[family-name:var(--font-jetbrains-mono)] text-xs text-[#b0abb5] max-w-xs">{sub}</p>
       <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
-        <Link href="/markets" className="min-h-[44px] inline-flex items-center px-5 py-2.5 rounded-lg bg-[#a855f7] text-white font-[family-name:var(--font-jetbrains-mono)] text-xs font-bold tracking-widest uppercase hover:opacity-90 transition-opacity">Browse Markets</Link>
-        <button onClick={onRetry} className="min-h-[44px] inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-[#3a3939] text-[#c4b5fd] font-[family-name:var(--font-jetbrains-mono)] text-xs font-bold tracking-widest uppercase hover:border-[#a855f7]/50 transition-colors"><RefreshCw size={13} /> Refresh</button>
+        <Link href="/markets" className="min-h-[44px] inline-flex items-center px-5 py-2.5 rounded-lg bg-[#b76dff] text-[#f1eef4] font-[family-name:var(--font-jetbrains-mono)] text-xs font-bold tracking-widest uppercase hover:opacity-90 transition-opacity">Browse Markets</Link>
+        <button onClick={onRetry} className="min-h-[44px] inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-[#403947] text-[#ddb7ff] font-[family-name:var(--font-jetbrains-mono)] text-xs font-bold tracking-widest uppercase hover:border-[#b76dff]/50 transition-colors"><RefreshCw size={13} /> Refresh</button>
       </div>
     </div>
   );

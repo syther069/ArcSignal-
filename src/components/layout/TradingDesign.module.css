@@ -1,0 +1,29 @@
+.scope {
+  --font-inter: var(--font-trading-body);
+  font-family: var(--font-trading-body), sans-serif;
+  color: #f1eef4;
+  font-size: 16px;
+  line-height: 24px;
+}
+.scope :where(h1) { font-family: var(--font-hanken), sans-serif; font-size: 32px; line-height: 40px; font-weight: 650; letter-spacing: -.025em; }
+.scope :where(h2, h3) { font-family: var(--font-hanken), sans-serif; font-weight: 600; }
+.scope :where(button, a, input, select, summary) { transition-duration: 140ms; transition-timing-function: ease-out; }
+.scope :where(button, select, summary) { min-height: 44px; }
+.scope :where(button) { font-family: var(--font-trading-body), sans-serif; font-size: 14px; line-height: 20px; }
+.scope :where(input, textarea, select) { font-size: 16px; }
+.scope :where(button, a, input, textarea, select, summary):focus-visible { outline: 2px solid #ddb7ff; outline-offset: 3px; }
+.scope :where(button):active:not(:disabled) { transition-duration: 90ms; }
+.scope :where(button):disabled { cursor: not-allowed; }
+.scope :where(.tabular-nums) { font-variant-numeric: tabular-nums; }
+.scope :where([role='dialog']) { animation: enter 220ms cubic-bezier(.2,.8,.2,1) both; overscroll-behavior: contain; }
+.scope :where([class*='text-[10px]'], [class*='text-[11px]'], [class*='text-[9px]']) { font-size: 13px; line-height: 18px; letter-spacing: normal; }
+.scope :where([class*='animate-pulse']) { animation-duration: 1.4s; }
+.scope :where([class*='font-mono'], [class*='jetbrains']) { font-variant-numeric: tabular-nums; }
+@keyframes enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 639px) {
+  .scope :where(main) { min-width: 0; }
+  .scope :where([role='dialog']) { max-height: calc(100dvh - 24px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scope, .scope * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

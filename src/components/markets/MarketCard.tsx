@@ -1,5 +1,7 @@
 'use client';
 
+import { tradingDesign } from '@/components/layout/TradingDesign';
+
 import React, { useState } from 'react';
 import { formatUnits } from 'viem';
 import { useReadContract } from 'wagmi';
@@ -180,16 +182,16 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
   const resolution = isResolved ? getResolutionExplanation(market) : null;
 
   return (
-    <article className="bg-[#1c1b1b] rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300 ease-in-out hover:shadow-xl hover:shadow-[#ddb7ff]/5 relative overflow-hidden group">
+    <article className={`${tradingDesign} bg-[#1c1b1b] rounded-2xl p-6 flex flex-col gap-5 border border-[#403947] transition-colors duration-[140ms] ease-out hover:border-[#ddb7ff]/40 relative overflow-hidden group`}>
 
       {/* ── Top: Badges + Status ── */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="bg-[#ddb7ff]/10 text-[#ddb7ff] px-2.5 py-1 rounded-md text-[10px] font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider">
+          <span className="bg-[#ddb7ff]/10 text-[#ddb7ff] px-2.5 py-1 rounded-md text-[13px] font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider">
             {market.category}
           </span>
           {timeframe && (
-            <span className="bg-[#4fdbc8]/10 text-[#4fdbc8] px-2.5 py-1 rounded-md text-[10px] font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider">
+            <span className="bg-[#4fdbc8]/10 text-[#4fdbc8] px-2.5 py-1 rounded-md text-[13px] font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider">
               {timeframe}
             </span>
           )}
@@ -197,8 +199,8 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
             <div className="w-1.5 h-1.5 rounded-full bg-[#4fdbc8] animate-pulse-dot" />
           )}
         </div>
-        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wider border ${isResolved
-            ? 'bg-[#94a3b8]/10 border-[#94a3b8]/20 text-[#94a3b8]'
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[13px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wider border ${isResolved
+            ? 'bg-[#b0abb5]/10 border-[#b0abb5]/20 text-[#b0abb5]'
             : 'bg-[#4fdbc8]/10 border-[#4fdbc8]/20 text-[#4fdbc8]'
           }`}>
           {isResolved ? 'RESOLVED' : market.status === 'CLOSED' ? 'CLOSED' : isPendingResolution ? 'PENDING' : 'LIVE'}
@@ -206,48 +208,48 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
       </div>
 
       {/* ── Market question ── */}
-      <h2 className="font-[family-name:var(--font-hanken)] text-2xl md:text-[1.75rem] font-bold text-white leading-[1.15] tracking-tight text-balance">
+      <h2 className="font-[family-name:var(--font-hanken)] text-[18px] font-bold text-[#f1eef4] leading-[26px] tracking-tight text-balance">
         {market.question}
       </h2>
 
       {/* ── Market terms ── */}
-      <div className="rounded-xl border border-[#1e293b] bg-[#0f172a]/35 p-4 space-y-3">
+      <div className="rounded-xl border border-[#403947] bg-[#1c1b1b]/35 p-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#ddb7ff] uppercase tracking-widest">
+          <p className="text-[13px] font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#ddb7ff] uppercase tracking-widest">
             MARKET TERMS
           </p>
-          <span className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-inter)]">
+          <span className="text-[13px] text-[#b0abb5] font-[family-name:var(--font-inter)]">
             {market.category === 'CRYPTO' ? 'Price market' : 'Match market'}
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-[10px] font-[family-name:var(--font-inter)]">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] font-[family-name:var(--font-inter)]">
           <div>
-            <p className="text-[#94a3b8]">Market window (timeframe)</p>
-            <p className="mt-0.5 text-white leading-relaxed">
+            <p className="text-[#b0abb5]">Market window (timeframe)</p>
+            <p className="mt-0.5 text-[#f1eef4] leading-relaxed">
               {openingTime ? `${formatMarketDate(openingTime)} → ` : 'Closes '}
               {formatMarketDate(market.resolutionTime)}
             </p>
           </div>
           <div>
-            <p className="text-[#94a3b8]">Resolution source</p>
-            <p className="mt-0.5 text-white leading-relaxed">{getResolutionSource(market)}</p>
+            <p className="text-[#b0abb5]">Resolution source</p>
+            <p className="mt-0.5 text-[#f1eef4] leading-relaxed">{getResolutionSource(market)}</p>
           </div>
           <div>
-            <p className="text-[#94a3b8]">Target value</p>
-            <p className="mt-0.5 text-white">
+            <p className="text-[#b0abb5]">Target value</p>
+            <p className="mt-0.5 text-[#f1eef4]">
               {target !== null ? `$${target.toLocaleString()}` : 'Defined by match result'}
             </p>
           </div>
           <div>
-            <p className="text-[#94a3b8]">Protocol fee</p>
-            <p className="mt-0.5 text-white">None</p>
+            <p className="text-[#b0abb5]">Protocol fee</p>
+            <p className="mt-0.5 text-[#f1eef4]">None</p>
           </div>
         </div>
 
-        <div className="border-t border-[#1e293b] pt-3">
-          <p className="text-[10px] text-[#94a3b8]">How settlement works</p>
-          <p className="mt-1 text-[10px] text-white leading-relaxed">
+        <div className="border-t border-[#403947] pt-3">
+          <p className="text-[13px] text-[#b0abb5]">How settlement works</p>
+          <p className="mt-1 text-[13px] text-[#f1eef4] leading-relaxed">
             Follow supports the AI prediction; Fade takes the opposing side. After on-chain resolution, winning stakers can claim their proportional share of the losing pool.
           </p>
         </div>
@@ -255,31 +257,31 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
 
       {/* ── FEATURE 2: AI Analysis Preview (always visible before betting) ── */}
       {hasAnalysis && (
-        <div className="bg-[#0f172a]/60 rounded-xl p-4 space-y-4">
+        <div className="bg-[#1c1b1b]/60 rounded-xl p-4 space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-[#ddb7ff]" />
-              <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#ddb7ff] uppercase tracking-widest">
+              <span className="text-[13px] font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#ddb7ff] uppercase tracking-widest">
                 AI MODEL SIGNAL
               </span>
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <p className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-inter)] font-medium">Prediction</p>
+                <p className="text-[13px] text-[#b0abb5] font-[family-name:var(--font-inter)] font-medium">Prediction</p>
                 <p className="text-xs font-[family-name:var(--font-inter)] font-bold text-[#4fdbc8]">
                   {market.analysis?.prediction?.toUpperCase() || 'YES'}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-inter)] font-medium">Confidence</p>
+                <p className="text-[13px] text-[#b0abb5] font-[family-name:var(--font-inter)] font-medium">Confidence</p>
                 <p className="text-xs font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#ddb7ff]">
                   {confidence}%
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-inter)] font-medium">AI model probability</p>
-                <p className="text-xs font-[family-name:var(--font-jetbrains-mono)] font-bold text-white">
+                <p className="text-[13px] text-[#b0abb5] font-[family-name:var(--font-inter)] font-medium">AI model probability</p>
+                <p className="text-xs font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#f1eef4]">
                   {probability}%
                 </p>
               </div>
@@ -287,7 +289,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
           </div>
 
           {/* Confidence bar */}
-          <div className="h-1 w-full bg-[#1e293b] rounded-full overflow-hidden">
+          <div className="h-1 w-full bg-[#403947] rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-[#ddb7ff] to-[#4fdbc8] transition-all duration-1000 rounded-full"
               style={{ width: `${confidence}%` }}
@@ -296,12 +298,12 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
 
           {/* AI Summary snippet */}
           {summarySnippet && (
-            <p className="text-[11px] text-[#94a3b8] leading-relaxed font-[family-name:var(--font-jetbrains-mono)]">
+            <p className="text-[13px] text-[#b0abb5] leading-relaxed font-[family-name:var(--font-jetbrains-mono)]">
               {summarySnippet}
             </p>
           )}
 
-          <p className="text-[10px] text-[#94a3b8]/80 leading-relaxed font-[family-name:var(--font-inter)]">
+          <p className="text-[13px] text-[#b0abb5]/80 leading-relaxed font-[family-name:var(--font-inter)]">
             Model output is separate from the live market-implied pool share below.
           </p>
 
@@ -309,7 +311,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
           {(market.analysis?.keyFactors?.length ?? 0) > 0 && (
             <div className="space-y-1">
               {market.analysis!.keyFactors!.slice(0, 2).map((factor, i) => (
-                <div key={`kf-${i}`} className="flex items-start gap-1.5 text-[10px] text-[#94a3b8]">
+                <div key={`kf-${i}`} className="flex items-start gap-1.5 text-[13px] text-[#b0abb5]">
                   <span className="text-[#4fdbc8] shrink-0 mt-0.5">▸</span>
                   {factor}
                 </div>
@@ -320,50 +322,50 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
       )}
 
       {/* ── Pool amounts and market-implied indicators ── */}
-      <div className="rounded-xl border border-[#1e293b] bg-[#0f172a]/45 p-4 space-y-4">
+      <div className="rounded-xl border border-[#403947] bg-[#1c1b1b]/45 p-4 space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-[family-name:var(--font-inter)] font-semibold text-[#94a3b8] uppercase tracking-wide">
+          <p className="text-[13px] font-[family-name:var(--font-inter)] font-semibold text-[#b0abb5] uppercase tracking-wide">
             LIVE LIQUIDITY
           </p>
-          <p className="text-xs font-[family-name:var(--font-jetbrains-mono)] font-bold text-white">
+          <p className="text-xs font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#f1eef4]">
             {toPoolDisplay(totalPool)} USDC total
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl bg-[#0f172a]/60 p-4">
-          <p className="text-[10px] font-[family-name:var(--font-inter)] font-semibold text-[#94a3b8] uppercase tracking-wide">Follow Pool</p>
-          <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-lg font-bold text-white">
+        <div className="rounded-xl bg-[#1c1b1b]/60 p-4">
+          <p className="text-[13px] font-[family-name:var(--font-inter)] font-semibold text-[#b0abb5] uppercase tracking-wide">Follow Pool</p>
+          <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-lg font-bold text-[#f1eef4]">
             {toPoolDisplay(liveFollowPool)}{' '}
-            <span className="text-xs text-[#94a3b8] font-medium">USDC</span>
+            <span className="text-xs text-[#b0abb5] font-medium">USDC</span>
           </p>
-          <p className="mt-1 text-[10px] text-[#4fdbc8] font-[family-name:var(--font-jetbrains-mono)]">
+          <p className="mt-1 text-[13px] text-[#4fdbc8] font-[family-name:var(--font-jetbrains-mono)]">
             {followShare.toFixed(1)}% market-implied share
           </p>
         </div>
-        <div className="rounded-xl bg-[#0f172a]/60 p-4">
-          <p className="text-[10px] font-[family-name:var(--font-inter)] font-semibold text-[#94a3b8] uppercase tracking-wide">Fade Pool</p>
-          <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-lg font-bold text-white">
+        <div className="rounded-xl bg-[#1c1b1b]/60 p-4">
+          <p className="text-[13px] font-[family-name:var(--font-inter)] font-semibold text-[#b0abb5] uppercase tracking-wide">Fade Pool</p>
+          <p className="mt-1 font-[family-name:var(--font-jetbrains-mono)] text-lg font-bold text-[#f1eef4]">
             {toPoolDisplay(liveFadePool)}{' '}
-            <span className="text-xs text-[#94a3b8] font-medium">USDC</span>
+            <span className="text-xs text-[#b0abb5] font-medium">USDC</span>
           </p>
-          <p className="mt-1 text-[10px] text-[#ffb4ab] font-[family-name:var(--font-jetbrains-mono)]">
+          <p className="mt-1 text-[13px] text-[#ffb4ab] font-[family-name:var(--font-jetbrains-mono)]">
             {fadeShare.toFixed(1)}% market-implied share
           </p>
         </div>
         </div>
 
         {totalPool === 0n ? (
-          <p className="text-[10px] text-[#94a3b8] font-[family-name:var(--font-inter)]">
+          <p className="text-[13px] text-[#b0abb5] font-[family-name:var(--font-inter)]">
             No liquidity yet. Market-implied shares will appear after staking begins.
           </p>
         ) : (
           <div className="space-y-2">
-            <div className="flex h-2 rounded-full overflow-hidden bg-[#1e293b]" aria-label={`Market-implied split: Follow ${followShare.toFixed(1)}%, Fade ${fadeShare.toFixed(1)}%`}>
+            <div className="flex h-2 rounded-full overflow-hidden bg-[#403947]" aria-label={`Market-implied split: Follow ${followShare.toFixed(1)}%, Fade ${fadeShare.toFixed(1)}%`}>
               <div className="h-full bg-[#4fdbc8] transition-all duration-1000" style={{ width: `${followShare}%` }} />
               <div className="h-full bg-[#ffb4ab] transition-all duration-1000" style={{ width: `${fadeShare}%` }} />
             </div>
-            <p className="text-[10px] text-[#94a3b8] leading-relaxed">
+            <p className="text-[13px] text-[#b0abb5] leading-relaxed">
               Pool shares are market-implied indicators, not guaranteed probabilities or forecasts.
             </p>
           </div>
@@ -372,15 +374,15 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
 
       {/* Countdown */}
       <div className="rounded-xl border border-[#ddb7ff]/20 bg-[#ddb7ff]/5 p-4 space-y-2">
-        <div className="flex items-center justify-between gap-3 text-[10px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest">
+        <div className="flex items-center justify-between gap-3 text-[13px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest">
           <span className="text-[#ddb7ff]">Market clock</span>
-          <span className="text-[#94a3b8]">{isResolved ? 'Settlement recorded' : 'No more staking after close'}</span>
+          <span className="text-[#b0abb5]">{isResolved ? 'Settlement recorded' : 'No more staking after close'}</span>
         </div>
-        <div className="flex items-center justify-between gap-3 text-xs font-[family-name:var(--font-jetbrains-mono)] text-white">
+        <div className="flex items-center justify-between gap-3 text-xs font-[family-name:var(--font-jetbrains-mono)] text-[#f1eef4]">
           <span className="tabular-nums" aria-live="polite">
             <CountdownTimer resolutionTime={market.resolutionTime} resolved={isResolved} />
           </span>
-          <span className="text-right text-[10px] text-[#94a3b8] font-[family-name:var(--font-inter)]">
+          <span className="text-right text-[13px] text-[#b0abb5] font-[family-name:var(--font-inter)]">
             {isResolved ? 'Final result available' : `Closes at ${formatMarketDate(market.resolutionTime)}`}
           </span>
         </div>
@@ -389,10 +391,10 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
       {/* ── Follow / Fade buttons OR resolution panel ── */}
       {isActive ? (
         <div className="space-y-3 rounded-xl border border-white/5 bg-[#1c1b1b] p-4">
-          <p className="text-[10px] text-[#ddb7ff] text-center font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest">
+          <p className="text-[13px] text-[#ddb7ff] text-center font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest">
             Make your call
           </p>
-          <p className="text-[11px] text-[#94a3b8] text-center font-[family-name:var(--font-inter)]">
+          <p className="text-[13px] text-[#b0abb5] text-center font-[family-name:var(--font-inter)]">
             AI predicts{' '}
             <span className="text-[#4fdbc8] font-bold">
               {market.analysis?.prediction?.toUpperCase() || 'YES'}
@@ -402,14 +404,14 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={onFollow}
-              className="group flex items-center justify-center gap-2 py-3 bg-[#4fdbc8]/10 text-[#4fdbc8] font-bold text-xs font-[family-name:var(--font-inter)] rounded-xl transition-all hover:bg-[#4fdbc8] hover:text-[#0f172a] active:scale-[0.98]"
+              className="group flex items-center justify-center gap-2 py-3 bg-[#4fdbc8]/10 text-[#4fdbc8] font-bold text-xs font-[family-name:var(--font-inter)] rounded-xl transition-all hover:bg-[#4fdbc8] hover:text-[#1c1b1b] active:scale-[0.98]"
             >
               <CheckCircle2 size={16} className="group-hover:scale-110 transition-transform" />
               Follow AI
             </button>
             <button
               onClick={onFade}
-              className="group flex items-center justify-center gap-2 py-3 bg-[#ffb4ab]/10 text-[#ffb4ab] font-bold text-xs font-[family-name:var(--font-inter)] rounded-xl transition-all hover:bg-[#ffb4ab] hover:text-[#0f172a] active:scale-[0.98]"
+              className="group flex items-center justify-center gap-2 py-3 bg-[#ffb4ab]/10 text-[#ffb4ab] font-bold text-xs font-[family-name:var(--font-inter)] rounded-xl transition-all hover:bg-[#ffb4ab] hover:text-[#1c1b1b] active:scale-[0.98]"
             >
               <XCircle size={16} className="group-hover:scale-110 transition-transform" />
               Fade AI
@@ -425,37 +427,37 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <ShieldCheck className={`w-4 h-4 shrink-0 ${market.outcome === 'FOLLOW' ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'}`} />
-              <p className={`text-[11px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wide ${market.outcome === 'FOLLOW' ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'
+              <p className={`text-[13px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wide ${market.outcome === 'FOLLOW' ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'
               }`}>
                 Resolution details
               </p>
             </div>
-            <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-widest text-white">
+            <span className="text-[13px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-widest text-[#f1eef4]">
               {market.outcome === 'CANCELLED' ? 'CANCELLED' : `${market.outcome} WON`}
             </span>
           </div>
 
           {/* Detail explanation */}
-          <p className="text-[11px] text-[#94a3b8] leading-relaxed font-[family-name:var(--font-jetbrains-mono)]">
+          <p className="text-[13px] text-[#b0abb5] leading-relaxed font-[family-name:var(--font-jetbrains-mono)]">
             {resolution?.detail}
           </p>
 
-          <div className="grid grid-cols-2 gap-3 border-y border-white/5 py-3 text-[10px] font-[family-name:var(--font-inter)]">
+          <div className="grid grid-cols-2 gap-3 border-y border-white/5 py-3 text-[13px] font-[family-name:var(--font-inter)]">
             <div>
-              <p className="text-[#94a3b8]">Resolution source</p>
-              <p className="mt-0.5 text-white">{getResolutionSource(market)}</p>
+              <p className="text-[#b0abb5]">Resolution source</p>
+              <p className="mt-0.5 text-[#f1eef4]">{getResolutionSource(market)}</p>
             </div>
             <div>
-              <p className="text-[#94a3b8]">Final outcome</p>
-              <p className="mt-0.5 text-white">{market.outcome === 'CANCELLED' ? 'No valid result' : market.outcome}</p>
+              <p className="text-[#b0abb5]">Final outcome</p>
+              <p className="mt-0.5 text-[#f1eef4]">{market.outcome === 'CANCELLED' ? 'No valid result' : market.outcome}</p>
             </div>
           </div>
 
-          <p className="text-[10px] text-[#94a3b8]/60 font-[family-name:var(--font-jetbrains-mono)]">
+          <p className="text-[13px] text-[#b0abb5]/60 font-[family-name:var(--font-jetbrains-mono)]">
             Resolution deadline: {new Date(market.resolutionTime * 1000).toUTCString()}
           </p>
 
-          <p className="text-[10px] text-[#94a3b8] leading-relaxed font-[family-name:var(--font-inter)]">
+          <p className="text-[13px] text-[#b0abb5] leading-relaxed font-[family-name:var(--font-inter)]">
             {market.outcome === 'CANCELLED'
               ? 'This market did not produce a valid result.'
               : 'Claim instructions: connect the wallet that staked on the winning side, then claim winnings from your portfolio.'}
@@ -467,7 +469,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
               href={resolution.coinGeckoUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[10px] text-[#ddb7ff] hover:text-[#ddb7ff]/80 transition-colors font-[family-name:var(--font-jetbrains-mono)] underline underline-offset-2"
+              className="inline-flex items-center gap-1 text-[13px] text-[#ddb7ff] hover:text-[#ddb7ff]/80 transition-colors font-[family-name:var(--font-jetbrains-mono)] underline underline-offset-2"
             >
               <ExternalLink className="w-3 h-3" />
               Verify on CoinGecko
@@ -478,14 +480,14 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
         <div className="rounded-lg border border-[#ddb7ff]/25 bg-[#ddb7ff]/5 p-4 space-y-2.5">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 shrink-0 text-[#ddb7ff]" />
-            <p className="text-[11px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wide text-[#ddb7ff]">
+            <p className="text-[13px] font-[family-name:var(--font-jetbrains-mono)] font-bold uppercase tracking-wide text-[#ddb7ff]">
               Pending Resolution
             </p>
           </div>
-          <p className="text-[11px] text-[#94a3b8] leading-relaxed font-[family-name:var(--font-jetbrains-mono)]">
+          <p className="text-[13px] text-[#b0abb5] leading-relaxed font-[family-name:var(--font-jetbrains-mono)]">
             This market has reached its deadline and is waiting for oracle resolution. Follow and Fade are disabled while the final outcome is being recorded.
           </p>
-          <p className="text-[10px] text-[#94a3b8]/60 font-[family-name:var(--font-jetbrains-mono)]">
+          <p className="text-[13px] text-[#b0abb5]/60 font-[family-name:var(--font-jetbrains-mono)]">
             Deadline: {new Date(market.resolutionTime * 1000).toUTCString()}
           </p>
         </div>
@@ -493,25 +495,25 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
 
       {/* ── EXPANDABLE: Full AI Analysis ── */}
       <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded ? 'max-h-[9999px] opacity-100' : 'max-h-0 opacity-0'
+        className={`overflow-hidden transition-all duration-[140ms] ease-in-out ${expanded ? 'max-h-[9999px] opacity-100' : 'max-h-0 opacity-0'
           }`}
         aria-hidden={!expanded}
       >
-        <div className="border-t border-[#1e293b] pt-5 space-y-5">
+        <div className="border-t border-[#403947] pt-5 space-y-5">
           {!hasAnalysis ? (
-            <p className="text-sm text-[#94a3b8] italic">AI analysis loading...</p>
+            <p className="text-sm text-[#b0abb5] italic">AI analysis loading...</p>
           ) : (
             <>
               {/* Full Summary */}
               {market.analysis?.summary && (
-                <div className="bg-[#1c1b1b] border border-[#1e293b] p-5 rounded-lg relative overflow-hidden group">
+                <div className="bg-[#1c1b1b] border border-[#403947] p-5 rounded-lg relative overflow-hidden group">
                   <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
                     <Brain className="w-14 h-14" />
                   </div>
-                  <h3 className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#ddb7ff] uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <h3 className="text-[13px] font-[family-name:var(--font-jetbrains-mono)] text-[#ddb7ff] uppercase tracking-wider mb-3 flex items-center gap-2">
                     <FileText size={13} /> FULL AI SUMMARY
                   </h3>
-                  <p className="text-xs text-[#94a3b8] leading-relaxed relative z-10">
+                  <p className="text-xs text-[#b0abb5] leading-relaxed relative z-10">
                     {market.analysis.summary}
                   </p>
                 </div>
@@ -519,19 +521,19 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
 
               {/* Bull / Bear cases */}
               <div className="grid gap-3 md:grid-cols-2">
-                <div className="bg-[#1c1b1b] p-4 rounded-lg border border-[#1e293b]/50">
-                  <h3 className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#4fdbc8] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <div className="bg-[#1c1b1b] p-4 rounded-lg border border-[#403947]/50">
+                  <h3 className="text-[13px] font-[family-name:var(--font-jetbrains-mono)] text-[#4fdbc8] uppercase tracking-wider mb-2 flex items-center gap-1.5">
                     <TrendingUp size={13} /> BULL CASE
                   </h3>
-                  <p className="text-xs text-[#94a3b8] leading-relaxed">
+                  <p className="text-xs text-[#b0abb5] leading-relaxed">
                     {market.analysis?.bullCase || 'No bull case provided.'}
                   </p>
                 </div>
-                <div className="bg-[#1c1b1b] p-4 rounded-lg border border-[#1e293b]/50">
-                  <h3 className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#ffb4ab] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <div className="bg-[#1c1b1b] p-4 rounded-lg border border-[#403947]/50">
+                  <h3 className="text-[13px] font-[family-name:var(--font-jetbrains-mono)] text-[#ffb4ab] uppercase tracking-wider mb-2 flex items-center gap-1.5">
                     <TrendingDown size={13} /> BEAR CASE
                   </h3>
-                  <p className="text-xs text-[#94a3b8] leading-relaxed">
+                  <p className="text-xs text-[#b0abb5] leading-relaxed">
                     {market.analysis?.bearCase || 'No bear case provided.'}
                   </p>
                 </div>
@@ -540,10 +542,10 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
               {/* All Key / Risk factors */}
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#ddb7ff] uppercase tracking-wider mb-2">KEY FACTORS</p>
+                  <p className="text-[13px] font-[family-name:var(--font-jetbrains-mono)] text-[#ddb7ff] uppercase tracking-wider mb-2">KEY FACTORS</p>
                   <ul className="space-y-1.5 text-xs">
                     {market.analysis?.keyFactors?.map((factor, i) => (
-                      <li key={`factor-${i}`} className="flex items-start gap-2 text-[#94a3b8]">
+                      <li key={`factor-${i}`} className="flex items-start gap-2 text-[#b0abb5]">
                         <span className="text-[#4fdbc8] mt-0.5 shrink-0">●</span>
                         {factor}
                       </li>
@@ -551,10 +553,10 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
                   </ul>
                 </div>
                 <div>
-                  <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#ddb7ff] uppercase tracking-wider mb-2">RISK FACTORS</p>
+                  <p className="text-[13px] font-[family-name:var(--font-jetbrains-mono)] text-[#ddb7ff] uppercase tracking-wider mb-2">RISK FACTORS</p>
                   <ul className="space-y-1.5 text-xs">
                     {market.analysis?.riskFactors?.map((risk, i) => (
-                      <li key={`risk-${i}`} className="flex items-start gap-2 text-[#94a3b8]">
+                      <li key={`risk-${i}`} className="flex items-start gap-2 text-[#b0abb5]">
                         <span className="text-[#ffb4ab] mt-0.5 shrink-0">●</span>
                         {risk}
                       </li>
@@ -566,10 +568,10 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
               {/* Model confidence bar */}
               <div>
                 <div className="flex justify-between items-center mb-1.5">
-                  <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8] uppercase tracking-wider">MODEL CONFIDENCE</p>
-                  <span className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] font-bold text-white">{confidence}%</span>
+                  <p className="text-[13px] font-[family-name:var(--font-jetbrains-mono)] text-[#b0abb5] uppercase tracking-wider">MODEL CONFIDENCE</p>
+                  <span className="text-[13px] font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#f1eef4]">{confidence}%</span>
                 </div>
-                <div className="h-1.5 w-full bg-[#1e293b] rounded-full overflow-hidden">
+                <div className="h-1.5 w-full bg-[#403947] rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-[#ddb7ff] to-[#4fdbc8] transition-all duration-1000"
                     style={{ width: `${confidence}%` }}
@@ -580,15 +582,15 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
               {/* Live pool split */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <p className="text-[10px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8] uppercase tracking-wider">LIVE POOL SPLIT</p>
-                  <div className="flex gap-4 font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-semibold">
+                  <p className="text-[13px] font-[family-name:var(--font-jetbrains-mono)] text-[#b0abb5] uppercase tracking-wider">LIVE POOL SPLIT</p>
+                  <div className="flex gap-4 font-[family-name:var(--font-jetbrains-mono)] text-[13px] font-semibold">
                     <span className="text-[#4fdbc8]">FOLLOW {followShare.toFixed(0)}%</span>
                     <span className="text-[#ffb4ab]">FADE {fadeShare.toFixed(0)}%</span>
                   </div>
                 </div>
                 {totalPool === 0n ? (
-                  <div className="flex h-2 rounded-full overflow-hidden bg-[#1e293b] items-center justify-center">
-                    <span className="text-[8px] font-[family-name:var(--font-jetbrains-mono)] text-[#94a3b8]">NO LIQUIDITY</span>
+                  <div className="flex h-2 rounded-full overflow-hidden bg-[#403947] items-center justify-center">
+                    <span className="text-[8px] font-[family-name:var(--font-jetbrains-mono)] text-[#b0abb5]">NO LIQUIDITY</span>
                   </div>
                 ) : (
                   <div className="flex h-2 rounded-full overflow-hidden">
@@ -604,7 +606,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
                   {market.analysis?.sources?.map((source, i) => (
                     <span
                       key={`source-${i}`}
-                      className="text-[9px] bg-[#1c1b1b] text-[#94a3b8] px-2 py-1 rounded border border-[#1e293b] font-[family-name:var(--font-jetbrains-mono)] uppercase"
+                      className="text-[13px] bg-[#1c1b1b] text-[#b0abb5] px-2 py-1 rounded border border-[#403947] font-[family-name:var(--font-jetbrains-mono)] uppercase"
                     >
                       {source.length > 22 ? source.substring(0, 22) + '...' : source}
                     </span>
@@ -619,7 +621,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
       {/* ── Toggle button ── */}
       <button
         onClick={() => setExpanded((v) => !v)}
-        className="flex items-center gap-1.5 mx-auto text-xs text-[#94a3b8] hover:text-white transition-colors font-[family-name:var(--font-inter)] font-medium pt-2"
+        className="flex items-center gap-1.5 mx-auto text-xs text-[#b0abb5] hover:text-[#f1eef4] transition-colors font-[family-name:var(--font-inter)] font-medium pt-2"
         aria-expanded={expanded}
         aria-label={expanded ? 'Collapse analysis' : 'Expand analysis'}
       >

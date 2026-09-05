@@ -1,5 +1,7 @@
 'use client';
 
+import { tradingDesign } from '@/components/layout/TradingDesign';
+
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -61,18 +63,18 @@ export default function Navbar() {
     { name: 'Docs', href: '/docs' },
   ];
   return (
-    <header className="fixed top-0 w-full z-50 bg-[#131313] border-b border-[#1e293b] shadow-2xl shadow-black/40">
-      <div className="flex justify-between items-center h-16 px-6 lg:px-8 w-full">
+    <header className={`${tradingDesign} fixed top-0 w-full z-50 bg-[#131313] border-b border-[#403947] shadow-2xl shadow-black/40`}>
+      <div className="flex justify-between items-center h-16 px-4 lg:px-8 w-full">
         {/* Left: Logo + Nav */}
-        <div className="flex items-center gap-10">
+        <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
             <Image src="/logo.webp" alt="ArcSignal Logo" width={32} height={32} className="w-8 h-8 object-contain" />
-            <span className="font-[family-name:var(--font-hanken)] text-xl font-bold tracking-tight text-[#e5e2e1]">
+            <span className="font-[family-name:var(--font-hanken)] text-xl font-bold tracking-tight text-[#f1eef4]">
               ArcSignal
             </span>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-8">
+          <nav aria-label="Primary navigation" className={`${['/markets', '/portfolio', '/analytics', '/profile'].some(route => pathname === route || pathname.startsWith(`${route}/`)) ? 'hidden' : 'hidden lg:flex'} items-center gap-5`}>
             {navLinks.map((link) => {
               const isActive =
                 pathname === link.href ||
@@ -83,7 +85,7 @@ export default function Navbar() {
                   href={link.href}
                   className={`text-sm font-medium transition-colors py-5 border-b-2 ${isActive
                       ? 'text-[#ddb7ff] border-[#ddb7ff]'
-                      : 'text-[#94a3b8] hover:text-[#e5e2e1] border-transparent'
+                      : 'text-[#b0abb5] hover:text-[#f1eef4] border-transparent'
                     }`}
                 >
                   {link.name}
@@ -100,13 +102,13 @@ export default function Navbar() {
 
           <div className="flex items-center gap-4">
             {isConnected && (
-              <div className="flex items-center gap-2 bg-[#1c1b1b] px-3 py-1.5 rounded-lg border border-[#3a3939]">
-                <span className="text-sm font-[family-name:var(--font-jetbrains-mono)] text-[#e5e2e1]">
+              <div className="flex items-center gap-2 bg-[#1c1b1b] px-3 py-1.5 rounded-lg border border-[#403947]">
+                <span className="text-sm font-[family-name:var(--font-jetbrains-mono)] text-[#f1eef4]">
                   {usdcBalance} USDC
                 </span>
                 <button
                   onClick={() => { void openFunding(); }}
-                  className="w-5 h-5 rounded-md bg-[#ddb7ff]/10 hover:bg-[#ddb7ff]/20 text-[#ddb7ff] flex items-center justify-center transition-colors border border-[#ddb7ff]/20"
+                  className="w-11 h-11 rounded-md bg-[#ddb7ff]/10 hover:bg-[#ddb7ff]/20 text-[#ddb7ff] flex items-center justify-center transition-colors border border-[#ddb7ff]/20"
                   title="Bridge testnet USDC to Arc"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -121,7 +123,10 @@ export default function Navbar() {
 
         {/* Mobile toggle */}
         <button
-          className="lg:hidden text-[#94a3b8] hover:text-[#e5e2e1] transition-colors"
+          aria-label={mobileMenuOpen ? 'Close navigation' : 'Open navigation'}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="mobile-navigation"
+          className="lg:hidden min-w-[44px] min-h-[44px] flex items-center justify-center text-[#b0abb5] hover:text-[#f1eef4] transition-colors"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -130,7 +135,7 @@ export default function Navbar() {
 
       {/* Mobile dropdown */}
       {mobileMenuOpen && (
-        <div className="lg:hidden absolute top-16 left-0 w-full bg-[#0f172a] border-b border-[#1e293b] p-4 shadow-2xl">
+        <div id="mobile-navigation" className="lg:hidden max-h-[calc(100dvh-144px)] overflow-y-auto absolute top-16 left-0 w-full bg-[#1c1b1b] border-b border-[#403947] p-4 shadow-2xl">
           <nav className="flex flex-col gap-1 mb-6">
             {navLinks.map((link) => (
               <Link
@@ -140,7 +145,7 @@ export default function Navbar() {
                 className={`p-3 rounded-lg text-sm font-medium font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-wider ${pathname === link.href ||
                     (pathname.startsWith(link.href) && link.href !== '/')
                     ? 'bg-[#ddb7ff]/10 text-[#ddb7ff]'
-                    : 'text-[#94a3b8]'
+                    : 'text-[#b0abb5]'
                   }`}
               >
                 {link.name}

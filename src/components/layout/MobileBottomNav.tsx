@@ -1,5 +1,7 @@
 'use client';
 
+import { tradingDesign } from '@/components/layout/TradingDesign';
+
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -18,7 +20,7 @@ export default function MobileBottomNav() {
   if (pathname.startsWith('/docs')) return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[#0f172a] border-t border-[#1e293b] flex items-center justify-around px-2 py-2 safe-area-inset-bottom">
+    <nav className={`${tradingDesign} fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-[#1c1b1b] border-t border-[#403947] flex items-center justify-around px-2 pt-2 pb-[max(8px,env(safe-area-inset-bottom))]`}>
       {mobileNavItems.map((item) => {
         const isActive =
           pathname === item.href ||
@@ -27,14 +29,15 @@ export default function MobileBottomNav() {
           <Link
             key={item.name}
             href={item.href}
-            className={`flex flex-col items-center gap-1 px-4 py-1.5 rounded-lg transition-colors ${
+            aria-current={isActive ? 'page' : undefined}
+            className={`flex flex-col items-center gap-1 flex-1 min-w-0 px-2 py-1.5 rounded-lg transition-colors ${
               isActive
                 ? 'text-[#ddb7ff]'
-                : 'text-[#94a3b8] hover:text-[#e5e2e1]'
+                : 'text-[#b0abb5] hover:text-[#f1eef4]'
             }`}
           >
             <item.icon className="w-5 h-5" />
-            <span className="text-[10px] font-mono uppercase tracking-wider">
+            <span className="text-[13px] font-medium">
               {item.name}
             </span>
           </Link>

@@ -1,5 +1,7 @@
 'use client';
 
+import { tradingDesign } from '@/components/layout/TradingDesign';
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Wallet, ChevronDown, LogOut, AlertTriangle, Loader2, Copy, Check, ShieldCheck } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
@@ -57,7 +59,7 @@ export default function ConnectWalletButton() {
     return (
       <button 
         disabled
-        className="flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-[#ddb7ff]/30 bg-[#1c1b1b] px-4 py-1.5 text-sm font-semibold text-[#ddb7ff] opacity-80 pointer-events-none transition-all duration-200 shadow-[0_0_15px_rgba(183,109,255,0.15)]"
+        className={`${tradingDesign} flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-[#ddb7ff]/30 bg-[#1c1b1b] px-4 py-1.5 text-sm font-semibold text-[#ddb7ff] opacity-80 pointer-events-none transition-all duration-[140ms] shadow-[0_0_15px_rgba(183,109,255,0.15)]`}
       >
         <Loader2 size={16} className="animate-spin text-[#ddb7ff]" />
         Connecting...
@@ -70,9 +72,9 @@ export default function ConnectWalletButton() {
     return (
       <button 
         onClick={() => switchChain({ chainId: arcTestnet.id })}
-        className="flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-amber-500/40 bg-amber-500/10 px-4 py-1.5 text-sm font-semibold text-amber-300 transition-all duration-200 hover:bg-amber-500/20 hover:border-amber-400/60 shadow-[0_0_15px_rgba(245,158,11,0.1)]"
+        className={`${tradingDesign} flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-[#f2c66d]/40 bg-[#f2c66d]/10 px-4 py-1.5 text-sm font-semibold text-[#f2c66d] transition-all duration-[140ms] hover:bg-[#f2c66d]/20 hover:border-[#f2c66d]/60 shadow-[0_0_15px_rgba(245,158,11,0.1)]`}
       >
-        <AlertTriangle size={16} className="text-amber-400" />
+        <AlertTriangle size={16} className="text-[#f2c66d]" />
         Wrong Network
       </button>
     );
@@ -82,66 +84,66 @@ export default function ConnectWalletButton() {
   if (isConnected && shortAddress) {
     return (
       <>
-      <div className="relative" ref={dropdownRef}>
+      <div className={`${tradingDesign} relative`} ref={dropdownRef}>
         <button 
           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="group flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-[#3a3939] bg-[#1c1b1b] hover:bg-[#252424] hover:border-[#ddb7ff]/40 px-3 py-1.5 text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#ddb7ff]/50 focus:ring-offset-2 focus:ring-offset-[#131313] shadow-lg"
+          className={`${tradingDesign} group flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-[#403947] bg-[#1c1b1b] hover:bg-[#252229] hover:border-[#ddb7ff]/40 px-3 py-1.5 text-[#f1eef4] transition-all duration-[140ms] focus:outline-none focus:ring-2 focus:ring-[#ddb7ff]/50 focus:ring-offset-2 focus:ring-offset-[#131313] shadow-lg`}
         >
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#4fdbc8]/15 border border-[#4fdbc8]/30 text-[#4fdbc8]">
             <ShieldCheck size={14} />
           </span>
-          <span className="pr-1 text-sm font-mono font-bold text-[#e5e2e1] group-hover:text-white transition-colors">
+          <span className="pr-1 text-sm font-mono font-bold text-[#f1eef4] group-hover:text-[#f1eef4] transition-colors">
             {shortAddress}
           </span>
-          <ChevronDown size={15} className={`text-[#94a3b8] transition-transform duration-200 ${isDropdownOpen ? 'rotate-180 text-white' : 'group-hover:text-white'}`} />
+          <ChevronDown size={15} className={`text-[#b0abb5] transition-transform duration-[140ms] ${isDropdownOpen ? 'rotate-180 text-[#f1eef4]' : 'group-hover:text-[#f1eef4]'}`} />
         </button>
 
         {isDropdownOpen && (
-          <div className="absolute right-0 top-[50px] z-50 flex w-[280px] flex-col overflow-hidden rounded-[20px] border border-[#3a3939] bg-[#181818]/95 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_30px_rgba(183,109,255,0.1)] text-[#e5e2e1] animate-in fade-in zoom-in-95 duration-150">
+          <div className="absolute right-0 top-[50px] z-50 flex w-[280px] flex-col overflow-hidden rounded-[20px] border border-[#403947] bg-[#252229]/95 backdrop-blur-xl shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_30px_rgba(183,109,255,0.1)] text-[#f1eef4] animate-in fade-in zoom-in-95 duration-[140ms]">
             {/* Full address (copyable) */}
             <button
               onClick={handleCopyAddress}
               className="group flex w-full items-center justify-between border-b border-white/[0.08] p-4 text-left transition-colors hover:bg-white/[0.04]"
             >
               <div className="flex flex-col min-w-0 mr-2">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-[#94a3b8]">Connected Account</span>
-                <span className="truncate font-mono text-xs text-[#cbd5e1] group-hover:text-white transition-colors mt-0.5">
+                <span className="text-[13px] font-mono uppercase tracking-wider text-[#b0abb5]">Connected Account</span>
+                <span className="truncate font-mono text-xs text-[#f1eef4] group-hover:text-[#f1eef4] transition-colors mt-0.5">
                   {address}
                 </span>
               </div>
               {showCopied
-                ? <Check size={15} className="shrink-0 text-emerald-400" />
-                : <Copy size={15} className="shrink-0 text-[#94a3b8] transition-colors group-hover:text-white" />
+                ? <Check size={15} className="shrink-0 text-[#4fdbc8]" />
+                : <Copy size={15} className="shrink-0 text-[#b0abb5] transition-colors group-hover:text-[#f1eef4]" />
               }
             </button>
 
             {/* Network */}
             <div className="border-b border-white/[0.08] p-4 flex items-center justify-between">
               <div>
-                <span className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-[#94a3b8]">Network</span>
+                <span className="mb-1 block font-mono text-[13px] uppercase tracking-wider text-[#b0abb5]">Network</span>
                 <div className="flex items-center gap-2">
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#4fdbc8] opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#4fdbc8]"></span>
                   </span>
-                  <span className="text-sm font-semibold text-white">Arc Testnet</span>
+                  <span className="text-sm font-semibold text-[#f1eef4]">Arc Testnet</span>
                 </div>
               </div>
-              <span className="rounded-full bg-white/[0.05] border border-white/[0.08] px-2 py-0.5 font-mono text-[10px] text-[#94a3b8]">5042002</span>
+              <span className="rounded-full bg-white/[0.05] border border-white/[0.08] px-2 py-0.5 font-mono text-[13px] text-[#b0abb5]">5042002</span>
             </div>
 
             {/* Balance */}
             {balance && (
               <div className="border-b border-white/[0.08] p-4">
-                <span className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-[#94a3b8]">Native Balance</span>
-                <div className="flex items-center justify-between text-sm font-semibold text-white">
+                <span className="mb-1 block font-mono text-[13px] uppercase tracking-wider text-[#b0abb5]">Native Balance</span>
+                <div className="flex items-center justify-between text-sm font-semibold text-[#f1eef4]">
                   <span className="font-mono">{Number(balance.formatted).toFixed(4)} {balance.symbol}</span>
                   <button
                     onClick={() => {
                       setIsDropdownOpen(false);
                       void loadFundUSDCModal().then(() => setIsFundModalOpen(true));
                     }}
-                    className="rounded-full bg-[#ddb7ff]/15 hover:bg-[#ddb7ff]/25 border border-[#ddb7ff]/30 px-2.5 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-[#ddb7ff] transition-all"
+                    className="rounded-full bg-[#ddb7ff]/15 hover:bg-[#ddb7ff]/25 border border-[#ddb7ff]/30 px-2.5 py-1 text-[13px] font-mono font-bold uppercase tracking-wider text-[#ddb7ff] transition-all"
                   >
                     Get USDC
                   </button>
@@ -155,7 +157,7 @@ export default function ConnectWalletButton() {
                 disconnect();
                 setIsDropdownOpen(false);
               }}
-              className="flex w-full items-center gap-2.5 p-4 text-left text-rose-400 transition-colors hover:bg-rose-500/10 hover:text-rose-300"
+              className="flex w-full items-center gap-2.5 p-4 text-left text-[#ffb4ab] transition-colors hover:bg-[#ffb4ab]/10 hover:text-[#ffb4ab]"
             >
               <LogOut size={16} />
               <span className="text-sm font-semibold">Disconnect</span>
@@ -176,12 +178,12 @@ export default function ConnectWalletButton() {
     <>
       <button 
         onClick={() => setIsModalOpen(true)}
-        className="group relative flex min-h-[42px] items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-[#1c1b1b] px-4 py-1.5 text-white transition-all duration-200 hover:bg-[#252424] hover:border-[#ddb7ff]/50 hover:shadow-[0_0_20px_rgba(183,109,255,0.2)] focus:outline-none focus:ring-2 focus:ring-[#ddb7ff]/50 focus:ring-offset-2 focus:ring-offset-[#131313] disabled:pointer-events-none disabled:opacity-50"
+        className={`${tradingDesign} group relative flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-white/[0.12] bg-[#ddb7ff] px-4 py-2.5 text-[#240b35] transition-all duration-[140ms] hover:bg-[#ddb7ff]/90 hover:border-[#ddb7ff]/50 hover:shadow-[0_0_20px_rgba(183,109,255,0.2)] focus:outline-none focus:ring-2 focus:ring-[#ddb7ff]/50 focus:ring-offset-2 focus:ring-offset-[#131313] disabled:pointer-events-none disabled:opacity-50`}
       >
-        <span className="text-sm font-bold tracking-tight text-white group-hover:text-[#ddb7ff] transition-colors">
+        <span className="text-sm font-semibold tracking-tight text-[#240b35] transition-colors">
           Connect wallet
         </span>
-        <Wallet size={15} className="text-[#ddb7ff] transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-white" />
+        <Wallet size={15} className="text-[#240b35] transition-transform duration-[140ms]" />
       </button>
 
       <WalletModal 

@@ -1,5 +1,7 @@
 'use client';
 
+import { tradingDesign, useTradingDialog } from '@/components/layout/TradingDesign';
+
 import React, { useEffect, useState } from 'react';
 import { useAccount, useWalletClient, usePublicClient, useReadContract } from 'wagmi';
 import { decodeEventLog, parseUnits, formatUnits } from 'viem';
@@ -74,6 +76,7 @@ export interface StakeModalProps {
 }
 
 export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
+  const dialogRef = useTradingDialog(isOpen);
   const router = useRouter();
   const [amount, setAmount] = useState('');
   const [selectedSide, setSelectedSide] = useState<StakeSide>(side);
@@ -161,21 +164,21 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         bg: 'bg-[#b76dff]/10',
         focus: 'focus-within:border-[#ddb7ff]',
         ring: 'shadow-[0_0_35px_rgba(221,183,255,0.18)]',
-        btnActive: 'bg-gradient-to-r from-[#b76dff] to-[#ddb7ff] text-[#121212]',
-        pillActive: 'bg-[#ddb7ff] text-[#121212]',
+        btnActive: 'bg-gradient-to-r from-[#b76dff] to-[#ddb7ff] text-[#240b35]',
+        pillActive: 'bg-[#ddb7ff] text-[#240b35]',
       }
     : {
         label: 'Fade AI',
-        dot: 'bg-[#fb7185]',
-        text: 'text-[#fda4af]',
-        badgeBg: 'bg-[#fb7185]/10',
-        badgeBorder: 'border-[#fb7185]/30',
-        border: 'border-[#fb7185]/35',
-        bg: 'bg-[#fb7185]/10',
-        focus: 'focus-within:border-[#fb7185]',
+        dot: 'bg-[#f3a6c8]',
+        text: 'text-[#f3a6c8]',
+        badgeBg: 'bg-[#f3a6c8]/10',
+        badgeBorder: 'border-[#f3a6c8]/30',
+        border: 'border-[#f3a6c8]/35',
+        bg: 'bg-[#f3a6c8]/10',
+        focus: 'focus-within:border-[#f3a6c8]',
         ring: 'shadow-[0_0_35px_rgba(251,113,133,0.18)]',
-        btnActive: 'bg-gradient-to-r from-[#f43f5e] to-[#fb7185] text-white',
-        pillActive: 'bg-[#fb7185] text-[#121212]',
+        btnActive: 'bg-gradient-to-r from-[#f43f5e] to-[#f3a6c8] text-[#f1eef4]',
+        pillActive: 'bg-[#f3a6c8] text-[#240b35]',
       };
 
   const followProbability = Math.min(Math.max(market.probability ?? market.confidence ?? 50, 1), 99);
@@ -482,31 +485,36 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
 
   return (
     <>
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+    <div className={`${tradingDesign} fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-[140ms]`}>
       {/* Modal Card */}
-      <div className="bg-[#141414] border border-white/[0.1] shadow-[0_20px_60px_rgba(0,0,0,0.9),0_0_40px_rgba(183,109,255,0.08)] w-full max-w-md rounded-2xl relative overflow-hidden flex flex-col max-h-[92vh]">
+      <div ref={dialogRef} tabIndex={-1} onKeyDown={event => { if (event.key === 'Escape') handleClose(); }} role="dialog" aria-modal="true" aria-labelledby="stake-modal-title" className="bg-[#1c1b1b] border border-[#403947] shadow-xl w-full max-w-lg rounded-2xl relative overflow-hidden flex flex-col max-h-[calc(100dvh-24px)]">
         
         {/* Top Violet Brand Line */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#ddb7ff] to-transparent" />
 
         {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-white/[0.08] flex justify-between items-center bg-[#171717]">
+        <div className="px-6 py-4 border-b border-white/[0.08] flex justify-between items-center bg-[#1c1b1b]">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#ddb7ff] animate-pulse" />
-            <span className="font-mono text-[11px] font-bold text-[#ddb7ff] tracking-[0.08em] uppercase">
-              ArcSignal Trading
+            <span id="stake-modal-title" className="font-display text-xl font-semibold text-[#f1eef4]">
+              Place a position
             </span>
           </div>
           <button
             onClick={handleClose}
             disabled={step === 'approving' || step === 'staking' || step === 'confirming'}
-            className="rounded-full p-1.5 text-[#94a3b8] hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-50"
+            className="rounded-full p-1.5 text-[#b0abb5] hover:text-[#f1eef4] hover:bg-white/[0.08] transition-colors disabled:opacity-50"
             aria-label="Close modal"
           >
             <X size={18} />
           </button>
         </div>
 
+        <ol aria-label="Stake progress" className="grid grid-cols-3 gap-3 border-b border-[#403947] px-6 py-3 text-[13px]">
+          <li className={step === 'idle' ? 'text-[#ddb7ff]' : 'text-[#b0abb5]'}>1. Position & amount</li>
+          <li className={step === 'review' ? 'text-[#ddb7ff]' : 'text-[#b0abb5]'}>2. Review</li>
+          <li aria-live="polite" className={step === 'success' ? 'text-[#4fdbc8]' : 'text-[#b0abb5]'}>{step === 'success' ? '3. Confirmed' : '3. Confirm'}</li>
+        </ol>
         {/* Modal Content */}
         <div className="overflow-y-auto custom-scrollbar flex-1">
           
@@ -517,16 +525,16 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                 <CheckCircle2 size={32} className="text-[#ddb7ff]" />
               </div>
               
-              <h3 className="font-display text-2xl font-bold text-white tracking-tight">
+              <h3 className="font-display text-2xl font-bold text-[#f1eef4] tracking-tight">
                 Position Confirmed
               </h3>
               
-              <p className="font-sans text-xs text-[#cbd5e1] max-w-xs leading-relaxed">
-                Your <strong className={isFollow ? 'text-[#ddb7ff]' : 'text-[#fda4af]'}>{isFollow ? 'FOLLOW AI' : 'FADE AI'}</strong> position of <strong className="font-mono text-white">{amountStr} USDC</strong> has been executed on-chain.
+              <p className="font-sans text-xs text-[#f1eef4] max-w-xs leading-relaxed">
+                Your <strong className={isFollow ? 'text-[#ddb7ff]' : 'text-[#f3a6c8]'}>{isFollow ? 'FOLLOW AI' : 'FADE AI'}</strong> position of <strong className="font-mono text-[#f1eef4]">{amountStr} USDC</strong> has been executed on-chain.
               </p>
 
               <div className="bg-[#1c1b1b] w-full p-4 rounded-xl mt-2 border border-white/[0.08] flex flex-col gap-1.5 text-left font-mono">
-                <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider">
+                <span className="text-[13px] text-[#b0abb5] uppercase tracking-wider">
                   Transaction Hash
                 </span>
                 <Link
@@ -539,7 +547,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
 
               <button
                 onClick={handleClose}
-                className="w-full mt-3 bg-[#ddb7ff] hover:bg-[#ead7ff] text-[#121212] font-bold py-3.5 rounded-xl transition-colors font-mono text-xs tracking-wider uppercase shadow-lg"
+                className="w-full mt-3 bg-[#ddb7ff] hover:bg-[#ddb7ff] text-[#240b35] font-bold py-3.5 rounded-xl transition-colors font-mono text-xs tracking-wider uppercase shadow-lg"
               >
                 Done & View Position
               </button>
@@ -549,73 +557,73 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
             /* ── REVIEW / SIGNING CONFIRMATION STATE ── */
             <div className="p-6 space-y-5">
               <div>
-                <p className={`font-mono text-[10px] font-bold ${accent.text} uppercase tracking-widest mb-1`}>
+                <p className={`font-mono text-[13px] font-bold ${accent.text} uppercase tracking-widest mb-1`}>
                   Review Position
                 </p>
-                <h3 className="font-display text-xl font-bold text-white tracking-tight leading-snug">
+                <h3 className="font-display text-xl font-bold text-[#f1eef4] tracking-tight leading-snug">
                   Confirm Parameters Before Signing
                 </h3>
-                <p className="font-sans text-xs text-[#94a3b8] mt-1 leading-relaxed">
+                <p className="font-sans text-xs text-[#b0abb5] mt-1 leading-relaxed">
                   Verify the market side, amount, and projected payout.
                 </p>
               </div>
 
               {/* Review Specs Card */}
-              <div className="rounded-xl border border-white/[0.08] bg-[#181818] p-4 space-y-3 font-mono text-xs">
+              <div className="rounded-xl border border-white/[0.08] bg-[#252229] p-4 space-y-3 font-mono text-xs">
                 <div className="flex justify-between gap-4">
-                  <span className="text-[#94a3b8] font-sans">Market</span>
-                  <span className="text-white text-right max-w-[220px] truncate font-display font-semibold">
+                  <span className="text-[#b0abb5] font-sans">Market</span>
+                  <span className="text-[#f1eef4] text-right max-w-[220px] truncate font-display font-semibold">
                     {(market as any).question || (market as any).title || 'Prediction Market'}
                   </span>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <span className="text-[#94a3b8] font-sans">Direction</span>
+                  <span className="text-[#b0abb5] font-sans">Direction</span>
                   <span className={`${accent.text} font-bold`}>{accent.label}</span>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <span className="text-[#94a3b8] font-sans">Entry Price / Multiplier</span>
-                  <span className="text-white tabular-nums">{entryPriceCents.toFixed(0)}c · {payoutMultiplier.toFixed(2)}x</span>
+                  <span className="text-[#b0abb5] font-sans">Pool split / Multiplier</span>
+                  <span className="text-[#f1eef4] tabular-nums">{entryPriceCents.toFixed(0)}% · {payoutMultiplier.toFixed(2)}x</span>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <span className="text-[#94a3b8] font-sans">Your Stake</span>
-                  <span className="text-white font-bold tabular-nums">{amountStr} USDC</span>
+                  <span className="text-[#b0abb5] font-sans">Your Stake</span>
+                  <span className="text-[#f1eef4] font-bold tabular-nums">{amountStr} USDC</span>
                 </div>
                 <div className="flex justify-between gap-4">
-                    <span className="text-[#94a3b8] font-sans">Contract Fee</span>
-                    <span className="text-[#94a3b8] tabular-nums">0.00 USDC</span>
+                    <span className="text-[#b0abb5] font-sans">Contract Fee</span>
+                    <span className="text-[#b0abb5] tabular-nums">0.00 USDC</span>
                 </div>
                 <div className="space-y-1">
                   <div className="flex justify-between gap-4">
-                    <span className="text-[#94a3b8] font-sans">Network fee</span>
-                    <span className="text-white tabular-nums">{estimatedGas ?? '< $0.01'}</span>
+                    <span className="text-[#b0abb5] font-sans">Network fee</span>
+                    <span className="text-[#f1eef4] tabular-nums">{estimatedGas ?? '< $0.01'}</span>
                   </div>
-                  <p className="text-[10px] text-[#64748b]">{ARC_NETWORK_FEE_HELPER}</p>
+                  <p className="text-[13px] text-[#b0abb5]">{ARC_NETWORK_FEE_HELPER}</p>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <span className="text-[#94a3b8] font-sans">Estimated Pool Share</span>
-                  <span className="text-white tabular-nums">{poolShare.toFixed(2)}%</span>
+                  <span className="text-[#b0abb5] font-sans">Estimated Pool Share</span>
+                  <span className="text-[#f1eef4] tabular-nums">{poolShare.toFixed(2)}%</span>
                 </div>
                 <div className="h-px bg-white/[0.06] w-full" />
                 <div className="flex justify-between gap-4 text-sm">
-                  <span className="text-[#94a3b8] font-sans font-medium">Estimated Win</span>
+                  <span className="text-[#b0abb5] font-sans font-medium">Estimated Win</span>
                   <span className={`${accent.text} font-bold tabular-nums`}>~{estimatedWin.toFixed(2)} USDC</span>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <span className="text-[#94a3b8] font-sans">Net Profit</span>
-                  <span className={`font-bold tabular-nums ${isFollow ? 'text-[#ddb7ff]' : 'text-[#fda4af]'}`}>
+                  <span className="text-[#b0abb5] font-sans">Net Profit</span>
+                  <span className={`font-bold tabular-nums ${isFollow ? 'text-[#ddb7ff]' : 'text-[#f3a6c8]'}`}>
                     {profit >= 0 ? '+' : ''}{profit.toFixed(2)} USDC
                   </span>
                 </div>
               </div>
 
-              <p className="font-sans text-[11px] text-[#64748b] leading-relaxed">
+              <p className="font-sans text-[13px] text-[#b0abb5] leading-relaxed">
                   Payouts are non-custodial estimates calculated from current pool shares. The contract charges no platform fee. Final payout is determined upon oracle settlement.
               </p>
 
               {isWrongNetwork && (
                 <button
                   onClick={() => switchChain({ chainId: arcTestnet.id })}
-                  className="w-full min-h-[44px] rounded-xl border border-amber-500/50 bg-amber-500/10 text-amber-300 text-xs font-semibold font-sans"
+                  className="w-full min-h-[44px] rounded-xl border border-[#f2c66d]/50 bg-[#f2c66d]/10 text-[#f2c66d] text-xs font-semibold font-sans"
                 >
                   Switch to Arc Testnet
                 </button>
@@ -624,14 +632,14 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
               <div className="grid grid-cols-2 gap-3 pt-2 font-sans">
                 <button
                   onClick={() => setStep('idle')}
-                  className="min-h-[46px] rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#cbd5e1] hover:text-white text-xs font-semibold transition-colors"
+                  className="min-h-[46px] rounded-xl border border-white/[0.1] bg-white/[0.04] text-[#f1eef4] hover:text-[#f1eef4] text-xs font-semibold transition-colors"
                 >
                   Back
                 </button>
                 <button
                   onClick={handleStake}
                   disabled={isWrongNetwork || !hasAmount || !!validationMessage}
-                  className="min-h-[46px] rounded-xl bg-[#ddb7ff] hover:bg-[#ead7ff] text-[#121212] text-xs font-bold transition-all disabled:opacity-50 shadow-lg"
+                  className="min-h-[46px] rounded-xl bg-[#ddb7ff] hover:bg-[#ddb7ff] text-[#240b35] text-xs font-bold transition-all disabled:opacity-50 shadow-lg"
                 >
                   Confirm & Sign
                 </button>
@@ -644,13 +652,13 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
               
               {/* Question Summary & Closes Status */}
               <div>
-                <h3 className="font-display text-sm sm:text-[15px] font-bold text-white mb-1.5 leading-snug">
+                <h3 className="font-display text-sm sm:text-[15px] font-bold text-[#f1eef4] mb-1.5 leading-snug">
                   {(market as any).question || (market as any).title || 'Prediction Market'}
                 </h3>
-                <div className="flex items-center gap-2 font-mono text-[11px] text-[#94a3b8]">
+                <div className="flex items-center gap-2 font-mono text-[13px] text-[#b0abb5]">
                   <span className="text-[#ddb7ff] font-semibold">Follow {followProbability.toFixed(0)}%</span>
                   <span>·</span>
-                  <span className="text-[#fda4af] font-semibold">Fade {fadeProbability.toFixed(0)}%</span>
+                  <span className="text-[#f3a6c8] font-semibold">Fade {fadeProbability.toFixed(0)}%</span>
                   <span>·</span>
                   <span className="tabular-nums">Closes {closesLabel}</span>
                 </div>
@@ -664,11 +672,11 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                   onClick={() => setSelectedSide(0)}
                   className={`min-h-[42px] rounded-lg font-mono text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                     isFollow
-                      ? 'bg-[#ddb7ff] text-[#121212] shadow-md'
-                      : 'text-[#94a3b8] hover:text-white hover:bg-white/[0.04]'
+                      ? 'bg-[#ddb7ff] text-[#240b35] shadow-md'
+                      : 'text-[#b0abb5] hover:text-[#f1eef4] hover:bg-white/[0.04]'
                   }`}
                 >
-                  <Sparkles size={14} className={isFollow ? 'text-[#121212]' : 'text-[#ddb7ff]'} />
+                  <Sparkles size={14} className={isFollow ? 'text-[#240b35]' : 'text-[#ddb7ff]'} />
                   <span>Follow AI</span>
                   <span className="opacity-80 tabular-nums">({followProbability.toFixed(0)}%)</span>
                 </button>
@@ -679,11 +687,11 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                   onClick={() => setSelectedSide(1)}
                   className={`min-h-[42px] rounded-lg font-mono text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                     !isFollow
-                      ? 'bg-[#fb7185] text-[#121212] shadow-md'
-                      : 'text-[#94a3b8] hover:text-white hover:bg-white/[0.04]'
+                      ? 'bg-[#f3a6c8] text-[#240b35] shadow-md'
+                      : 'text-[#b0abb5] hover:text-[#f1eef4] hover:bg-white/[0.04]'
                   }`}
                 >
-                  <X size={14} className={!isFollow ? 'text-[#121212]' : 'text-[#fb7185]'} />
+                  <X size={14} className={!isFollow ? 'text-[#240b35]' : 'text-[#f3a6c8]'} />
                   <span>Fade AI</span>
                   <span className="opacity-80 tabular-nums">({fadeProbability.toFixed(0)}%)</span>
                 </button>
@@ -691,11 +699,11 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
 
               {/* Live Direction Spec Indicator */}
               <div className="flex items-center justify-between text-xs font-sans px-1">
-                <span className="inline-flex items-center gap-2 text-white font-medium">
+                <span className="inline-flex items-center gap-2 text-[#f1eef4] font-medium">
                   <span className={`h-2 w-2 rounded-full ${accent.dot} animate-pulse`} />
                   Selected Direction: <strong className={accent.text}>{accent.label}</strong>
                 </span>
-                <span className="font-mono text-[10px] text-[#94a3b8] uppercase tracking-wider">
+                <span className="font-mono text-[13px] text-[#b0abb5] uppercase tracking-wider">
                   {market.category === 'football' ? `${market.homeTeam} vs ${market.awayTeam}` : market.subType || market.category}
                 </span>
               </div>
@@ -703,8 +711,8 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
               {/* Entry Odds Specifications Box */}
               <div className={`rounded-xl border ${accent.border} ${accent.bg} ${accent.ring} p-4 space-y-2.5 transition-all`}>
                 <div className="flex items-center justify-between font-mono">
-                  <span className="text-[10px] uppercase tracking-widest text-[#94a3b8] font-bold">
-                     AI Conviction & Pool Estimate
+                  <span className="text-[13px] uppercase tracking-widest text-[#b0abb5] font-bold">
+                     Pool estimate
                   </span>
                   <span className={`text-xs font-bold ${accent.text} tabular-nums`}>
                      {accent.label} signal · {entryPriceCents.toFixed(0)}%
@@ -713,15 +721,15 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
 
                 <div className="flex items-baseline justify-between gap-4">
                   <div>
-                    <div className="text-2xl font-bold font-mono text-white tabular-nums tracking-tight">
+                    <div className="text-2xl font-bold font-mono text-[#f1eef4] tabular-nums tracking-tight">
                       {payoutMultiplier.toFixed(2)}x
                     </div>
-                    <div className="text-[11px] text-[#94a3b8] font-sans">Current pool payout multiplier</div>
+                    <div className="text-[13px] text-[#b0abb5] font-sans">Current pool payout multiplier</div>
                   </div>
                   
-                  <div className="text-right text-xs font-mono text-[#94a3b8] space-y-0.5">
-                    <div>AI Conviction: <strong className="text-white">{impliedProbability.toFixed(0)}%</strong></div>
-                    <div className="text-[10px] opacity-70">Payout: stake share × total pool</div>
+                  <div className="text-right text-xs font-mono text-[#b0abb5] space-y-0.5">
+                    <div>Current pool split: <strong className="text-[#f1eef4]">{impliedProbability.toFixed(0)}%</strong></div>
+                    <div className="text-[13px] opacity-70">Payout: stake share × total pool</div>
                   </div>
                 </div>
               </div>
@@ -729,13 +737,13 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
               {/* Amount to Stake Input Box */}
               <div className="space-y-2 font-sans">
                 <div className="flex justify-between items-end">
-                  <label className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#94a3b8]">
+                  <label htmlFor="stake-amount" className="font-mono text-[13px] font-bold uppercase tracking-wider text-[#b0abb5]">
                     Amount to Stake
                   </label>
-                  <div className="text-right font-mono text-[11px]">
-                    <span className="text-[#94a3b8]">
+                  <div className="text-right font-mono text-[13px]">
+                    <span className="text-[#b0abb5]">
                       Balance:{' '}
-                      <strong className="text-white tabular-nums">
+                      <strong className="text-[#f1eef4] tabular-nums">
                         {Number(usdcBalanceFormatted).toFixed(2)}
                       </strong>{' '}
                       USDC
@@ -744,13 +752,13 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                 </div>
 
                 {/* Input Field with Violet Focus */}
-                <div className={`relative flex items-center bg-[#0d0d0d] border-2 border-white/[0.1] ${accent.focus} rounded-xl p-4 transition-all`}>
+                <div className={`relative flex items-center bg-[#1c1b1b] border-2 border-white/[0.1] ${accent.focus} rounded-xl p-4 transition-all`}>
                   <div className="flex items-center gap-1.5 mr-3 px-2 py-1 rounded bg-white/[0.06] font-mono text-xs font-bold text-[#ddb7ff]">
                     <DollarSign size={13} className="text-[#ddb7ff]" />
                     <span>USDC</span>
                   </div>
                   
-                  <input
+                  <input id="stake-amount"
                     type="number"
                     min="0"
                     step="0.01"
@@ -759,7 +767,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                       setAmount(e.target.value);
                       setError(null);
                     }}
-                    className="w-full min-w-0 bg-transparent outline-none text-2xl sm:text-3xl font-mono font-bold text-white placeholder:text-white/20 tabular-nums"
+                    className="w-full min-w-0 bg-transparent outline-none text-2xl sm:text-3xl font-mono font-bold text-[#f1eef4] placeholder:text-[#f1eef4]/20 tabular-nums"
                     placeholder="0.00"
                   />
                   
@@ -779,7 +787,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                       key={preset}
                       type="button"
                       onClick={() => handleQuickAdd(preset)}
-                      className="flex-1 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-[#cbd5e1] hover:text-white text-[11px] font-semibold transition-colors"
+                      className="flex-1 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-[#f1eef4] hover:text-[#f1eef4] text-[13px] font-semibold transition-colors"
                     >
                       +${preset}
                     </button>
@@ -787,14 +795,14 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                 </div>
 
                 <div className="flex items-center justify-between text-xs pt-0.5">
-                  <span className="text-[#94a3b8] font-mono text-[11px]">≈ ${parsedAmount.toFixed(2)} USD</span>
+                  <span className="text-[#b0abb5] font-mono text-[13px]">≈ ${parsedAmount.toFixed(2)} USD</span>
                   {validationMessage && !marketClosed && (
-                    <span className="text-[#fda4af] font-mono text-[11px] font-medium text-right">
+                    <span className="text-[#f3a6c8] font-mono text-[13px] font-medium text-right">
                       {validationMessage}
                     </span>
                   )}
                 </div>
-                <p className="font-mono text-[10px] text-[#64748b]">
+                <p className="font-mono text-[13px] text-[#b0abb5]">
                   MAX keeps at least {Number(formatUnits(gasReserve, 6)).toFixed(4)} USDC available for Arc network fees.
                 </p>
                 {insufficientBalance && (
@@ -811,38 +819,38 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
               </div>
 
               {/* Payout Breakdown Specifications */}
-              <div className="rounded-xl border border-white/[0.06] bg-[#161616] p-4 space-y-2.5 font-mono text-xs">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] mb-1">
+              <div className="rounded-xl border border-white/[0.06] bg-[#1c1b1b] p-4 space-y-2.5 font-mono text-xs">
+                <div className="text-[13px] font-bold uppercase tracking-wider text-[#b0abb5] mb-1">
                   Payout Breakdown Specifications
                 </div>
                 
                 <div className="flex justify-between items-center">
-                  <span className="text-[#94a3b8] font-sans">Your Stake</span>
-                  <span className="text-white font-semibold tabular-nums">{parsedAmount.toFixed(2)} USDC</span>
+                  <span className="text-[#b0abb5] font-sans">Your Stake</span>
+                  <span className="text-[#f1eef4] font-semibold tabular-nums">{parsedAmount.toFixed(2)} USDC</span>
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-[#94a3b8] font-sans">Contract Fee</span>
-                  <span className="text-[#94a3b8] tabular-nums">0.00 USDC</span>
+                  <span className="text-[#b0abb5] font-sans">Contract Fee</span>
+                  <span className="text-[#b0abb5] tabular-nums">0.00 USDC</span>
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-[#94a3b8] font-sans">Estimated Pool Share</span>
-                  <span className="text-white tabular-nums">{poolShare.toFixed(2)}%</span>
+                  <span className="text-[#b0abb5] font-sans">Estimated Pool Share</span>
+                  <span className="text-[#f1eef4] tabular-nums">{poolShare.toFixed(2)}%</span>
                 </div>
 
                 <div className="h-px bg-white/[0.06] w-full" />
 
                 <div className="flex justify-between items-center">
-                  <span className="text-white font-sans font-medium">Potential Payout (If Win)</span>
+                  <span className="text-[#f1eef4] font-sans font-medium">Potential Payout (If Win)</span>
                   <span className={`${accent.text} font-bold text-sm tabular-nums`}>
                     {estimatedWin.toFixed(2)} USDC
                   </span>
                 </div>
 
                 <div className="flex justify-between items-center">
-                  <span className="text-[#94a3b8] font-sans">Estimated Net Profit</span>
-                  <span className={`font-bold tabular-nums ${isFollow ? 'text-[#ddb7ff]' : 'text-[#fda4af]'}`}>
+                  <span className="text-[#b0abb5] font-sans">Estimated Net Profit</span>
+                  <span className={`font-bold tabular-nums ${isFollow ? 'text-[#ddb7ff]' : 'text-[#f3a6c8]'}`}>
                     {profit >= 0 ? '+' : ''}{profit.toFixed(2)} USDC
                   </span>
                 </div>
@@ -850,35 +858,35 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
 
               {/* Error Message */}
               {error && (
-                <div className="p-3 bg-[#fb7185]/10 border border-[#fb7185]/30 rounded-xl text-[#fda4af] text-xs font-mono flex items-center gap-2">
+                <div className="p-3 bg-[#f3a6c8]/10 border border-[#f3a6c8]/30 rounded-xl text-[#f3a6c8] text-xs font-mono flex items-center gap-2">
                   <AlertCircle size={14} className="shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
 
               {/* Market Details Dropdown */}
-              <details className="group rounded-xl border border-white/[0.06] bg-[#101010] p-3 text-xs font-mono">
-                <summary className="cursor-pointer list-none text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] flex items-center justify-between">
+              <details className="group rounded-xl border border-white/[0.06] bg-[#1c1b1b] p-3 text-xs font-mono">
+                <summary className="cursor-pointer list-none text-[13px] font-bold uppercase tracking-wider text-[#b0abb5] flex items-center justify-between">
                   <span>Smart Contract & Protocol Specs</span>
-                  <ChevronRight size={12} className="transition-transform group-open:rotate-90 text-[#94a3b8]" />
+                  <ChevronRight size={12} className="transition-transform group-open:rotate-90 text-[#b0abb5]" />
                 </summary>
-                <div className="mt-3 space-y-2 text-[10px] text-[#94a3b8] border-t border-white/[0.04] pt-2">
+                <div className="mt-3 space-y-2 text-[13px] text-[#b0abb5] border-t border-white/[0.04] pt-2">
                   <div className="flex justify-between gap-3">
                     <span>Contract</span>
-                    <span className="text-white truncate max-w-[190px]">{ARCSIGNAL_ADDRESS}</span>
+                    <span className="text-[#f1eef4] truncate max-w-[190px]">{ARCSIGNAL_ADDRESS}</span>
                   </div>
                   {estimatedGas && (
                     <div className="space-y-1">
                       <div className="flex justify-between gap-3">
                         <span>Network fee</span>
-                        <span className="text-white tabular-nums">{estimatedGas}</span>
+                        <span className="text-[#f1eef4] tabular-nums">{estimatedGas}</span>
                       </div>
-                      <p className="text-[#64748b]">{ARC_NETWORK_FEE_HELPER}</p>
+                      <p className="text-[#b0abb5]">{ARC_NETWORK_FEE_HELPER}</p>
                     </div>
                   )}
                   <div className="flex justify-between gap-3">
                     <span>Market ID</span>
-                    <span className="text-white truncate max-w-[190px]">{market.marketId}</span>
+                    <span className="text-[#f1eef4] truncate max-w-[190px]">{market.marketId}</span>
                   </div>
                 </div>
               </details>
@@ -890,12 +898,12 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
 
         {/* Modal Footer CTA */}
         {step !== 'success' && step !== 'review' && (
-          <div className="p-6 pt-2 border-t border-white/[0.06] bg-[#171717]">
+          <div className="p-6 pt-2 border-t border-white/[0.06] bg-[#1c1b1b]">
             {currentAllowance < amountBigInt ? (
               <button
                 onClick={handleApprove}
                 disabled={!canContinue}
-                className="w-full bg-[#ddb7ff] hover:bg-[#ead7ff] text-[#121212] font-mono text-xs font-bold py-4 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2 uppercase tracking-wider"
+                className="w-full bg-[#ddb7ff] hover:bg-[#ddb7ff] text-[#240b35] font-mono text-xs font-bold py-4 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2 uppercase tracking-wider"
               >
                 {step === 'approving' ? (
                   <>
@@ -910,7 +918,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
               <button
                 onClick={() => setStep('review')}
                 disabled={!canContinue}
-                className="w-full bg-[#ddb7ff] hover:bg-[#ead7ff] text-[#121212] font-mono text-xs font-bold py-4 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2 uppercase tracking-wider"
+                className="w-full bg-[#ddb7ff] hover:bg-[#ddb7ff] text-[#240b35] font-mono text-xs font-bold py-4 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2 uppercase tracking-wider"
               >
                 {step === 'staking' || step === 'confirming' ? (
                   <>

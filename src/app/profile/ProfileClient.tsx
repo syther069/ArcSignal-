@@ -1,5 +1,7 @@
 'use client';
 
+import { tradingDesign } from '@/components/layout/TradingDesign';
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import {
@@ -363,7 +365,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
 
   if (!targetAddress) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+      <div className={`${tradingDesign} min-h-screen flex flex-col items-center justify-center p-6 text-center`}>
         <h1 className="text-3xl font-headline-xl text-primary mb-4">Connect Wallet</h1>
         <p className="text-text-muted mb-8 max-w-md mx-auto">
           Please connect your wallet to view your profile.
@@ -374,16 +376,16 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className={`${tradingDesign} min-h-screen bg-background flex`}>
       <Sidebar />
-      <main className="lg:ml-[264px] flex-1 pt-24 pb-20 px-6 overflow-y-auto">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-8">
+      <main className="lg:ml-[264px] flex-1 min-w-0 pt-24 pb-28 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto flex flex-col xl:flex-row gap-6">
       
       {/* ─── LEFT COLUMN: IDENTITY ─── */}
-      <aside className="w-full md:w-80 flex-shrink-0 flex flex-col gap-6">
-        <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-2xl p-6 text-center shadow-xl">
+      <aside className="w-full xl:w-72 flex-shrink-0 flex flex-col gap-6">
+        <div className="bg-[#1c1b1b] border border-[#403947] rounded-2xl p-6 text-center shadow-xl">
           
-          <div className="w-32 h-32 mx-auto rounded-full mb-4 overflow-hidden bg-[#131313] border border-[#3a3939] flex items-center justify-center relative group">
+          <div className="w-24 h-24 mx-auto rounded-full mb-4 overflow-hidden bg-[#131313] border border-[#403947] flex items-center justify-center relative group">
             {avatarUrl ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
@@ -392,45 +394,45 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
             )}
           </div>
           
-          <h1 className="text-3xl font-[family-name:var(--font-hanken)] font-bold text-white tracking-tight mb-2">
+          <h1 className="text-3xl font-[family-name:var(--font-hanken)] font-bold text-[#f1eef4] tracking-tight mb-2">
             {username || 'Anonymous User'}
           </h1>
           
-          <div className="flex items-center justify-center gap-2 mb-4 text-[#94a3b8]">
+          <div className="flex items-center justify-center gap-2 mb-4 text-[#b0abb5]">
             <Wallet size={14} />
             <span className="font-code-sm">{fmt(targetAddress)}</span>
-            <button onClick={copyAddress} className="hover:text-[#ddb7ff] transition-colors">
+            <button onClick={copyAddress} aria-label="Copy wallet address" className="hover:text-[#ddb7ff] transition-colors">
               {copied ? <Check size={14} className="text-[#4fdbc8]" /> : <Copy size={14} />}
             </button>
           </div>
           
-          {bio && <p className="text-sm text-[#94a3b8] mb-6 leading-relaxed">{bio}</p>}
+          {bio && <p className="text-sm text-[#b0abb5] mb-6 leading-relaxed">{bio}</p>}
           
           {!isPublic && (
             <button
               onClick={handleEditClick}
-              className="w-full py-3 rounded-xl bg-[#ddb7ff] text-[#0f172a] font-[family-name:var(--font-inter)] font-bold text-sm hover:bg-[#f0dbff] transition-all shadow-lg shadow-[#ddb7ff]/10 flex items-center justify-center gap-2"
+              className="w-full py-3 rounded-xl bg-[#ddb7ff] text-[#1c1b1b] font-[family-name:var(--font-inter)] font-bold text-sm hover:bg-[#ddb7ff] transition-all shadow-lg shadow-[#ddb7ff]/10 flex items-center justify-center gap-2"
             >
               <Pencil size={15} />
               Edit Profile
             </button>
           )}
 
-          <div className="mt-6 flex flex-col gap-2 border-t border-[#3a3939] pt-6 text-left">
+          <div className="mt-6 flex flex-col gap-2 border-t border-[#403947] pt-6 text-left">
             <div className="flex justify-between items-center text-sm">
-              <span className="text-[#94a3b8]">Win Rate</span>
+              <span className="text-[#b0abb5]">Win Rate</span>
               {loadingPositions ? (
-                <div className="h-4 w-12 bg-[#2a2929] rounded animate-pulse"></div>
+                <div className="h-4 w-12 bg-[#252229] rounded animate-pulse"></div>
               ) : (
-                <span className="font-code-sm text-[#fbbf24] font-bold">{stats.winRate.toFixed(1)}%</span>
+                <span className="font-code-sm text-[#f2c66d] font-bold">{stats.winRate.toFixed(1)}%</span>
               )}
             </div>
             <div className="flex justify-between items-center text-sm">
-              <span className="text-[#94a3b8]">Net P&L</span>
+              <span className="text-[#b0abb5]">Net P&L</span>
               {loadingPositions ? (
-                <div className="h-4 w-16 bg-[#2a2929] rounded animate-pulse"></div>
+                <div className="h-4 w-16 bg-[#252229] rounded animate-pulse"></div>
               ) : (
-                <span className={`font-code-sm font-bold ${stats.netProfit >= 0 ? 'text-[#86efac]' : 'text-[#ffb4ab]'}`}>
+                <span className={`font-code-sm font-bold ${stats.netProfit >= 0 ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'}`}>
                   {stats.netProfit >= 0 ? '+' : ''}{stats.netProfit.toFixed(2)} USDC
                 </span>
               )}
@@ -441,16 +443,16 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
       </aside>
 
       {/* ─── RIGHT COLUMN: CONTENT ─── */}
-      <main className="flex-1 flex flex-col gap-6">
+      <section aria-label="Profile activity" className="flex-1 min-w-0 flex flex-col gap-6">
         
         {/* Tabs */}
-        <div className="flex items-center gap-6 border-b border-[#3a3939] pb-4">
+        <div className="flex items-center overflow-x-auto gap-6 border-b border-[#403947] pb-4">
           {['overview', 'positions', 'achievements'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
               className={`text-sm font-[family-name:var(--font-inter)] font-medium tracking-wide transition-colors pb-4 -mb-[17px] capitalize ${
-                activeTab === tab ? 'text-[#ddb7ff] border-b-2 border-[#ddb7ff]' : 'text-[#94a3b8] hover:text-white'
+                activeTab === tab ? 'text-[#ddb7ff] border-b-2 border-[#ddb7ff]' : 'text-[#b0abb5] hover:text-[#f1eef4]'
               }`}
             >
               {tab}
@@ -463,27 +465,27 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {loadingPositions ? (
               <>
-                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl h-[100px] animate-pulse"></div>
-                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl h-[100px] animate-pulse"></div>
-                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl h-[100px] animate-pulse"></div>
+                 <div className="bg-[#1c1b1b] border border-[#403947] rounded-xl h-[100px] animate-pulse"></div>
+                 <div className="bg-[#1c1b1b] border border-[#403947] rounded-xl h-[100px] animate-pulse"></div>
+                 <div className="bg-[#1c1b1b] border border-[#403947] rounded-xl h-[100px] animate-pulse"></div>
               </>
             ) : (
               <>
-                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl p-5 border-t-2 border-t-[#c4b5fd]">
-                    <p className="text-[#64748b] text-[0.72rem] font-medium uppercase tracking-[0.1em] mb-2">Total Staked</p>
-                    <p className="text-2xl font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#c4b5fd]">
+                 <div className="bg-[#1c1b1b] border border-[#403947] rounded-xl p-5 border-t-2 border-t-[#ddb7ff]">
+                    <p className="text-[#b0abb5] text-[0.72rem] font-medium uppercase tracking-[0.1em] mb-2">Total Staked</p>
+                    <p className="text-[28px] leading-9 font-[family-name:var(--font-jetbrains-mono)] font-medium break-words text-[#ddb7ff]">
                       {stats.totalStaked.toLocaleString(undefined, {maximumFractionDigits:2})} USDC
                     </p>
                  </div>
-                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl p-5 border-t-2" style={{ borderTopColor: stats.netProfit >= 0 ? '#86efac' : '#ffb4ab' }}>
-                    <p className="text-[#64748b] text-[0.72rem] font-medium uppercase tracking-[0.1em] mb-2">Total P&L</p>
-                    <p className={`text-2xl font-[family-name:var(--font-jetbrains-mono)] font-bold ${stats.netProfit >= 0 ? 'text-[#86efac]' : 'text-[#ffb4ab]'}`}>
+                 <div className="bg-[#1c1b1b] border border-[#403947] rounded-xl p-5 border-t-2" style={{ borderTopColor: stats.netProfit >= 0 ? '#4fdbc8' : '#ffb4ab' }}>
+                    <p className="text-[#b0abb5] text-[0.72rem] font-medium uppercase tracking-[0.1em] mb-2">Total P&L</p>
+                    <p className={`text-[28px] leading-9 font-[family-name:var(--font-jetbrains-mono)] font-medium break-words ${stats.netProfit >= 0 ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'}`}>
                       {stats.netProfit >= 0 ? '+' : ''}{stats.netProfit.toLocaleString(undefined, {maximumFractionDigits:2})} USDC
                     </p>
                  </div>
-                 <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl p-5 border-t-2 border-t-[#fbbf24]">
-                    <p className="text-[#64748b] text-[0.72rem] font-medium uppercase tracking-[0.1em] mb-2">Markets Entered</p>
-                    <p className="text-2xl font-[family-name:var(--font-jetbrains-mono)] font-bold text-[#fbbf24]">{stats.marketsEntered}</p>
+                 <div className="bg-[#1c1b1b] border border-[#403947] rounded-xl p-5 border-t-2 border-t-[#f2c66d]">
+                    <p className="text-[#b0abb5] text-[0.72rem] font-medium uppercase tracking-[0.1em] mb-2">Markets Entered</p>
+                    <p className="text-[28px] leading-9 font-[family-name:var(--font-jetbrains-mono)] font-medium break-words text-[#f2c66d]">{stats.marketsEntered}</p>
                  </div>
               </>
             )}
@@ -491,37 +493,37 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
         )}
 
         {activeTab === 'positions' && (
-          <div className="bg-[#1c1b1b] border border-[#3a3939] rounded-xl overflow-hidden shadow-xl">
+          <div className="bg-[#1c1b1b] border border-[#403947] rounded-xl overflow-hidden shadow-xl">
             {loadingPositions ? (
               <div className="p-6 space-y-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-[#131313] rounded-lg animate-pulse border border-[#3a3939]">
-                    <div className="h-4 w-48 bg-[#2a2929] rounded"></div>
-                    <div className="h-4 w-16 bg-[#2a2929] rounded"></div>
-                    <div className="h-4 w-24 bg-[#2a2929] rounded"></div>
+                  <div key={i} className="flex items-center justify-between p-4 bg-[#131313] rounded-lg animate-pulse border border-[#403947]">
+                    <div className="h-4 w-48 bg-[#252229] rounded"></div>
+                    <div className="h-4 w-16 bg-[#252229] rounded"></div>
+                    <div className="h-4 w-24 bg-[#252229] rounded"></div>
                   </div>
                 ))}
               </div>
             ) : stakes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-4 text-center border border-[#3a3939] rounded-xl bg-[#1c1b1b]">
-                <Clock size={36} className="text-[#94a3b8] opacity-50" />
+              <div className="flex flex-col items-center justify-center py-20 gap-4 text-center border border-[#403947] rounded-xl bg-[#1c1b1b]">
+                <Clock size={36} className="text-[#b0abb5] opacity-50" />
                 <p className="font-headline-lg text-lg text-[#ddb7ff] font-bold">No positions found</p>
-                <p className="font-code-sm text-xs text-[#94a3b8] max-w-xs">This operator hasn&apos;t staked on any markets yet.</p>
-                <Link href="/markets" className="mt-2 px-5 py-2.5 rounded-xl bg-[#ddb7ff] text-[#0f172a] font-[family-name:var(--font-inter)] text-xs font-bold tracking-wide hover:bg-[#f0dbff] transition-all shadow-lg shadow-[#ddb7ff]/10">
+                <p className="font-code-sm text-xs text-[#b0abb5] max-w-xs">This operator hasn&apos;t staked on any markets yet.</p>
+                <Link href="/markets" className="mt-2 px-5 py-2.5 rounded-xl bg-[#ddb7ff] text-[#1c1b1b] font-[family-name:var(--font-inter)] text-xs font-bold tracking-wide hover:bg-[#ddb7ff] transition-all shadow-lg shadow-[#ddb7ff]/10">
                   Browse Markets →
                 </Link>
               </div>
             ) : (
               <table className="w-full text-left">
-                <thead className="bg-[#131313] border-b border-[#3a3939]">
+                <thead className="bg-[#131313] border-b border-[#403947]">
                   <tr>
-                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-[#94a3b8]">Market</th>
-                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-[#94a3b8]">Side</th>
-                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-[#94a3b8]">Size</th>
-                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-[#94a3b8]">P&L</th>
+                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-[#b0abb5]">Market</th>
+                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-[#b0abb5]">Side</th>
+                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-[#b0abb5]">Size</th>
+                    <th className="px-6 py-4 text-xs font-[family-name:var(--font-inter)] font-semibold uppercase tracking-wider text-[#b0abb5]">P&L</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#3a3939]">
+                <tbody className="divide-y divide-[#403947]">
                   {stakes.map(stake => (
                     <tr key={stake.id} className="hover:bg-white/[0.02]">
                       <td className="px-6 py-4 font-[family-name:var(--font-inter)] font-semibold text-sm">Market #{stake.marketId.slice(0, 8)}...</td>
@@ -533,9 +535,9 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
                       <td className="px-6 py-4 font-code-sm text-sm">{stake.amountUsdc} USDC</td>
                       <td className="px-6 py-4 font-code-sm text-sm">
                         {stake.pnl === undefined ? (
-                           <span className="text-[#94a3b8]">Pending</span>
+                           <span className="text-[#b0abb5]">Pending</span>
                         ) : (
-                           <span className={stake.pnl > 0 ? 'text-[#86efac]' : 'text-[#ffb4ab]'}>
+                           <span className={stake.pnl > 0 ? 'text-[#4fdbc8]' : 'text-[#ffb4ab]'}>
                              {stake.pnl > 0 ? '+' : ''}{stake.pnl.toFixed(2)}
                            </span>
                         )}
@@ -550,26 +552,26 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
 
         {activeTab === 'achievements' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-[#1c1b1b] border-l-2 border-l-[#4fdbc8] border-y border-r border-[#3a3939] p-4 flex gap-4 items-center rounded-r-xl shadow-lg">
+            <div className="bg-[#1c1b1b] border-l-2 border-l-[#4fdbc8] border-y border-r border-[#403947] p-4 flex gap-4 items-center rounded-r-xl shadow-lg">
               <div className="bg-[#4fdbc8]/20 text-[#4fdbc8] p-3 rounded-lg"><TrendingUp size={24} /></div>
               <div>
-                <p className="font-semibold text-sm text-white">First Stake</p>
-                <p className="text-xs text-[#94a3b8]">Executed your first position on ArcSignal.</p>
+                <p className="font-semibold text-sm text-[#f1eef4]">First Stake</p>
+                <p className="text-xs text-[#b0abb5]">Executed your first position on ArcSignal.</p>
               </div>
             </div>
             {stats.totalStaked >= 1000 && (
-              <div className="bg-[#1c1b1b] border-l-2 border-l-[#ddb7ff] border-y border-r border-[#3a3939] p-4 flex gap-4 items-center rounded-r-xl shadow-lg">
+              <div className="bg-[#1c1b1b] border-l-2 border-l-[#ddb7ff] border-y border-r border-[#403947] p-4 flex gap-4 items-center rounded-r-xl shadow-lg">
                 <div className="bg-[#ddb7ff]/20 text-[#ddb7ff] p-3 rounded-lg"><Trophy size={24} /></div>
                 <div>
-                  <p className="font-semibold text-sm text-white">Whale Operator</p>
-                  <p className="text-xs text-[#94a3b8]">Staked over 1,000 USDC total volume.</p>
+                  <p className="font-semibold text-sm text-[#f1eef4]">Whale Operator</p>
+                  <p className="text-xs text-[#b0abb5]">Staked over 1,000 USDC total volume.</p>
                 </div>
               </div>
             )}
           </div>
         )}
 
-      </main>
+      </section>
       </div>
       </main>
       
@@ -581,20 +583,20 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
         >
           <div
             className="relative w-full max-w-[520px] overflow-hidden rounded-lg shadow-2xl"
-            style={{ background: '#131313', border: '1px solid #3a3939' }}
+            style={{ background: '#131313', border: '1px solid #403947' }}
           >
             {/* Header */}
             <div
               className="flex items-center justify-between px-6 py-5"
-              style={{ borderBottom: '1px solid #3a3939' }}
+              style={{ borderBottom: '1px solid #403947' }}
             >
-              <h2 className="text-xl font-bold tracking-tight text-white uppercase" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
+              <h2 className="text-xl font-bold tracking-tight text-[#f1eef4] uppercase" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
                 Edit Profile
               </h2>
               <button
                 onClick={() => setIsEditing(false)}
-                className="transition-colors hover:text-white"
-                style={{ color: '#8e8e8e' }}
+                className="transition-colors hover:text-[#f1eef4]"
+                style={{ color: '#b0abb5' }}
                 type="button"
               >
                 <svg fill="none" height="20" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="20">
@@ -608,14 +610,14 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
 
               {/* Avatar Upload */}
               <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: '#8e8e8e', fontFamily: 'JetBrains Mono, monospace' }}>
+                <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: '#b0abb5', fontFamily: 'JetBrains Mono, monospace' }}>
                   Avatar
                 </label>
                 <div className="flex items-center gap-4">
                   {/* Preview */}
                   <div
                     className="w-16 h-16 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center"
-                    style={{ background: '#1c1b1b', border: '1px solid #3a3939' }}
+                    style={{ background: '#1c1b1b', border: '1px solid #403947' }}
                   >
                     {avatarPreview ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
@@ -635,14 +637,14 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
                       className="w-full px-4 py-2.5 text-sm font-semibold rounded-lg transition-all"
                       style={{
                         background: '#1c1b1b',
-                        border: '1px solid #3a3939',
-                        color: isUploading ? '#8e8e8e' : 'white',
-                        fontFamily: 'Inter, sans-serif',
+                        border: '1px solid #403947',
+                        color: isUploading ? '#b0abb5' : 'white',
+                        fontFamily: 'var(--font-trading-body), sans-serif',
                       }}
                     >
                       {isUploading ? 'Uploading…' : 'Upload Photo'}
                     </button>
-                    <p className="text-[10px] text-center" style={{ color: '#8e8e8e', fontFamily: 'Inter, sans-serif' }}>
+                    <p className="text-[13px] text-center" style={{ color: '#b0abb5', fontFamily: 'var(--font-trading-body), sans-serif' }}>
                       Supports .jpg, .png and .gif
                     </p>
                   </div>
@@ -658,7 +660,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
 
               {/* Username */}
               <div className="space-y-2">
-                <label className="block text-xs font-semibold text-[#8e8e8e]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <label className="block text-xs font-semibold text-[#b0abb5]" style={{ fontFamily: 'var(--font-trading-body), sans-serif' }}>
                   Username
                 </label>
                 <input
@@ -666,20 +668,20 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
                   value={editForm.username}
                   onChange={e => setEditForm({ ...editForm, username: e.target.value })}
                   placeholder="elite_operator"
-                  className="w-full text-white text-sm px-4 py-3 rounded outline-none transition-all"
+                  className="w-full text-[#f1eef4] text-sm px-4 py-3 rounded outline-none transition-all"
                   style={{
                     background: '#0e0e0e',
-                    border: '1px solid #3a3939',
+                    border: '1px solid #403947',
                     fontFamily: 'JetBrains Mono, monospace',
                   }}
-                  onFocus={e => (e.target.style.borderColor = '#a855f7')}
-                  onBlur={e => (e.target.style.borderColor = '#3a3939')}
+                  onFocus={e => (e.target.style.borderColor = '#b76dff')}
+                  onBlur={e => (e.target.style.borderColor = '#403947')}
                 />
               </div>
 
               {/* Bio */}
               <div className="space-y-2">
-                <label className="block text-xs font-semibold text-[#8e8e8e]" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <label className="block text-xs font-semibold text-[#b0abb5]" style={{ fontFamily: 'var(--font-trading-body), sans-serif' }}>
                   Bio
                 </label>
                 <textarea
@@ -687,14 +689,14 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
                   onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
                   placeholder="Tell us about your strategy..."
                   rows={4}
-                  className="w-full text-white text-sm px-4 py-3 rounded outline-none transition-all resize-none"
+                  className="w-full text-[#f1eef4] text-sm px-4 py-3 rounded outline-none transition-all resize-none"
                   style={{
                     background: '#0e0e0e',
-                    border: '1px solid #3a3939',
+                    border: '1px solid #403947',
                     fontFamily: 'JetBrains Mono, monospace',
                   }}
-                  onFocus={e => (e.target.style.borderColor = '#a855f7')}
-                  onBlur={e => (e.target.style.borderColor = '#3a3939')}
+                  onFocus={e => (e.target.style.borderColor = '#b76dff')}
+                  onBlur={e => (e.target.style.borderColor = '#403947')}
                 />
               </div>
 
@@ -703,16 +705,16 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
             {/* Footer */}
             <div
               className="flex items-center justify-end gap-4 px-6 py-5"
-              style={{ borderTop: '1px solid #3a3939' }}
+              style={{ borderTop: '1px solid #403947' }}
             >
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
                 className="px-6 py-2.5 text-sm font-semibold rounded-lg transition-all"
                 style={{
-                  border: '1px solid #3a3939',
+                  border: '1px solid #403947',
                   color: 'white',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-trading-body), sans-serif',
                 }}
                 onMouseEnter={e => ((e.target as HTMLElement).style.background = 'rgba(255,255,255,0.05)')}
                 onMouseLeave={e => ((e.target as HTMLElement).style.background = 'transparent')}
@@ -723,11 +725,11 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
                 type="button"
                 onClick={handleSave}
                 disabled={isUploading || isSaving || isConfirmingProfile}
-                className="px-8 py-2.5 text-[#0f172a] text-sm font-semibold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50"
+                className="px-8 py-2.5 text-[#1c1b1b] text-sm font-semibold rounded-lg transition-all active:scale-[0.98] disabled:opacity-50"
                 style={{
                   background: '#ddb7ff',
                   boxShadow: '0 4px 15px rgba(221,183,255,0.2)',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-trading-body), sans-serif',
                 }}
               >
                 {isUploading ? 'Uploading...' : isConfirmingProfile ? 'Finalizing on Arc...' : isSaving ? 'Sign in Wallet...' : 'Save Profile'}
