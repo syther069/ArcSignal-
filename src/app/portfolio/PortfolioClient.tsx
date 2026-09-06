@@ -6,7 +6,7 @@ import { tradingDesign } from '@/components/layout/TradingDesign';
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
-import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
+import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI, arcTestnet } from '@/lib/contracts';
 import type { Market } from '@/lib/types';
 import { decodeEventLog, formatUnits } from 'viem';
 import Link from 'next/link';
@@ -66,7 +66,7 @@ function writePortfolioCache(address: string, positions: Position[]) {
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function PortfolioClient() {
   const { address } = useAccount();
-  const publicClient = usePublicClient();
+  const publicClient = usePublicClient({ chainId: arcTestnet.id });
   const { data: walletClient } = useWalletClient();
 
   const [positions, setPositions] = useState<Position[]>(() =>

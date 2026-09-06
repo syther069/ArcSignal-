@@ -37,15 +37,12 @@ export const publicClient = createPublicClient({
   }),
 });
 
-const legacyArcSignalAddress = '0x4f33115a18fe6a181be98610ddde3fab71efabed';
-const configuredArcSignalAddress = process.env.NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDRESS?.trim();
-if (configuredArcSignalAddress && !/^0x[a-fA-F0-9]{40}$/.test(configuredArcSignalAddress)) {
-  throw new Error('NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDRESS is invalid');
-}
-// One exported address is shared by browser reads, user writes, cron jobs, and
-// receipt verification. A new refund-capable deployment can be selected through
-// the public address setting; the verified legacy deployment remains the default.
-export const ARCSIGNAL_ADDRESS = (configuredArcSignalAddress ?? legacyArcSignalAddress) as `0x${string}`;
+// The UI, resolver, indexer, and wallet writes must share this ARC Testnet
+// contract. Do not read NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDRESS — a stale Vercel
+// value (0xcb4428…) silently pointed the app at an older 12-market deployment
+// while live markets are created here. Change this constant only after a new
+// deployment is verified on-chain.
+export const ARCSIGNAL_ADDRESS = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as `0x${string}`;
 
 // The checked-in contract revision supports cancelled-market refunds. The
 // currently deployed legacy address does not. Enable this only after deploying

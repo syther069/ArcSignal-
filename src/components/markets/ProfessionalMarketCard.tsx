@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { formatUnits } from 'viem';
 import { useReadContract } from 'wagmi';
 import { ArrowUpRight, Check, Clock3, Sparkles, X } from 'lucide-react';
-import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS, arcTestnet } from '@/lib/contracts';
 import type { SerializableMarket } from '@/lib/markets';
 import { CountdownTimer } from './CountdownTimer';
 
@@ -34,6 +34,7 @@ export function ProfessionalMarketCard({ market, onFollow, onFade }: Professiona
     abi: ARCSIGNAL_ABI,
     functionName: 'getMarket',
     args: [market.marketId],
+    chainId: arcTestnet.id,
     query: { enabled: market.marketId.length > 0, staleTime: 10_000, refetchInterval: 15_000 },
   });
 

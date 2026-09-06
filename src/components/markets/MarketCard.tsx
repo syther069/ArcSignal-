@@ -5,7 +5,7 @@ import { tradingDesign } from '@/components/layout/TradingDesign';
 import React, { useState } from 'react';
 import { formatUnits } from 'viem';
 import { useReadContract } from 'wagmi';
-import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS, arcTestnet } from '@/lib/contracts';
 import type { SerializableMarket } from '@/lib/markets';
 import { CountdownTimer } from './CountdownTimer';
 import {
@@ -143,6 +143,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
     abi: ARCSIGNAL_ABI,
     functionName: 'getMarket',
     args: [market.marketId],
+    chainId: arcTestnet.id,
     query: {
       enabled:
         /^0x[a-fA-F0-9]{40}$/.test(ARCSIGNAL_ADDRESS) &&

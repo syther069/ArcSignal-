@@ -1,7 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { createConfig, http } from 'wagmi';
 import { mainnet, sepolia } from 'wagmi/chains';
-import { injected } from 'wagmi/connectors/injected';
+import { injected } from 'wagmi/connectors';
 import { arcTestnet } from './contracts';
 
 export { arcTestnet };
@@ -29,14 +29,13 @@ export const wagmiConfig = createConfig({
   chains: [arcTestnet, mainnet, sepolia],
   ssr: true,
   connectors: getConnectors(),
+  // Arc's public RPC rate-limits Multicall3 aggregate3 (`Request exceeds defined
+  // limit`). Wagmi then leaves useReadContract data undefined and the UI showed 0 USDC.
+  batch: { multicall: false },
   transports: {
     [arcTestnet.id]: http(arcTestnetConfig.rpcUrl, {
-      batch: {
-        batchSize: 100,
-        wait: 50,
-      },
-      retryCount: 10,
-      retryDelay: 1000,
+      retryCount: 2,
+      retryDelay: 400,
     }),
     [mainnet.id]: http(),
     [sepolia.id]: http(),

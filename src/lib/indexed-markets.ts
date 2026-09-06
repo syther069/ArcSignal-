@@ -20,7 +20,9 @@ export interface MarketIndexHealth {
 }
 
 export const MARKET_INDEX_MAX_AGE_MS = 10 * 60_000;
-export const MARKET_INDEX_MAX_LAG_BLOCKS = 20n;
+// Arc ~0.5s blocks and the production indexer runs every 5 minutes (~600 blocks).
+// 20 blocks (~10s) made a healthy index look unusable between cron runs.
+export const MARKET_INDEX_MAX_LAG_BLOCKS = 2000n;
 
 export function isMarketIndexUsable(
   health: MarketIndexHealth | null,

@@ -3,7 +3,7 @@
 import { tradingDesign, useTradingDialog } from '@/components/layout/TradingDesign';
 
 import React, { useEffect, useState } from 'react';
-import { useAccount, useWalletClient, usePublicClient, useReadContract } from 'wagmi';
+import { useAccount, useWalletClient, usePublicClient } from 'wagmi';
 import { decodeEventLog, parseUnits, formatUnits } from 'viem';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -19,6 +19,7 @@ import {
   formatArcNetworkFee,
 } from '@/lib/arc-gas';
 import { useWallet } from '@/hooks/useWallet';
+import { useArcUsdcBalance } from '@/hooks/useArcUsdcBalance';
 import { useFundUSDCModalLoader } from '@/hooks/useFundUSDCModalLoader';
 import toast from 'react-hot-toast';
 import {
@@ -104,32 +105,22 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
 
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
-  const publicClient = usePublicClient();
+  const publicClient = usePublicClient({ chainId: arcTestnet.id });
   const { isWrongNetwork, switchChain } = useWallet();
-
-  const { data: usdcRaw, refetch: refetchBalance } = useReadContract({
-    address: USDC_ADDRESS,
-    abi: USDC_ABI,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address, staleTime: 10_000 },
-  });
-  const usdcBalanceBigInt = (usdcRaw as bigint | undefined) ?? 0n;
+  const {
+    erc20Raw,
+    allowanceRaw,
+    refetch: refetchWalletUsdc,
+  } = useArcUsdcBalance(address);
+  const usdcBalanceKnown = erc20Raw != null;
+  const usdcBalanceBigInt = erc20Raw ?? 0n;
   const usdcBalanceFormatted = formatUnits(usdcBalanceBigInt, 6);
-
-  const { data: usdcAllowanceRaw, refetch: refetchAllowance } = useReadContract({
-    address: USDC_ADDRESS,
-    abi: USDC_ABI,
-    functionName: 'allowance',
-    args: address ? [address, ARCSIGNAL_ADDRESS] : undefined,
-    query: { enabled: !!address, staleTime: 10_000 },
-  });
-  const currentAllowance = (usdcAllowanceRaw as bigint | undefined) ?? 0n;
+  const currentAllowance = allowanceRaw ?? 0n;
 
   useEffect(() => {
     if (!isOpen || !address) return;
-    void Promise.all([refetchBalance(), refetchAllowance()]);
-  }, [address, isOpen, refetchAllowance, refetchBalance]);
+    void refetchWalletUsdc();
+  }, [address, isOpen, refetchWalletUsdc]);
 
   const parsedAmount = Math.max(Number(amount) || 0, 0);
   const amountBigInt = parseUsdcInput(amount) ?? 0n;
@@ -267,17 +258,12 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   const handleMax = async () => {
     if (!publicClient || !address) return;
     try {
-      const [latest, allowance, gasPrice] = await Promise.all([
-        refetchBalance(),
-        publicClient.readContract({
-          address: USDC_ADDRESS,
-          abi: USDC_ABI,
-          functionName: 'allowance',
-          args: [address, ARCSIGNAL_ADDRESS],
-        }),
+      const [latest, gasPrice] = await Promise.all([
+        refetchWalletUsdc(),
         publicClient.getGasPrice(),
       ]);
-      const balance = (latest.data as bigint | undefined) ?? 0n;
+      const balance = latest.data ? BigInt(latest.data.erc20Raw) : 0n;
+      const allowance = latest.data ? BigInt(latest.data.allowanceRaw) : 0n;
       const { reserve, maxStake } = calculateMaxArcStakeForAllowance(
         balance,
         allowance,
@@ -370,21 +356,15 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         throw new Error('ArcSignal contract address is not configured.');
       }
 
-      const [freshBalance, freshAllowance, gasPrice] = await Promise.all([
-        publicClient.readContract({
-          address: USDC_ADDRESS,
-          abi: USDC_ABI,
-          functionName: 'balanceOf',
-          args: [address],
-        }),
-        publicClient.readContract({
-          address: USDC_ADDRESS,
-          abi: USDC_ABI,
-          functionName: 'allowance',
-          args: [address, ARCSIGNAL_ADDRESS],
-        }),
+      const [walletUsdc, gasPrice] = await Promise.all([
+        refetchWalletUsdc(),
         publicClient.getGasPrice(),
       ]);
+      if (!walletUsdc.data) {
+        throw new Error('USDC balance is temporarily unavailable. Retry in a moment.');
+      }
+      const freshBalance = BigInt(walletUsdc.data.erc20Raw);
+      const freshAllowance = BigInt(walletUsdc.data.allowanceRaw);
 
       const reserve = calculateArcGasReserveUsdc(gasPrice, false);
       setGasReserve(reserve);
@@ -768,7 +748,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
                     <span className="text-[#b0abb5]">
                       Balance:{' '}
                       <strong className="text-[#f1eef4] tabular-nums">
-                        {Number(usdcBalanceFormatted).toFixed(2)}
+                        {usdcBalanceKnown ? Number(usdcBalanceFormatted).toFixed(2) : '…'}
                       </strong>{' '}
                       USDC
                     </span>

@@ -10,7 +10,7 @@ import { CountdownTimer } from '@/components/markets/CountdownTimer';
 import { Market, StakeSide } from '@/types';
 import { useReadContract, useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { decodeEventLog, formatUnits } from 'viem';
-import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI, CANCELLATION_REFUNDS_ENABLED } from '@/lib/contracts';
+import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI, CANCELLATION_REFUNDS_ENABLED, arcTestnet } from '@/lib/contracts';
 import { calculateParimutuelPayoutRaw } from '@/lib/parimutuel-math';
 import type { ResolutionEvidence } from '@/lib/oracle-evidence';
 import toast from 'react-hot-toast';
@@ -58,7 +58,7 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
 
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
-  const publicClient = usePublicClient();
+  const publicClient = usePublicClient({ chainId: arcTestnet.id });
 
   // Read live on-chain pool data
   const { data: chainMarket, refetch: refetchMarket } = useReadContract({
@@ -66,6 +66,7 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
     abi: ARCSIGNAL_ABI,
     functionName: 'getMarket',
     args: [market.marketId],
+    chainId: arcTestnet.id,
     query: { staleTime: 10_000, refetchInterval: 12_000 },
   });
 
@@ -74,6 +75,7 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
     abi: ARCSIGNAL_ABI,
     functionName: 'followStakes',
     args: address ? [market.marketId, address] : undefined,
+    chainId: arcTestnet.id,
     query: { enabled: !!address, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
@@ -82,6 +84,7 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
     abi: ARCSIGNAL_ABI,
     functionName: 'fadeStakes',
     args: address ? [market.marketId, address] : undefined,
+    chainId: arcTestnet.id,
     query: { enabled: !!address, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
@@ -90,6 +93,7 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
     abi: ARCSIGNAL_ABI,
     functionName: 'claimed',
     args: address ? [market.marketId, address] : undefined,
+    chainId: arcTestnet.id,
     query: { enabled: !!address, staleTime: 10_000, refetchInterval: 12_000 },
   });
 

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Activity, AlertTriangle, CheckCircle2, Database, Shield } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS, CANCELLATION_REFUNDS_ENABLED, publicClient } from '@/lib/contracts';
-import { getMarketIndexHealth } from '@/lib/indexed-markets';
+import { getMarketIndexHealth, MARKET_INDEX_MAX_AGE_MS, MARKET_INDEX_MAX_LAG_BLOCKS } from '@/lib/indexed-markets';
 import { getSql } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -40,7 +40,7 @@ export default async function StatusPage() {
   const database = resultValue(databaseResult);
   const lag = head != null && health ? head - health.lastBlock : null;
   const indexAgeMs = health ? Date.now() - health.updatedAtMs : null;
-  const indexHealthy = lag != null && lag >= 0n && lag <= 20n && indexAgeMs != null && indexAgeMs <= 10 * 60_000;
+  const indexHealthy = lag != null && lag >= 0n && lag <= MARKET_INDEX_MAX_LAG_BLOCKS && indexAgeMs != null && indexAgeMs <= MARKET_INDEX_MAX_AGE_MS;
 
   return (
     <div className="flex min-h-screen bg-[#131313] text-[#f1eef4]">

@@ -10,7 +10,7 @@ export function useWallet() {
   const { connect, connectors, status: connectStatus } = useConnect();
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
-  const { data: balance } = useBalance({ address });
+  const { data: balance } = useBalance({ address, chainId: arcTestnet.id });
   
   const isWrongNetwork = isConnected && chain?.id !== arcTestnet.id;
   const shortAddress = address 

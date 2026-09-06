@@ -5,10 +5,9 @@ import { tradingDesign } from '@/components/layout/TradingDesign';
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAccount, useReadContract } from 'wagmi';
-import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
-import { formatUnits } from 'viem';
+import { useAccount } from 'wagmi';
 import ConnectWalletButton from '../wallet/ConnectWalletButton';
+import { useArcUsdcBalance } from '@/hooks/useArcUsdcBalance';
 import Image from 'next/image';
 import { Bell, Menu, X, Plus } from 'lucide-react';
 import { useUnclaimedWinnings } from '@/hooks/useUnclaimedWinnings';
@@ -20,21 +19,13 @@ export default function Navbar() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const unclaimedCount = useUnclaimedWinnings();
-  const { data: usdcRaw, refetch: refetchUsdc } = useReadContract({
-    address: USDC_ADDRESS,
-    abi: USDC_ABI,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address, staleTime: 10_000 },
-  });
-  const usdcBalance =
-    usdcRaw != null
-      ? Number(formatUnits(usdcRaw as bigint, 6)).toFixed(2)
-      : '0.00';
+  const { display: usdcBalance, refetch: refetchUsdc } = useArcUsdcBalance(address);
 
   const prevBalanceRef = useRef<number | null>(null);
   useEffect(() => {
+    if (usdcBalance == null) return;
     const currentBal = parseFloat(usdcBalance);
+    if (!Number.isFinite(currentBal)) return;
     if (prevBalanceRef.current !== null && currentBal > prevBalanceRef.current) {
       const diff = currentBal - prevBalanceRef.current;
       if (diff > 0.01) {
@@ -104,7 +95,7 @@ export default function Navbar() {
             {isConnected && (
               <div className="flex items-center gap-2 bg-[#1c1b1b] px-3 py-1.5 rounded-lg border border-[#403947]">
                 <span className="text-sm font-[family-name:var(--font-jetbrains-mono)] text-[#f1eef4]">
-                  {usdcBalance} USDC
+                  {usdcBalance ?? '…'} USDC
                 </span>
                 <button
                   onClick={() => { void openFunding(); }}

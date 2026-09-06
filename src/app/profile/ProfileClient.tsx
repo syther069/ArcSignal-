@@ -73,7 +73,7 @@ interface ProfileClientProps {
 
 export default function ProfileClient({ walletAddress, isPublic = false }: ProfileClientProps) {
   const { address: connectedAddress, isConnected, chainId } = useAccount();
-  const publicClient = usePublicClient();
+  const publicClient = usePublicClient({ chainId: arcTestnet.id });
   
   // The address we are viewing
   const targetAddress = (isPublic ? walletAddress : connectedAddress) as Address | undefined;
@@ -87,6 +87,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
     abi: ARCSIGNAL_ABI,
     functionName: 'getProfile',
     args: targetAddress ? [targetAddress] : undefined,
+    chainId: arcTestnet.id,
     query: { enabled: !!targetAddress },
   });
 
