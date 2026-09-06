@@ -9,7 +9,7 @@ import {
 import { decodeEventLog, formatUnits, type Address } from 'viem';
 import { calculateParimutuelPnL, deriveMarketStatus, mapCategory } from '@/lib/parimutuel-math';
 import { getChainMarketSnapshot } from '@/lib/market-source';
-import { getMarketIndexHealth } from '@/lib/indexed-markets';
+import { getMarketIndexHealth, isMarketIndexUsable } from '@/lib/indexed-markets';
 
 export const dynamic = 'force-dynamic';
 
@@ -233,7 +233,7 @@ export async function GET(req: Request) {
 
   try {
     const sql = getSql();
-    const [rows, indexHealth] = await Promise.all([sql`
+    const [rows, indexHealth, latestBlock] = await Promise.all([sql`
       select
         p.market_id,
         p.side,
@@ -260,8 +260,8 @@ export async function GET(req: Request) {
         on c.market_id = p.market_id and lower(c.wallet_address) = lower(${address})
       where lower(p.wallet_address) = lower(${address}) and p.amount > 0
       order by p.last_staked_block desc nulls last
-    `, getMarketIndexHealth()]);
-    if (!indexHealth || Date.now() - indexHealth.updatedAtMs > 10 * 60_000) {
+    `, getMarketIndexHealth(), publicClient.getBlockNumber()]);
+    if (!indexHealth || !isMarketIndexUsable(indexHealth, latestBlock)) {
       throw new Error('Portfolio index is stale');
     }
 

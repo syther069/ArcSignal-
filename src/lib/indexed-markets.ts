@@ -19,6 +19,23 @@ export interface MarketIndexHealth {
   updatedAtMs: number;
 }
 
+export const MARKET_INDEX_MAX_AGE_MS = 10 * 60_000;
+export const MARKET_INDEX_MAX_LAG_BLOCKS = 20n;
+
+export function isMarketIndexUsable(
+  health: MarketIndexHealth | null,
+  latestBlock: bigint,
+  nowMs = Date.now(),
+): boolean {
+  if (!health) return false;
+  const ageMs = nowMs - health.updatedAtMs;
+  const lag = latestBlock - health.lastBlock;
+  return ageMs >= 0
+    && ageMs <= MARKET_INDEX_MAX_AGE_MS
+    && lag >= 0n
+    && lag <= MARKET_INDEX_MAX_LAG_BLOCKS;
+}
+
 function parseAnalysis(value: unknown) {
   if (!value) return undefined;
   if (typeof value === 'object') return value as Market['analysis'];

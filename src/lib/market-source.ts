@@ -1,6 +1,7 @@
 import type { Market } from './types';
-import { getIndexedMarkets, getMarketIndexHealth } from './indexed-markets';
+import { getIndexedMarkets, getMarketIndexHealth, isMarketIndexUsable } from './indexed-markets';
 import { getMarketsFromChain } from './markets';
+import { publicClient } from './contracts';
 
 export type MarketSource = 'neon' | 'arc-chain';
 
@@ -15,7 +16,6 @@ export interface MarketSnapshot {
 const CHAIN_SNAPSHOT_LIMIT = 160;
 const CHAIN_SNAPSHOT_TTL_MS = 60_000;
 const CHAIN_SNAPSHOT_TIMEOUT_MS = 12_000;
-const INDEX_FRESHNESS_TTL_MS = 10 * 60_000;
 
 let cachedChainSnapshot: MarketSnapshot | null = null;
 let chainSnapshotInFlight: Promise<MarketSnapshot> | null = null;
@@ -80,15 +80,16 @@ export async function getMarketSnapshot(
   offset: number,
 ): Promise<MarketSnapshot> {
   const requestedCount = Math.min(offset + limit, 10_300);
-  const [indexedResult, healthResult] = await Promise.allSettled([
+  const [indexedResult, healthResult, blockResult] = await Promise.allSettled([
     getIndexedMarkets(requestedCount, 0),
     getMarketIndexHealth(),
+    publicClient.getBlockNumber(),
   ]);
 
   const indexedMarkets = indexedResult.status === 'fulfilled' ? indexedResult.value : [];
   const indexHealth = healthResult.status === 'fulfilled' ? healthResult.value : null;
-  const indexIsFresh = indexHealth !== null
-    && Date.now() - indexHealth.updatedAtMs <= INDEX_FRESHNESS_TTL_MS;
+  const latestBlock = blockResult.status === 'fulfilled' ? blockResult.value : null;
+  const indexIsFresh = latestBlock !== null && isMarketIndexUsable(indexHealth, latestBlock);
 
   if (indexedResult.status === 'rejected') {
     console.warn('Markets index unavailable; using ARC chain snapshot:', indexedResult.reason);
@@ -96,8 +97,11 @@ export async function getMarketSnapshot(
   if (healthResult.status === 'rejected') {
     console.warn('Market index health unavailable; verifying against ARC chain:', healthResult.reason);
   }
+  if (blockResult.status === 'rejected') {
+    console.warn('ARC head unavailable; treating markets index as unverified:', blockResult.reason);
+  }
 
-  if (indexedMarkets.length > 0 && indexIsFresh) {
+  if (indexedMarkets.length > 0 && indexHealth && indexIsFresh) {
     return {
       markets: indexedMarkets.slice(offset, offset + limit),
       source: 'neon',
