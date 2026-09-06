@@ -13,6 +13,7 @@ vi.mock('@/lib/contracts', () => ({
   publicClient: { multicall },
   ARCSIGNAL_ADDRESS: '0x4f33115a18fe6a181be98610ddde3fab71efabed',
   ARCSIGNAL_ABI: [],
+  CANCELLATION_REFUNDS_ENABLED: false,
 }));
 
 vi.mock('@/lib/market-source', () => ({

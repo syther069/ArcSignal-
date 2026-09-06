@@ -21,6 +21,8 @@ export interface Market {
   participants?: number;
   followPool: number;
   fadePool: number;
+  followPoolRaw?: string;
+  fadePoolRaw?: string;
   resolutionTime: number;
   resolved: boolean;
   status?: 'DRAFT' | 'OPEN' | 'CLOSED' | 'PENDING_RESOLUTION' | 'RESOLVED' | 'VOIDED';

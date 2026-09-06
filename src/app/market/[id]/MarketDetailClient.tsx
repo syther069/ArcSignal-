@@ -10,7 +10,9 @@ import { CountdownTimer } from '@/components/markets/CountdownTimer';
 import { Market, StakeSide } from '@/types';
 import { useReadContract, useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { decodeEventLog, formatUnits } from 'viem';
-import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
+import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI, CANCELLATION_REFUNDS_ENABLED } from '@/lib/contracts';
+import { calculateParimutuelPayoutRaw } from '@/lib/parimutuel-math';
+import type { ResolutionEvidence } from '@/lib/oracle-evidence';
 import toast from 'react-hot-toast';
 import {
   ChevronRight,
@@ -28,33 +30,28 @@ import {
   Zap,
 } from 'lucide-react';
 
-const ArcSignal_ABI = [
-  {
-    type: 'function',
-    name: 'markets',
-    stateMutability: 'view',
-    inputs: [{ name: 'marketId', type: 'string' }],
-    outputs: [
-      { name: 'marketId', type: 'string' },
-      { name: 'category', type: 'string' },
-      { name: 'resolutionTime', type: 'uint256' },
-      { name: 'followPool', type: 'uint256' },
-      { name: 'fadePool', type: 'uint256' },
-      { name: 'resolved', type: 'bool' },
-      { name: 'outcome', type: 'uint8' },
-    ],
-  },
-] as const;
+type ChainMarket = {
+  marketId: string;
+  category: string;
+  question: string;
+  analysisJson: string;
+  resolutionTime: bigint;
+  followPool: bigint;
+  fadePool: bigint;
+  resolved: boolean;
+  outcome: number;
+};
 
 interface MarketDetailClientProps {
   market: Market;
+  resolutionEvidence: ResolutionEvidence | null;
 }
 
 function getTimeframe(marketId: string) {
   return marketId.match(/-PRICE-(5m|15m|1h|4h|24h)-/)?.[1] ?? null;
 }
 
-export default function MarketDetailClient({ market }: MarketDetailClientProps) {
+export default function MarketDetailClient({ market, resolutionEvidence }: MarketDetailClientProps) {
   const [stakeModalSide, setStakeModalSide] = useState<StakeSide | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
   const [activeTab, setActiveTab] = useState<'analysis' | 'rules'>('analysis');
@@ -66,8 +63,8 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
   // Read live on-chain pool data
   const { data: chainMarket, refetch: refetchMarket } = useReadContract({
     address: ARCSIGNAL_ADDRESS,
-    abi: ArcSignal_ABI,
-    functionName: 'markets',
+    abi: ARCSIGNAL_ABI,
+    functionName: 'getMarket',
     args: [market.marketId],
     query: { staleTime: 10_000, refetchInterval: 12_000 },
   });
@@ -96,8 +93,11 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
     query: { enabled: !!address, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
-  const followPool = chainMarket ? parseFloat(formatUnits(chainMarket[3] as bigint, 6)) : market.followPool;
-  const fadePool = chainMarket ? parseFloat(formatUnits(chainMarket[4] as bigint, 6)) : market.fadePool;
+  const liveMarket = chainMarket as ChainMarket | undefined;
+  const followPoolRaw = liveMarket?.followPool ?? BigInt(market.followPoolRaw ?? 0);
+  const fadePoolRaw = liveMarket?.fadePool ?? BigInt(market.fadePoolRaw ?? 0);
+  const followPool = Number(formatUnits(followPoolRaw, 6));
+  const fadePool = Number(formatUnits(fadePoolRaw, 6));
 
   const totalPool = followPool + fadePool;
   const followPercent = totalPool > 0 ? (followPool / totalPool) * 100 : 50;
@@ -113,8 +113,8 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
   const followStakeRaw = (followRaw as bigint) || 0n;
   const fadeStakeRaw = (fadeRaw as bigint) || 0n;
   const isClaimed = (claimedRaw as boolean) || false;
-  const resolved = chainMarket ? chainMarket[5] : market.resolved;
-  const outcome = chainMarket ? chainMarket[6] : (market.outcome === 'FOLLOW' ? 1 : market.outcome === 'FADE' ? 2 : 0);
+  const resolved = liveMarket?.resolved ?? market.resolved;
+  const outcome = liveMarket?.outcome ?? (market.outcome === 'FOLLOW' ? 1 : market.outcome === 'FADE' ? 2 : 0);
 
   const now = Math.floor(Date.now() / 1000);
   const isPending = !resolved && (market.status === 'PENDING_RESOLUTION' || market.resolutionTime <= now);
@@ -127,12 +127,25 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
   if (resolved) {
     if (outcome === 1 && followStakeRaw > 0n) {
       userWon = true;
-      payout = Number(formatUnits(followStakeRaw, 6)) + (Number(formatUnits(followStakeRaw, 6)) * fadePool) / (followPool || 1);
+      payout = Number(formatUnits(calculateParimutuelPayoutRaw({
+        stakeRaw: followStakeRaw,
+        winningPoolRaw: followPoolRaw,
+        losingPoolRaw: fadePoolRaw,
+      }), 6));
     } else if (outcome === 2 && fadeStakeRaw > 0n) {
       userWon = true;
-      payout = Number(formatUnits(fadeStakeRaw, 6)) + (Number(formatUnits(fadeStakeRaw, 6)) * followPool) / (fadePool || 1);
+      payout = Number(formatUnits(calculateParimutuelPayoutRaw({
+        stakeRaw: fadeStakeRaw,
+        winningPoolRaw: fadePoolRaw,
+        losingPoolRaw: followPoolRaw,
+      }), 6));
     }
   }
+  const refundable = CANCELLATION_REFUNDS_ENABLED
+    && resolved
+    && outcome === 0
+    && followStakeRaw + fadeStakeRaw > 0n;
+  if (refundable) payout = Number(formatUnits(followStakeRaw + fadeStakeRaw, 6));
 
   const handleClaim = async () => {
     if (!walletClient || !publicClient || !address) return;
@@ -156,7 +169,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
         if (log.address.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) return false;
         try {
           const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: log.data, topics: log.topics });
-          if (decoded.eventName !== 'Claimed') return false;
+          if (decoded.eventName !== 'Claimed' && decoded.eventName !== 'Refunded') return false;
           const args = decoded.args as { marketId: string; user: string; amount: bigint };
           return args.marketId === market.marketId
             && args.user.toLowerCase() === address.toLowerCase()
@@ -168,7 +181,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
       if (!hasMatchingClaimEvent) {
         throw new Error('The finalized transaction did not contain the expected ArcSignal claim event.');
       }
-      toast.success('Winnings claimed!', { id: toastId });
+      toast.success(refundable ? 'Stake refunded!' : 'Winnings claimed!', { id: toastId });
       await Promise.all([refetchMarket(), refetchFollow(), refetchFade(), refetchClaimed()]);
     } catch (err: any) {
       console.error('Claim failed:', err);
@@ -187,7 +200,9 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
     if (outcome === 0) {
       statusLabel = 'CANCELLED';
       statusBadgeClass = 'border-slate-500/30 bg-slate-500/10 text-slate-400';
-      statusAlertMessage = 'This market has been cancelled or voided. All original stakes are refundable.';
+      statusAlertMessage = CANCELLATION_REFUNDS_ENABLED
+        ? 'This market was cancelled. Participants can claim their original stakes.'
+        : 'This legacy market was cancelled. This deployed contract has no participant refund method.';
     } else {
       statusLabel = 'RESOLVED';
       statusBadgeClass = 'border-[#ddb7ff]/30 bg-[#ddb7ff]/10 text-[#ddb7ff]';
@@ -495,14 +510,44 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                       <div className="bg-[#1a1a1a] p-4 rounded-xl border border-white/[0.06] text-xs sm:text-[13px] text-[#cbd5e1] leading-[1.7] italic space-y-2">
                         <p>
                           {market.category === 'crypto'
-                            ? `This market resolves deterministically based on the verified volume-weighted index price from primary oracle feeds (CoinGecko / Chainlink). If the condition stated in the market title is met at the timestamp cutoff, FOLLOW is recorded as winning. If the condition is not met, FADE is recorded as winning.`
-                            : `This market resolves based on the official 90-minute + stoppage time match score verified via sports oracle data feeds. Extra time and penalty shootouts are excluded unless explicitly specified in the market parameters.`}
+                            ? `The owner resolver checks the configured market-data observation after the cutoff. The question result is YES when the stated threshold condition is met and NO otherwise. FOLLOW wins only when that result matches the AI prediction (${aiPickUpper}); FADE wins when it differs.`
+                            : `The owner resolver checks the exact API-Football fixture recorded when this market was created. The question result uses the final 90-minute plus stoppage-time score. FOLLOW wins only when that result matches the AI prediction (${aiPickUpper}); FADE wins when it differs.`}
                         </p>
                         <p className="text-[11px] text-[#94a3b8] not-italic border-t border-white/[0.06] pt-2 font-mono">
-                          Resolution Source: <strong className="text-white font-sans">{market.resolution_source || (market.category === 'football' ? 'API-Football' : 'CoinGecko')}</strong>
+                          Expected source: <strong className="text-white font-sans">{market.resolution_source || (market.category === 'football' ? 'API-Football' : 'CoinGecko or Binance fallback')}</strong>
                         </p>
                       </div>
                     </div>
+
+                    {resolved && (
+                      <div className="space-y-2">
+                        <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-[#ddb7ff] flex items-center gap-1.5">
+                          <ShieldCheck size={14} /> Recorded Settlement Evidence
+                        </h3>
+                        {resolutionEvidence ? (
+                          <dl className="grid sm:grid-cols-2 gap-3 rounded-xl border border-white/[0.06] bg-[#1a1a1a] p-4 text-xs">
+                            <div><dt className="text-[#94a3b8]">Provider</dt><dd className="mt-1 text-white break-words">{resolutionEvidence.provider || 'Not recorded'}</dd></div>
+                            <div><dt className="text-[#94a3b8]">Observed value</dt><dd className="mt-1 text-white break-words">{resolutionEvidence.observedValue || 'Not recorded'}</dd></div>
+                            <div><dt className="text-[#94a3b8]">AI prediction</dt><dd className="mt-1 text-white">{resolutionEvidence.prediction || 'Not recorded'}</dd></div>
+                            <div><dt className="text-[#94a3b8]">Question result</dt><dd className="mt-1 text-white">{resolutionEvidence.questionResult || 'Not recorded'}</dd></div>
+                            <div className="sm:col-span-2"><dt className="text-[#94a3b8]">Decision</dt><dd className="mt-1 text-white break-words">{resolutionEvidence.decisionReason || 'No decision note was stored.'}</dd></div>
+                            <div><dt className="text-[#94a3b8]">Observed at</dt><dd className="mt-1 text-white">{resolutionEvidence.observedAt ? new Date(resolutionEvidence.observedAt).toLocaleString() : 'Not recorded'}</dd></div>
+                            <div><dt className="text-[#94a3b8]">Resolver record</dt><dd className="mt-1 text-white">{new Date(resolutionEvidence.recordedAt).toLocaleString()}</dd></div>
+                            {resolutionEvidence.transactionHash && (
+                              <div className="sm:col-span-2">
+                                <Link href={`/transaction/${resolutionEvidence.transactionHash}`} className="inline-flex min-h-[44px] items-center gap-2 text-[#ddb7ff] hover:text-white">
+                                  <ExternalLink size={13} /> Verify resolution transaction
+                                </Link>
+                              </div>
+                            )}
+                          </dl>
+                        ) : (
+                          <p className="rounded-xl border border-white/[0.06] bg-[#1a1a1a] p-4 text-xs text-[#94a3b8]">
+                            No structured off-chain evidence record is available for this settlement. The on-chain outcome remains authoritative.
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     {/* On-chain Explorer Transparency */}
                     <div className="space-y-3">
@@ -673,7 +718,7 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                       </p>
                     </div>
 
-                    {userWon && !isClaimed && (
+                    {(userWon || refundable) && !isClaimed && (
                       <button
                         onClick={handleClaim}
                         disabled={isClaiming}
@@ -686,17 +731,17 @@ export default function MarketDetailClient({ market }: MarketDetailClientProps) 
                           boxShadow: isClaiming ? 'none' : '0 0 20px rgba(168,85,247,0.35)',
                         }}
                       >
-                        {isClaiming ? 'Claiming Winnings…' : `Claim Winnings (${payout.toFixed(2)} USDC)`}
+                        {isClaiming ? 'Submitting claim…' : `${refundable ? 'Claim Refund' : 'Claim Winnings'} (${payout.toFixed(2)} USDC)`}
                       </button>
                     )}
 
-                    {userWon && isClaimed && (
+                    {(userWon || refundable) && isClaimed && (
                       <div className="w-full py-3.5 rounded-xl bg-[#4fdbc8]/10 border border-[#4fdbc8]/30 text-[#4fdbc8] text-center font-bold text-xs font-mono">
-                        ✓ Winnings Claimed Successfully
+                        ✓ {refundable ? 'Refund' : 'Winnings'} Claimed Successfully
                       </div>
                     )}
 
-                    {!userWon && (followStakeRaw > 0n || fadeStakeRaw > 0n) && (
+                    {!userWon && !refundable && (followStakeRaw > 0n || fadeStakeRaw > 0n) && (
                       <div className="w-full py-3.5 rounded-xl bg-[#f87171]/10 border border-[#f87171]/30 text-[#f87171] text-center font-semibold text-xs font-sans">
                         Position Closed (No Winnings)
                       </div>

@@ -12,6 +12,7 @@ export function buildMarketAnalytics(snapshot: MarketSnapshot) {
     resolved: market.resolved,
     outcome: market.outcome,
     confidence: market.analysis?.confidence ?? 0,
+    accuracyEligible: market.analysis?.oracle?.settlementModel === 'ai-agreement-v1',
   }));
 
   const totalFollow = markets.reduce((sum, market) => sum + market.followPool, 0);
@@ -19,7 +20,8 @@ export function buildMarketAnalytics(snapshot: MarketSnapshot) {
   const totalVolume = totalFollow + totalFade;
   const resolved = markets.filter((market) => market.resolved);
   const validResolved = resolved.filter(
-    (market) => market.outcome === 'FOLLOW' || market.outcome === 'FADE',
+    (market) => market.accuracyEligible
+      && (market.outcome === 'FOLLOW' || market.outcome === 'FADE'),
   );
   const cancelled = resolved.filter(
     (market) => market.outcome !== 'FOLLOW' && market.outcome !== 'FADE',
@@ -36,10 +38,10 @@ export function buildMarketAnalytics(snapshot: MarketSnapshot) {
   const resolvedMarkets = [...resolved]
     .sort((a, b) => a.resolutionTime - b.resolutionTime)
     .map((market) => {
-      if (market.category === 'CRYPTO' && market.outcome !== 'CANCELLED') {
+      if (market.accuracyEligible && market.category === 'CRYPTO' && market.outcome !== 'CANCELLED') {
         runningCryptoTotal += 1;
         if (market.outcome === 'FOLLOW') runningCryptoCorrect += 1;
-      } else if (market.category === 'FOOTBALL' && market.outcome !== 'CANCELLED') {
+      } else if (market.accuracyEligible && market.category === 'FOOTBALL' && market.outcome !== 'CANCELLED') {
         runningFootballTotal += 1;
         if (market.outcome === 'FOLLOW') runningFootballCorrect += 1;
       }

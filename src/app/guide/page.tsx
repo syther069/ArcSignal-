@@ -16,7 +16,7 @@ export default function GuidePage() {
               How to Play ArcSignal
             </h1>
             <p className="text-[#94a3b8] text-lg leading-relaxed">
-              Welcome to ArcSignal, the premier decentralized prediction market powered by AI. 
+              Welcome to ArcSignal, an experimental owner-operated AI prediction market on Arc Testnet.
               Learn how to connect, trade, and earn rewards by accurately forecasting market outcomes.
             </p>
           </header>

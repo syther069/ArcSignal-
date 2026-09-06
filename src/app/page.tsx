@@ -4,6 +4,7 @@ import { getPlatformStats, type PlatformStats } from '@/lib/platform-stats';
 
 const DEFAULT_STATS: PlatformStats = {
   accuracy: null,
+  accuracySampleSize: 0,
   totalVolume: 0,
   activeMarkets: 0,
   totalMarkets: 0,
@@ -67,7 +68,7 @@ export default async function LandingPage() {
             </div>
             <h3 className="text-xl font-bold text-on-surface mb-3">1. AI Baseline Analysis</h3>
             <p className="text-on-surface-variant leading-relaxed">
-              ArcSignal&apos;s decentralized AI clusters ingest real-time market data, sentiment, and historical trends to formulate high-conviction predictions across crypto and sports markets, publishing them directly on-chain as a baseline thesis.
+              ArcSignal uses configured AI providers and external market-data APIs to generate a YES or NO prediction. The analysis and settlement rule are published with each testnet market.
             </p>
           </div>
           
@@ -87,7 +88,7 @@ export default async function LandingPage() {
             </div>
             <h3 className="text-xl font-bold text-on-surface mb-3">3. Transparent Resolution</h3>
             <p className="text-on-surface-variant leading-relaxed">
-              When the event concludes, the market is resolved autonomously on the ARC Testnet via trusted oracles. This ensures the outcome is immutable and perfectly aligned with real-world data without central interference.
+              When the event concludes, a server-side resolver checks the recorded external-data rule and the owner account submits the result on Arc Testnet. The owner remains a trusted settlement authority.
             </p>
           </div>
 
@@ -95,9 +96,9 @@ export default async function LandingPage() {
             <div className="w-12 h-12 bg-[#fbbf24]/20 text-[#fbbf24] rounded-lg flex items-center justify-center mb-6">
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
-            <h3 className="text-xl font-bold text-on-surface mb-3">4. Instant Payouts</h3>
+            <h3 className="text-xl font-bold text-on-surface mb-3">4. Manual Claims</h3>
             <p className="text-on-surface-variant leading-relaxed">
-              The smart contract calculates the dynamic odds from the pari-mutuel pool and instantly distributes USDC rewards to the winning side. There are no lockups or withdrawal delays, giving you immediate access to your alpha.
+              The smart contract calculates pari-mutuel payouts. Winning participants submit a separate claim transaction and pay its Arc network fee in native USDC.
             </p>
           </div>
         </div>
@@ -117,7 +118,7 @@ export default async function LandingPage() {
             </div>
             <h3 className="text-xl font-bold text-on-surface mb-4">Analyze</h3>
             <p className="text-sm text-on-surface-variant mb-8 leading-relaxed">
-              Access deep-tech data streams and AI-aggregated sentiment analysis. Our engine processes petabytes of historical data to highlight statistically significant market anomalies.
+              Review the AI prediction, its stated confidence, data sources, and the exact rule used for settlement.
             </p>
             <Link href="/docs" className="text-xs font-bold text-on-surface-variant hover:text-primary uppercase tracking-widest flex justify-between items-center">
               View Engine Docs <span>→</span>
@@ -130,7 +131,7 @@ export default async function LandingPage() {
             </div>
             <h3 className="text-xl font-bold text-on-surface mb-4">Stake</h3>
             <p className="text-sm text-on-surface-variant mb-8 leading-relaxed">
-              Deploy capital into high-conviction pools with automated risk mitigation. Our smart contracts ensure transparent settlement and non-custodial asset management.
+              Stake testnet USDC into Follow or Fade pools. Pool shares and potential payouts change as later stakes arrive.
             </p>
             <Link href="/docs" className="text-xs font-bold text-tertiary hover:text-tertiary-fixed uppercase tracking-widest flex justify-between items-center">
               Staking Rewards <span>→</span>
@@ -143,7 +144,7 @@ export default async function LandingPage() {
             </div>
             <h3 className="text-xl font-bold text-on-surface mb-4">Prevail</h3>
             <p className="text-sm text-on-surface-variant mb-8 leading-relaxed">
-              Realize gains through our unique Oracle-as-a-Service architecture. Results are verified by decentralized consensus nodes within milliseconds of event resolution.
+              After the owner submits an outcome, winning participants can verify it on-chain and claim their payout from the contract.
             </p>
             <Link href="/leaderboard" className="text-xs font-bold text-on-surface-variant hover:text-primary uppercase tracking-widest flex justify-between items-center">
               Leaderboard <span>→</span>
@@ -155,17 +156,17 @@ export default async function LandingPage() {
       {/* Analytics Section */}
       <div className="w-full max-w-5xl mb-32 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
         <div>
-          <h2 className="text-3xl font-bold text-on-surface mb-6">Proven Precision Analytics</h2>
+          <h2 className="text-3xl font-bold text-on-surface mb-6">On-chain Testnet Analytics</h2>
           <p className="text-on-surface-variant mb-10 leading-relaxed">
-            ArcSignal outperforms traditional prediction models by leveraging a globally distributed AI network that filters signal from noise in real-time.
+            These figures are calculated from the currently available ArcSignal market history. Accuracy is withheld when no resolved sample is available.
           </p>
           
           <div className="grid grid-cols-2 gap-y-10">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Platform Accuracy</p>
-              <p className="text-4xl font-mono text-tertiary font-bold mb-2">{(stats.accuracy ?? 94.2).toFixed(1)}%</p>
+              <p className="text-4xl font-mono text-tertiary font-bold mb-2">{stats.accuracy === null ? '—' : `${stats.accuracy.toFixed(1)}%`}</p>
               <div className="h-1 bg-tertiary/20 w-3/4 rounded overflow-hidden">
-                <div className="h-full bg-tertiary transition-all duration-1000" style={{ width: `${stats.accuracy ?? 94.2}%` }}></div>
+                <div className="h-full bg-tertiary transition-all duration-1000" style={{ width: `${stats.accuracy ?? 0}%` }}></div>
               </div>
             </div>
             <div>
@@ -191,24 +192,16 @@ export default async function LandingPage() {
         {/* Performance Matrix Chart */}
         <div className="bg-surface-container rounded-xl border border-white/5 p-6 top-lit-border shadow-2xl">
           <div className="flex justify-between items-center mb-8">
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Performance Matrix</h4>
+            <h4 className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Data status</h4>
             <div className="flex gap-2">
               <div className="w-2 h-2 rounded-full bg-tertiary"></div>
               <div className="w-2 h-2 rounded-full bg-primary"></div>
             </div>
           </div>
-          <div className="h-48 flex items-end justify-between gap-2 border-b border-white/10 pb-2 mb-2">
-            {[30, 45, 40, 60, 50, 75, 55, 80, 50].map((h, i) => (
-              <div key={i} className={`w-full rounded-t-sm ${i % 2 === 0 ? 'bg-surface-container-highest' : 'bg-tertiary/60'}`} style={{ height: `${h}%` }}></div>
-            ))}
-          </div>
-          <div className="flex justify-between text-[10px] text-on-surface-variant font-mono">
-            <span>JAN</span>
-            <span>MAR</span>
-            <span>MAY</span>
-            <span>JUL</span>
-            <span>SEP</span>
-            <span>NOV</span>
+          <div className="space-y-4 border-b border-white/10 pb-6 mb-4 text-sm text-on-surface-variant">
+            <div className="flex justify-between gap-4"><span>Source</span><strong className="text-on-surface">{stats.source === 'arc-chain' ? 'Arc chain' : 'Indexed Arc events'}</strong></div>
+            <div className="flex justify-between gap-4"><span>Coverage</span><strong className="text-on-surface">{stats.complete ? 'Complete query window' : 'Partial or unavailable'}</strong></div>
+            <div className="flex justify-between gap-4"><span>Accuracy sample</span><strong className="text-on-surface">{stats.accuracySampleSize} resolved market{stats.accuracySampleSize === 1 ? '' : 's'}</strong></div>
           </div>
         </div>
       </div>
@@ -217,7 +210,7 @@ export default async function LandingPage() {
       <div className="w-full max-w-5xl bg-gradient-to-b from-surface-container to-background border border-white/5 rounded-2xl p-16 text-center shadow-2xl top-lit-border mb-16">
         <h2 className="text-4xl font-bold text-on-surface mb-6">Ready to command the future?</h2>
         <p className="text-on-surface-variant max-w-lg mx-auto mb-10">
-          Join the decentralized network of analysts and AI agents forecasting the future on the ARC Testnet.
+          Explore experimental AI-generated markets on Arc Testnet. Contracts are unaudited and settlement is owner-controlled.
         </p>
         <Link 
           href="/markets"

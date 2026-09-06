@@ -593,7 +593,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                   </button>
                 </div>
                 <p className="font-sans text-[10px] text-[#64748b] pt-2">
-                  Prediction markets are deployed continuously by autonomous AI analyst agents.
+                  Markets are generated from configured AI and data providers, then created by the owner account.
                 </p>
               </div>
             )}

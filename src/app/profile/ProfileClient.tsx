@@ -10,6 +10,7 @@ import {
   useReadContract,
   useWriteContract,
   usePublicClient,
+  useSignMessage,
 } from 'wagmi';
 import { decodeEventLog, type Address } from 'viem';
 import {
@@ -31,6 +32,7 @@ import ConnectWalletButton from '@/components/wallet/ConnectWalletButton';
 import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { Stake as BaseStake } from '@/types';
 import toast from 'react-hot-toast';
+import { profileUploadMessage, sha256Hex } from '@/lib/profile-upload-auth';
 
 interface Stake extends BaseStake {
   isWin?: boolean;
@@ -215,6 +217,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const { writeContractAsync, isPending: isSaving } = useWriteContract();
+  const { signMessageAsync } = useSignMessage();
 
   const handleEditClick = () => {
     setEditForm({ username, bio, avatarUrl });
@@ -245,10 +248,21 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
     // Upload via server proxy endpoint
     setIsUploading(true);
     try {
+      if (!connectedAddress) throw new Error('Connect the wallet that owns this profile before uploading.');
+      const timestamp = Date.now().toString();
+      const fileHash = await sha256Hex(await file.arrayBuffer());
+      const signature = await signMessageAsync({
+        message: profileUploadMessage(connectedAddress, timestamp, fileHash),
+      });
       const formData = new FormData();
       formData.append('image', file);
       const res = await fetch('/api/profile/upload', {
         method: 'POST',
+        headers: {
+          'x-wallet-address': connectedAddress,
+          'x-upload-timestamp': timestamp,
+          'x-upload-signature': signature,
+        },
         body: formData,
       });
       const json = await res.json();
@@ -280,10 +294,10 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
       return;
     }
 
-    const newUsername = editForm.username.trim();
+    const newUsername = editForm.username.trim().toLowerCase();
     if (newUsername.length > 0) {
-      if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
-        toast.error('Username can only contain letters, numbers, and underscores');
+      if (!/^[a-z0-9_]+$/.test(newUsername)) {
+        toast.error('Username can only contain lowercase letters, numbers, and underscores');
         return;
       }
       if (newUsername.length < 3 || newUsername.length > 20) {
@@ -311,6 +325,14 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
         toast.error('Could not verify username availability. Please retry.');
         return;
       }
+    }
+    if (new TextEncoder().encode(editForm.bio).length > 280) {
+      toast.error('Bio must be 280 bytes or shorter');
+      return;
+    }
+    if (new TextEncoder().encode(editForm.avatarUrl).length > 512) {
+      toast.error('Avatar URL is too long');
+      return;
     }
 
     try {
@@ -645,7 +667,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
                       {isUploading ? 'Uploading…' : 'Upload Photo'}
                     </button>
                     <p className="text-[13px] text-center" style={{ color: '#b0abb5', fontFamily: 'var(--font-trading-body), sans-serif' }}>
-                      Supports .jpg, .png and .gif
+                      Supports .jpg, .png and .webp up to 2 MB
                     </p>
                   </div>
                 </div>

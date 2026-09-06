@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
-import { publicClient, ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI } from '@/lib/contracts';
-import { decodeEventLog, type Address } from 'viem';
+import {
+  publicClient,
+  ARCSIGNAL_ADDRESS,
+  ARCSIGNAL_ABI,
+  CANCELLATION_REFUNDS_ENABLED,
+} from '@/lib/contracts';
+import { decodeEventLog, formatUnits, type Address } from 'viem';
 import { calculateParimutuelPnL, deriveMarketStatus, mapCategory } from '@/lib/parimutuel-math';
 import { getChainMarketSnapshot } from '@/lib/market-source';
+import { getMarketIndexHealth } from '@/lib/indexed-markets';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +33,8 @@ function positionFromChain(
   side: 0 | 1,
   stakeRaw: bigint,
   claimed: boolean,
+  refundStakeRaw = 0n,
+  refundRepresentative = false,
 ) {
   const outcome = Number(market.outcome);
   const pnl = calculateParimutuelPnL({
@@ -43,6 +51,11 @@ function positionFromChain(
     outcome,
     resolutionTime: Number(market.resolutionTime),
   });
+  const refundable = CANCELLATION_REFUNDS_ENABLED
+    && market.resolved
+    && outcome === 0
+    && refundRepresentative
+    && !claimed;
 
   return {
     marketId: market.marketId,
@@ -54,8 +67,9 @@ function positionFromChain(
     outcome,
     status,
     userWon: pnl.userWon,
-    payout: pnl.payout,
+    payout: refundable ? Number(formatUnits(refundStakeRaw, 6)) : pnl.payout,
     netPnl: pnl.netPnl,
+    refundable,
     market: {
       marketId: market.marketId,
       category: mapCategory(market.category),
@@ -168,11 +182,12 @@ async function readPositionsFromChainSnapshot(address: string) {
       outcome: market.outcome === 'FOLLOW' ? 1 : market.outcome === 'FADE' ? 2 : 0,
     };
 
+    const refundStake = followStake + fadeStake;
     if (followStake > 0n) {
-      positions.push(positionFromChain(chainMarket, 0, followStake, claimed));
+      positions.push(positionFromChain(chainMarket, 0, followStake, claimed, refundStake, true));
     }
     if (fadeStake > 0n) {
-      positions.push(positionFromChain(chainMarket, 1, fadeStake, claimed));
+      positions.push(positionFromChain(chainMarket, 1, fadeStake, claimed, refundStake, followStake === 0n));
     }
   }
 
@@ -218,7 +233,7 @@ export async function GET(req: Request) {
 
   try {
     const sql = getSql();
-    const rows = await sql`
+    const [rows, indexHealth] = await Promise.all([sql`
       select
         p.market_id,
         p.side,
@@ -231,6 +246,13 @@ export async function GET(req: Request) {
         m.resolved,
         m.outcome,
         m.status,
+        sum(p.amount) over (
+          partition by p.market_id, lower(p.wallet_address)
+        ) as market_user_stake,
+        row_number() over (
+          partition by p.market_id, lower(p.wallet_address)
+          order by p.side asc
+        ) as position_rank,
         case when c.market_id is null then false else true end as claimed
       from positions_index p
       join markets_index m on m.market_id = p.market_id
@@ -238,11 +260,16 @@ export async function GET(req: Request) {
         on c.market_id = p.market_id and lower(c.wallet_address) = lower(${address})
       where lower(p.wallet_address) = lower(${address}) and p.amount > 0
       order by p.last_staked_block desc nulls last
-    `;
+    `, getMarketIndexHealth()]);
+    if (!indexHealth || Date.now() - indexHealth.updatedAtMs > 10 * 60_000) {
+      throw new Error('Portfolio index is stale');
+    }
 
     return NextResponse.json({
       source: 'neon',
       complete: true,
+      fetchedAt: new Date(indexHealth.updatedAtMs).toISOString(),
+      indexedBlock: indexHealth.lastBlock.toString(),
       positions: rows.map((row) => {
         const side = Number(row.side) as 0 | 1;
         const stakeRaw = BigInt(String(row.amount));
@@ -250,6 +277,12 @@ export async function GET(req: Request) {
         const outcome = Number(row.outcome);
         const followPool = BigInt(String(row.follow_pool ?? 0));
         const fadePool = BigInt(String(row.fade_pool ?? 0));
+        const claimed = Boolean(row.claimed);
+        const refundable = CANCELLATION_REFUNDS_ENABLED
+          && resolved
+          && outcome === 0
+          && Number(row.position_rank) === 1
+          && !claimed;
 
         const pnl = calculateParimutuelPnL({
           side,
@@ -272,13 +305,16 @@ export async function GET(req: Request) {
           side,
           stakeRaw: String(stakeRaw),
           stakeUsdc: pnl.stakeUsdc,
-          claimed: Boolean(row.claimed),
+          claimed,
           isResolved: resolved,
           outcome,
           status,
           userWon: pnl.userWon,
-          payout: pnl.payout,
+          payout: refundable
+            ? Number(formatUnits(BigInt(String(row.market_user_stake ?? 0)), 6))
+            : pnl.payout,
           netPnl: pnl.netPnl,
+          refundable,
           market: {
             marketId: row.market_id,
             category: mapCategory(String(row.category)),

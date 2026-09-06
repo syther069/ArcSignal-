@@ -10,6 +10,7 @@ import {
 import { fetchUpcomingFixtures } from '@/lib/apifootball';
 import { generateCryptoAnalysis, generateFootballAnalysis } from '@/lib/gemini';
 import { authorizeCronRequest } from '@/lib/cron-auth';
+import { isMarketAutomationEnabled } from '@/lib/automation-policy';
 import type { Hash } from 'viem';
 import {
   assertFreshGenerationObservation,
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
   const authorization = authorizeCronRequest(req);
   if (!authorization.ok) return authorization.response;
 
-  if (process.env.ENABLE_MARKET_AUTOMATION === 'false') {
+  if (!isMarketAutomationEnabled(process.env.ENABLE_MARKET_AUTOMATION)) {
     return NextResponse.json({ error: 'Market automation is disabled' }, { status: 503 });
   }
 
@@ -48,6 +49,14 @@ export async function POST(req: Request) {
   }
 
   const account = privateKeyToAccount(privateKey as `0x${string}`);
+  const contractOwner = await publicClient.readContract({
+    address: CONTRACT_ADDRESS,
+    abi: ARCSIGNAL_ABI,
+    functionName: 'owner',
+  });
+  if (String(contractOwner).toLowerCase() !== account.address.toLowerCase()) {
+    return NextResponse.json({ error: 'Resolver wallet is not the ArcSignal owner' }, { status: 503 });
+  }
   const walletClient = createWalletClient({
     account,
     chain: arcTestnet,
@@ -235,6 +244,7 @@ export async function POST(req: Request) {
             subType: job.timeframe.label,
             oracle: {
               version: ORACLE_POLICY_VERSION,
+              settlementModel: 'ai-agreement-v1',
               provider: 'coingecko',
               symbol: job.coin.symbol.toUpperCase(),
               targetPrice: job.threshold,
@@ -327,12 +337,25 @@ export async function POST(req: Request) {
               leagueName: fixture.leagueName,
             },
           });
+          const analysisWithOracle = {
+            ...analysis,
+            oracle: {
+              version: ORACLE_POLICY_VERSION,
+              settlementModel: 'ai-agreement-v1',
+              provider: 'api-football',
+              fixtureId: fixture.fixtureId,
+              leagueId: fixture.leagueId,
+              season: fixture.season,
+              criterion: 'home-win-full-time',
+              resolutionTimestamp: Number(resolutionTime),
+            },
+          };
 
           const hash: Hash = await walletClient.writeContract({
             address: CONTRACT_ADDRESS,
             abi: ARCSIGNAL_ABI,
             functionName: 'createMarket',
-            args: [marketId, 'FOOTBALL', question, JSON.stringify(analysis), resolutionTime],
+            args: [marketId, 'FOOTBALL', question, JSON.stringify(analysisWithOracle), resolutionTime],
           });
 
           const receipt = await publicClient.waitForTransactionReceipt({ hash });
@@ -356,7 +379,7 @@ export async function POST(req: Request) {
                 marketId,
                 category: 'FOOTBALL',
                 question,
-                analysisJson: JSON.stringify(analysis),
+                analysisJson: JSON.stringify(analysisWithOracle),
                 resolutionTime,
                 createdBlock: receipt.blockNumber,
               });

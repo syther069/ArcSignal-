@@ -9,6 +9,7 @@ export interface MarketSnapshot {
   source: MarketSource;
   complete: boolean;
   fetchedAt: string;
+  stale?: boolean;
 }
 
 const CHAIN_SNAPSHOT_LIMIT = 160;
@@ -101,7 +102,7 @@ export async function getMarketSnapshot(
       markets: indexedMarkets.slice(offset, offset + limit),
       source: 'neon',
       complete: indexedMarkets.length < requestedCount,
-      fetchedAt: new Date().toISOString(),
+      fetchedAt: new Date(indexHealth.updatedAtMs).toISOString(),
     };
   }
 
@@ -125,7 +126,7 @@ export async function getMarketSnapshot(
       markets,
       source: 'neon',
       complete: indexedMarkets.length < requestedCount && chainSnapshot.complete,
-      fetchedAt: new Date().toISOString(),
+      fetchedAt: chainSnapshot.fetchedAt,
     };
   }
 
@@ -133,8 +134,9 @@ export async function getMarketSnapshot(
     return {
       markets: indexedMarkets.slice(offset, offset + limit),
       source: 'neon',
-      complete: indexedMarkets.length < requestedCount,
-      fetchedAt: new Date().toISOString(),
+      complete: false,
+      fetchedAt: indexHealth ? new Date(indexHealth.updatedAtMs).toISOString() : new Date(0).toISOString(),
+      stale: true,
     };
   }
 

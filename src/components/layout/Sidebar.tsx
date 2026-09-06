@@ -43,7 +43,7 @@ export default function Sidebar() {
               ArcSignal
             </p>
             <p className="text-[13px] text-[#b0abb5] mt-0.5 leading-none">
-              Decentralized Predictions
+              AI-guided Testnet Markets
             </p>
           </div>
         </div>
@@ -100,7 +100,7 @@ export default function Sidebar() {
           </Link>
           <div className="flex items-center justify-between text-[#b0abb5]/60 pt-2 border-t border-[#403947]">
             <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px]">
-              v.4.2.1-stable
+              ARC TESTNET
             </span>
             <div className="flex items-center gap-3">
               <a href="https://github.com/syther069/ArcSignal-" target="_blank" rel="noreferrer" aria-label="ArcSignal source code" className="hover:text-[#ddb7ff] transition-colors text-[#b0abb5]/60">
@@ -108,7 +108,7 @@ export default function Sidebar() {
                   <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
                 </svg>
               </a>
-              <div className="w-2 h-2 rounded-full bg-[#4fdbc8] animate-pulse-dot ml-1" />
+              <Link href="/status" className="text-[11px] hover:text-[#ddb7ff] transition-colors">STATUS</Link>
             </div>
           </div>
         </div>

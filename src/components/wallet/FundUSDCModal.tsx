@@ -17,6 +17,11 @@ import { useAccount } from 'wagmi';
 import type { EIP1193Provider } from 'viem';
 import { formatCircleGasFee } from '@/lib/circle-fees';
 import {
+  clearCircleBridgeRecovery,
+  loadCircleBridgeRecovery,
+  saveCircleBridgeRecovery,
+} from '@/lib/circle-bridge-recovery';
+import {
   bridgeUsdcToArc,
   canRetryCircleBridge,
   createBrowserWalletViemAdapter,
@@ -42,6 +47,8 @@ type FlowState =
 
 type FeeSummary = {
   protocol: string;
+  forwarder: string;
+  kit: string;
   gas: string;
 };
 
@@ -69,7 +76,7 @@ function friendlyCircleError(error: unknown) {
     return 'Your wallet could not switch to the required network. Add the source network and retry.';
   }
   return raw.split(/(?:Details:|Docs:|Version:)/i)[0].trim().slice(0, 180) ||
-    'Circle App Kit could not complete the bridge. Please retry.';
+    'Circle Bridge Kit could not complete the bridge. Please retry.';
 }
 
 function flowFromProgress(progress: CircleBridgeProgress): FlowState {
@@ -86,10 +93,13 @@ function flowFromProgress(progress: CircleBridgeProgress): FlowState {
 }
 
 function summarizeEstimate(estimate: Awaited<ReturnType<typeof estimateBridgeUsdc>>): FeeSummary {
-  const protocol = estimate.fees
-    .filter((fee) => fee.amount != null && Number(fee.amount) > 0)
+  const summarize = (type: 'provider' | 'forwarder' | 'kit', empty: string) => estimate.fees
+    .filter((fee) => fee.type === type && fee.amount != null && Number(fee.amount) > 0)
     .map((fee) => `${fee.amount} ${fee.token}`)
-    .join(' + ') || 'No protocol fee quoted';
+    .join(' + ') || empty;
+  const protocol = summarize('provider', 'No CCTP protocol fee quoted');
+  const forwarder = summarize('forwarder', 'No forwarding fee quoted');
+  const kit = summarize('kit', 'No application fee');
   const gas = estimate.gasFees
     .map((fee) => {
       if (!fee.fees) return `${fee.name}: unavailable`;
@@ -99,7 +109,7 @@ function summarizeEstimate(estimate: Awaited<ReturnType<typeof estimateBridgeUsd
         : `${fee.name}: unavailable`;
     })
     .join(' · ') || 'Wallet will quote the network fee';
-  return { protocol, gas };
+  return { protocol, forwarder, kit, gas };
 }
 
 export default function FundUSDCModal({
@@ -193,10 +203,12 @@ export default function FundUSDCModal({
       if (result.state !== 'success') {
         const failed = result.steps.find((step) => step.state === 'error');
         setFailedResult(canRetryCircleBridge(result) ? result : null);
+        if (address && canRetryCircleBridge(result)) saveCircleBridgeRecovery(address, result);
         setError(friendlyCircleError(failed?.errorMessage ?? 'The bridge did not complete.'));
         setFlow('error');
         return;
       }
+      clearCircleBridgeRecovery();
       setFlow('complete');
       await onFunded?.();
     } catch (bridgeError) {
@@ -215,10 +227,12 @@ export default function FundUSDCModal({
       if (result.state !== 'success') {
         const failed = result.steps.find((step) => step.state === 'error');
         setFailedResult(canRetryCircleBridge(result) ? result : null);
+        if (address && canRetryCircleBridge(result)) saveCircleBridgeRecovery(address, result);
         setError(friendlyCircleError(failed?.errorMessage ?? 'The bridge retry did not complete.'));
         setFlow('error');
         return;
       }
+      clearCircleBridgeRecovery();
       setFailedResult(null);
       setFlow('complete');
       await onFunded?.();
@@ -235,6 +249,19 @@ export default function FundUSDCModal({
     setError(null);
     setFailedResult(null);
   }, []);
+
+  useEffect(() => {
+    setAdapter(null);
+    resetReview();
+    if (!isOpen || !address) return;
+    const recoverable = loadCircleBridgeRecovery(address);
+    if (!recoverable) return;
+    setAmount(recoverable.amount);
+    setSteps(recoverable.steps);
+    setFailedResult(recoverable);
+    setError('A previous Circle transfer needs recovery. Reconnect the same wallet and retry the remaining step.');
+    setFlow('error');
+  }, [address, connector?.id, isOpen, resetReview]);
 
   const handleClose = useCallback(() => {
     resetReview();
@@ -344,6 +371,8 @@ export default function FundUSDCModal({
               {fees && (
                 <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-xs">
                   <div className="flex justify-between gap-4"><span className="text-[#94a3b8]">Protocol fee</span><span className="text-right text-white">{fees.protocol}</span></div>
+                  <div className="mt-2 flex justify-between gap-4"><span className="text-[#94a3b8]">Circle forwarding fee</span><span className="text-right text-white">{fees.forwarder}</span></div>
+                  <div className="mt-2 flex justify-between gap-4"><span className="text-[#94a3b8]">Application fee</span><span className="text-right text-white">{fees.kit}</span></div>
                   <div className="mt-2 flex justify-between gap-4"><span className="text-[#94a3b8]">Network fee</span><span className="text-right text-white">{fees.gas}</span></div>
                   <p className="mt-2 text-[10px] text-[#64748b]">Arc destination fees are paid in native USDC.</p>
                 </div>

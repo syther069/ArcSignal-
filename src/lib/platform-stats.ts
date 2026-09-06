@@ -7,6 +7,7 @@ export interface PlatformStats {
   activeMarkets: number;
   totalMarkets: number;
   accuracy: number | null;
+  accuracySampleSize: number;
   source: MarketSource;
   complete: boolean;
 }
@@ -23,7 +24,11 @@ export async function loadPlatformStats(): Promise<PlatformStats> {
     totalVolumeUsdc += Number(formatUnits(market.followPool, 6));
     totalVolumeUsdc += Number(formatUnits(market.fadePool, 6));
     if (!market.resolved) activeMarkets++;
-    if (market.resolved && (market.outcome === 'FOLLOW' || market.outcome === 'FADE')) {
+    if (
+      market.analysis?.oracle?.settlementModel === 'ai-agreement-v1'
+      && market.resolved
+      && (market.outcome === 'FOLLOW' || market.outcome === 'FADE')
+    ) {
       resolvedMarkets++;
       if (market.outcome === 'FOLLOW') correctMarkets++;
     }
@@ -35,6 +40,7 @@ export async function loadPlatformStats(): Promise<PlatformStats> {
     totalMarkets: markets.length,
     source: snapshot.source,
     complete: snapshot.complete,
+    accuracySampleSize: resolvedMarkets,
     accuracy: resolvedMarkets > 0
       ? Math.round((correctMarkets / resolvedMarkets) * 1_000) / 10
       : null,

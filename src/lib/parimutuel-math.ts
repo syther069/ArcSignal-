@@ -8,6 +8,16 @@ export interface ParimutuelPnLResult {
   userWon: boolean | null;
 }
 
+export function calculateParimutuelPayoutRaw(params: {
+  stakeRaw: bigint;
+  winningPoolRaw: bigint;
+  losingPoolRaw: bigint;
+}) {
+  const { stakeRaw, winningPoolRaw, losingPoolRaw } = params;
+  if (stakeRaw <= 0n || winningPoolRaw <= 0n) return 0n;
+  return stakeRaw + (stakeRaw * losingPoolRaw) / winningPoolRaw;
+}
+
 /**
  * Derives canonical market status from resolution state, outcome, status string, and timestamps.
  */
@@ -77,11 +87,11 @@ export function calculateParimutuelPnL(params: {
   if (userWon === true) {
     const winPool = winningSide === 0 ? followPool : fadePool;
     const losePool = winningSide === 0 ? fadePool : followPool;
-    const effectiveWinPool = winPool > 0n ? winPool : 1n;
-
-    // BigInt arithmetic preserves precision without floating point drift
-    const profitRaw = (stakeRaw * losePool) / effectiveWinPool;
-    const payoutRaw = stakeRaw + profitRaw;
+    const payoutRaw = calculateParimutuelPayoutRaw({
+      stakeRaw,
+      winningPoolRaw: winPool,
+      losingPoolRaw: losePool,
+    });
     const payout = Number(formatUnits(payoutRaw, 6));
     const netPnl = payout - stakeUsdc;
 

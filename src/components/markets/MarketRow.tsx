@@ -59,7 +59,7 @@ export const MarketRow = React.memo(function MarketRow({ market, onFollow, onFad
     if (market.outcome === 'CANCELLED') {
       statusLabel = 'CANCELLED';
       statusColorClass = 'border-[#b0abb5]/30 bg-[#b0abb5]/10 text-[#b0abb5]';
-      statusExplanation = 'Market was cancelled or voided. Stakes are refunded.';
+      statusExplanation = 'Market was cancelled or voided. Refund availability depends on the deployed contract version.';
     } else {
       statusLabel = 'RESOLVED';
       statusColorClass = 'border-[#ddb7ff]/30 bg-[#ddb7ff]/10 text-[#ddb7ff]';

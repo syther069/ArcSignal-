@@ -3,11 +3,14 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { gzipSync } from 'node:zlib';
 
+// Baseline includes the current patched wagmi 3 / viem client runtime. Keep
+// enough headroom for source-map-independent build variation while still
+// failing material route growth.
 const budgets = {
-  page: { label: '/', maximum: 120_000 },
-  'analytics/page': { label: '/analytics', maximum: 235_000 },
-  'leaderboard/page': { label: '/leaderboard', maximum: 130_000 },
-  'markets/page': { label: '/markets', maximum: 135_000 },
+  page: { label: '/', maximum: 140_000 },
+  'analytics/page': { label: '/analytics', maximum: 255_000 },
+  'leaderboard/page': { label: '/leaderboard', maximum: 150_000 },
+  'markets/page': { label: '/markets', maximum: 155_000 },
 };
 
 const manifestPath = path.join('.next', 'app-build-manifest.json');

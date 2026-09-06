@@ -37,10 +37,21 @@ export const publicClient = createPublicClient({
   }),
 });
 
-// The UI and resolver must share the same ARC Testnet contract. Do not allow a
-// stale Vercel environment variable to silently point reads and writes at an
-// older deployment, which makes current markets appear to be missing.
-export const ARCSIGNAL_ADDRESS = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as `0x${string}`;
+const legacyArcSignalAddress = '0x4f33115a18fe6a181be98610ddde3fab71efabed';
+const configuredArcSignalAddress = process.env.NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDRESS?.trim();
+if (configuredArcSignalAddress && !/^0x[a-fA-F0-9]{40}$/.test(configuredArcSignalAddress)) {
+  throw new Error('NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDRESS is invalid');
+}
+// One exported address is shared by browser reads, user writes, cron jobs, and
+// receipt verification. A new refund-capable deployment can be selected through
+// the public address setting; the verified legacy deployment remains the default.
+export const ARCSIGNAL_ADDRESS = (configuredArcSignalAddress ?? legacyArcSignalAddress) as `0x${string}`;
+
+// The checked-in contract revision supports cancelled-market refunds. The
+// currently deployed legacy address does not. Enable this only after deploying
+// and verifying the refund-capable revision at ARCSIGNAL_ADDRESS.
+export const CANCELLATION_REFUNDS_ENABLED =
+  process.env.NEXT_PUBLIC_ARCSIGNAL_CANCEL_REFUNDS === 'true';
 
 export const USDC_ADDRESS = '0x3600000000000000000000000000000000000000' as `0x${string}`;
 
@@ -50,6 +61,8 @@ export const ARCSIGNAL_ABI = parseAbi([
   'function resolveMarket(string marketId, uint8 outcome) external',
   'function cancelMarket(string marketId) external',
   'function claimWinnings(string marketId) external',
+  'function paused() external view returns (bool)',
+  'function owner() external view returns (address)',
   'function getMarket(string marketId) external view returns ((string marketId, string category, string question, string analysisJson, uint256 resolutionTime, uint256 followPool, uint256 fadePool, bool resolved, uint8 outcome))',
   'function getMarketCount() external view returns (uint256)',
   'function getMarketIdByIndex(uint256 index) external view returns (string)',
@@ -63,8 +76,13 @@ export const ARCSIGNAL_ABI = parseAbi([
   'event MarketCreated(string marketId, string category, string question, uint256 resolutionTime)',
   'event Staked(string marketId, address user, uint8 side, uint256 amount)',
   'event MarketResolved(string marketId, uint8 outcome)',
+  'event MarketCancelled(string marketId)',
   'event Claimed(string marketId, address user, uint256 amount)',
+  'event Refunded(string marketId, address user, uint256 amount)',
   'event ProfileUpdated(address indexed user, string username, string bio, string avatarUrl)',
+  'event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)',
+  'event Paused(address account)',
+  'event Unpaused(address account)',
 ]);
 
 export const USDC_ABI = parseAbi([

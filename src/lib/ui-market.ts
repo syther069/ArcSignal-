@@ -46,6 +46,8 @@ export function toUiMarket(market: SerializableMarket): UiMarket {
     participants: 0,
     followPool: pools.followPool,
     fadePool: pools.fadePool,
+    followPoolRaw: market.followPool,
+    fadePoolRaw: market.fadePool,
     resolutionTime: market.resolutionTime,
     resolved: market.resolved,
     outcome: market.outcome,

@@ -1,6 +1,7 @@
 import { getSql } from './db';
 import type { Market } from './types';
 import { deriveMarketStatus, mapOutcome, mapCategory } from './parimutuel-math';
+import { CANCELLATION_REFUNDS_ENABLED } from './contracts';
 
 const MARKET_INDEX_TIMEOUT_MS = 6_000;
 
@@ -71,7 +72,11 @@ export async function getIndexedMarkets(limit: number, offset: number): Promise<
         }),
         analysis: parseAnalysis(row.analysis_json),
         resolutionReason: resolved
-          ? outcome === 0 ? 'Market voided; eligible stakes may be refunded.' : 'Resolved on-chain.'
+          ? outcome === 0
+            ? CANCELLATION_REFUNDS_ENABLED
+              ? 'Market cancelled; participants may claim their staked amount.'
+              : 'Market cancelled; the selected legacy contract has no participant refund path.'
+            : 'Resolved on-chain.'
           : undefined,
       };
     });
@@ -184,7 +189,11 @@ export async function getIndexedMarketById(marketId: string): Promise<Market | n
       }),
       analysis: parseAnalysis(row.analysis_json),
       resolutionReason: resolved
-        ? outcome === 0 ? 'Market voided; eligible stakes may be refunded.' : 'Resolved on-chain.'
+        ? outcome === 0
+          ? CANCELLATION_REFUNDS_ENABLED
+            ? 'Market cancelled; participants may claim their staked amount.'
+            : 'Market cancelled; the selected legacy contract has no participant refund path.'
+          : 'Resolved on-chain.'
         : undefined,
     };
   } finally {

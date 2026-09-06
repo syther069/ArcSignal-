@@ -1,6 +1,6 @@
 ## Current deployment
 
-These addresses are the constants currently used by the application for ARC Testnet.
+This legacy address is the application's default on ARC Testnet. Operators can select a separately deployed contract with `NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDRESS`.
 
 :::address ARCSignal contract
 0x4f33115a18fe6a181be98610ddde3fab71efabed
@@ -21,7 +21,7 @@ createMarket | Owner-only. Creates a unique market and stores its analysis and d
 stake | Transfers USDC into Follow side 0 or Fade side 1.
 resolveMarket | Owner-only. Records Follow outcome 1 or Fade outcome 2.
 cancelMarket | Owner-only. Marks the market resolved with outcome 0.
-claimWinnings | Sends a winning caller's pari-mutuel payout once.
+claimWinnings | Sends a winning caller's pari-mutuel payout once. In the checked-in revision, the same call refunds both sides when a market is cancelled.
 setProfile | Stores a username, bio, and avatar URL for the caller.
 :::
 
@@ -38,13 +38,13 @@ function claimed(string marketId, address user) external view returns (bool);
 
 ## Events
 
-`MarketCreated`, `Staked`, `MarketResolved`, `Claimed`, and `ProfileUpdated` allow the application indexer to reconstruct a faster read model. The chain remains authoritative if the index is delayed or unavailable.
+`MarketCreated`, `Staked`, `MarketResolved`, `Claimed`, and `ProfileUpdated` allow the application indexer to reconstruct a faster read model. The checked-in revision also emits `MarketCancelled`, `Refunded`, `Paused`, and `Unpaused`. The chain remains authoritative if the index is delayed or unavailable.
 
 ## Authority and upgrade assumptions
 
 The current contract inherits `Ownable`. Market creation, resolution, and cancellation depend on that owner. The deployed contract is not presented here as audited or trustless.
 
 :::security Contract review status
-No professional audit report is included in this repository. The cancellation path lacks a participant refund method, and ERC-20 transfers do not use `SafeERC20`. Treat the contract as experimental testnet software.
+No professional audit report is included in this repository. The legacy default deployment lacks cancellation refunds and uses direct ERC-20 transfers. The checked-in revision adds refunds, `SafeERC20`, pausing, transfer-balance checks, input limits, and reentrancy protection, but those changes do not alter the legacy deployed bytecode. Treat every version as experimental testnet software until its deployment and audit status are independently verified.
 :::
 

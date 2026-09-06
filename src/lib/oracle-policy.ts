@@ -1,10 +1,11 @@
-export const ORACLE_POLICY_VERSION = 1;
+export const ORACLE_POLICY_VERSION = 2;
 
 const ALLOWED_SYMBOLS = new Set(['BTC', 'ETH', 'SOL', 'XRP', 'SUI', 'AVAX']);
 const ALLOWED_TIMEFRAMES = new Set(['5m', '15m', '1h', '4h', '24h']);
 
 export interface CryptoOracleSpec {
-  version: typeof ORACLE_POLICY_VERSION;
+  version: 1 | typeof ORACLE_POLICY_VERSION;
+  settlementModel?: 'ai-agreement-v1';
   provider: 'coingecko';
   symbol: string;
   targetPrice: number;
@@ -23,10 +24,72 @@ export interface CryptoPriceObservation {
 export type CryptoResolutionDecision =
   | { action: 'wait'; reason: string }
   | { action: 'manual-review'; reason: string }
-  | { action: 'resolve'; outcome: 1 | 2; reason: string };
+  | { action: 'resolve'; questionResult: 'YES' | 'NO'; reason: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export interface FootballOracleSpec {
+  version: typeof ORACLE_POLICY_VERSION;
+  settlementModel: 'ai-agreement-v1';
+  provider: 'api-football';
+  fixtureId: number;
+  leagueId: number;
+  season: number;
+  criterion: 'home-win-full-time';
+  resolutionTimestamp: number;
+}
+
+export function parseMarketPrediction(analysisJson: string): 'YES' | 'NO' {
+  let analysis: unknown;
+  try {
+    analysis = JSON.parse(analysisJson);
+  } catch {
+    throw new Error('analysis is not valid JSON');
+  }
+  if (!isRecord(analysis) || (analysis.prediction !== 'YES' && analysis.prediction !== 'NO')) {
+    throw new Error('analysis prediction is missing or invalid');
+  }
+  return analysis.prediction;
+}
+
+export function parseFootballOracleSpec(
+  analysisJson: string,
+  expectedResolutionTimestamp: number,
+): FootballOracleSpec {
+  let analysis: unknown;
+  try {
+    analysis = JSON.parse(analysisJson);
+  } catch {
+    throw new Error('analysis is not valid JSON');
+  }
+  if (!isRecord(analysis) || !isRecord(analysis.oracle)) {
+    throw new Error('canonical football oracle policy is missing');
+  }
+  const oracle = analysis.oracle;
+  if (
+    oracle.version !== ORACLE_POLICY_VERSION
+    || oracle.settlementModel !== 'ai-agreement-v1'
+    || oracle.provider !== 'api-football'
+    || !Number.isSafeInteger(oracle.fixtureId)
+    || Number(oracle.fixtureId) <= 0
+    || !Number.isSafeInteger(oracle.leagueId)
+    || Number(oracle.leagueId) <= 0
+    || !Number.isSafeInteger(oracle.season)
+    || oracle.criterion !== 'home-win-full-time'
+    || oracle.resolutionTimestamp !== expectedResolutionTimestamp
+  ) {
+    throw new Error('canonical football oracle policy is invalid');
+  }
+  return oracle as unknown as FootballOracleSpec;
+}
+
+export function resolvedOutcomeForPrediction(
+  prediction: 'YES' | 'NO',
+  questionResult: 'YES' | 'NO',
+): 1 | 2 {
+  return prediction === questionResult ? 1 : 2;
 }
 
 export function parseMarketTimeframe(marketId: string): string | null {
@@ -75,7 +138,8 @@ export function parseCryptoOracleSpec(
 
   const oracle = analysis.oracle;
   if (
-    oracle.version !== ORACLE_POLICY_VERSION ||
+    (oracle.version !== 1 && oracle.version !== ORACLE_POLICY_VERSION) ||
+    (oracle.version === ORACLE_POLICY_VERSION && oracle.settlementModel !== 'ai-agreement-v1') ||
     oracle.provider !== 'coingecko' ||
     typeof oracle.symbol !== 'string' ||
     !ALLOWED_SYMBOLS.has(oracle.symbol) ||
@@ -140,10 +204,10 @@ export function decideCryptoResolution(
     };
   }
 
-  const outcome: 1 | 2 = observation.price >= spec.targetPrice ? 1 : 2;
+  const questionResult = observation.price >= spec.targetPrice ? 'YES' : 'NO';
   return {
     action: 'resolve',
-    outcome,
+    questionResult,
     reason: `${spec.symbol} observed at $${observation.price} for $${spec.targetPrice} threshold`,
   };
 }

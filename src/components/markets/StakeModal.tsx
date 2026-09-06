@@ -11,6 +11,7 @@ import { Market, StakeSide } from '@/types';
 import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
 import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { clearMarketCache } from '@/lib/markets';
+import { calculateParimutuelPayoutRaw } from '@/lib/parimutuel-math';
 import {
   ARC_NETWORK_FEE_HELPER,
   calculateArcGasReserveUsdc,
@@ -68,6 +69,15 @@ function friendlyError(err: unknown): string {
   return firstSentence || 'Something went wrong. Please try again.';
 }
 
+function parseUsdcInput(value: string) {
+  if (!/^\d*(?:\.\d{0,6})?$/.test(value)) return null;
+  try {
+    return value && Number(value) > 0 ? parseUnits(value, 6) : 0n;
+  } catch {
+    return null;
+  }
+}
+
 export interface StakeModalProps {
   market: Market;
   side: StakeSide;
@@ -121,9 +131,10 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
     void Promise.all([refetchBalance(), refetchAllowance()]);
   }, [address, isOpen, refetchAllowance, refetchBalance]);
 
-  const parsedAmount = Math.max(parseFloat(amount) || 0, 0);
-  const amountStr = isNaN(parsedAmount) ? '0' : parsedAmount.toString();
-  const amountBigInt = parseUnits(amountStr, 6);
+  const parsedAmount = Math.max(Number(amount) || 0, 0);
+  const amountBigInt = parseUsdcInput(amount) ?? 0n;
+  const amountStr = formatUnits(amountBigInt, 6);
+  const invalidPrecision = amount.length > 0 && parseUsdcInput(amount) === null;
 
   useEffect(() => {
     if (!isOpen || step !== 'review' || !publicClient || !address) return;
@@ -181,16 +192,27 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
         pillActive: 'bg-[#f3a6c8] text-[#240b35]',
       };
 
-  const followProbability = Math.min(Math.max(market.probability ?? market.confidence ?? 50, 1), 99);
+  const yesProbability = Math.min(Math.max(market.probability ?? 50, 1), 99);
+  const aiPredictsYes = (market.agentPick || 'YES').toUpperCase() !== 'NO';
+  const followProbability = aiPredictsYes ? yesProbability : 100 - yesProbability;
   const fadeProbability = 100 - followProbability;
   const impliedProbability = isFollow ? followProbability : fadeProbability;
   const entryPriceCents = impliedProbability;
-  const newFollowPool = isFollow ? market.followPool + parsedAmount : market.followPool;
-  const newFadePool = !isFollow ? market.fadePool + parsedAmount : market.fadePool;
-  const winningPool = isFollow ? newFollowPool : newFadePool;
-  const totalPool = newFollowPool + newFadePool;
-  const poolShare = winningPool > 0 ? (parsedAmount / winningPool) * 100 : 0;
-  const estimatedWin = winningPool > 0 ? (parsedAmount / winningPool) * totalPool : 0;
+  const currentFollowPoolRaw = BigInt(market.followPoolRaw ?? parseUnits(market.followPool.toFixed(6), 6));
+  const currentFadePoolRaw = BigInt(market.fadePoolRaw ?? parseUnits(market.fadePool.toFixed(6), 6));
+  const newFollowPoolRaw = isFollow ? currentFollowPoolRaw + amountBigInt : currentFollowPoolRaw;
+  const newFadePoolRaw = !isFollow ? currentFadePoolRaw + amountBigInt : currentFadePoolRaw;
+  const winningPoolRaw = isFollow ? newFollowPoolRaw : newFadePoolRaw;
+  const losingPoolRaw = isFollow ? newFadePoolRaw : newFollowPoolRaw;
+  const payoutRaw = calculateParimutuelPayoutRaw({
+    stakeRaw: amountBigInt,
+    winningPoolRaw,
+    losingPoolRaw,
+  });
+  const poolShare = winningPoolRaw > 0n
+    ? Number((amountBigInt * 10_000n) / winningPoolRaw) / 100
+    : 0;
+  const estimatedWin = Number(formatUnits(payoutRaw, 6));
   const payoutMultiplier = parsedAmount > 0 ? estimatedWin / parsedAmount : 0;
   const profit = estimatedWin - parsedAmount;
   
@@ -216,6 +238,8 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
   
   const validationMessage = marketClosed
     ? 'This market has closed. Trading is disabled.'
+    : invalidPrecision
+      ? 'Enter a valid USDC amount with no more than 6 decimal places.'
     : belowMinimum
       ? `Minimum stake: ${minStake.toFixed(2)} USDC`
       : insufficientBalance

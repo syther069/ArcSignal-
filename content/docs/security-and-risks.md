@@ -5,7 +5,7 @@ ArcSignal is experimental software running on ARC Testnet. Test tokens have no m
 ## Smart contract risk
 
 :::security Unaudited contracts
-No professional security audit is included. Bugs can lock or misdirect test assets. The current cancellation flow has no participant refund method, and the contract uses direct ERC-20 calls rather than `SafeERC20` wrappers.
+No professional security audit is included. Bugs can lock or misdirect test assets. The legacy default deployment has no participant cancellation refund and uses direct ERC-20 calls. The checked-in revision adds a tested refund path, `SafeERC20`, balance checks, pausing, input limits, and reentrancy protection; it still requires an independent audit and verified deployment.
 :::
 
 Tests and code review can reduce risk but do not replace an independent audit, formal threat model, or staged deployment process.
@@ -40,5 +40,5 @@ Use the wallet receipt and ARC Testnet explorer to confirm a transaction. Arc fi
 
 ## Before any mainnet consideration
 
-At minimum, ArcSignal would need an audited contract revision, a tested cancellation refund path, hardened ownership and resolver controls, documented incident procedures, deployment verification, and a clear oracle security model.
+At minimum, ArcSignal would need an independent audit of the intended deployment, hardened ownership and resolver controls, documented incident procedures, source and bytecode verification, and a clear oracle security model. The checked-in cancellation tests are one part of that process.
 

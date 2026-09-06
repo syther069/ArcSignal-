@@ -38,6 +38,7 @@ describe('stats availability behavior', () => {
       activeMarkets: 0,
       totalMarkets: 0,
       accuracy: null,
+      accuracySampleSize: 0,
       source: 'neon',
       complete: true,
     });

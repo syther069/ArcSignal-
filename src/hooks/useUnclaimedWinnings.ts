@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
 
 /**
- * Returns the count of resolved markets where the user won but hasn't claimed yet.
+ * Returns the count of resolved markets with an unclaimed payout or refund.
  * Uses lightweight indexed API query instead of expensive on-chain log scans.
  * Throttles polling and pauses when the tab is hidden.
  */
@@ -31,10 +31,10 @@ export function useUnclaimedWinnings(): number {
         const data = await res.json();
         if (cancelled || !data.positions) return;
 
-        // Count positions where market is resolved, user won, and not yet claimed
+        // The API exposes one refundable representative when both sides were staked.
         const unclaimed = data.positions.filter(
-          (p: { isResolved: boolean; userWon: boolean; claimed: boolean }) =>
-            p.isResolved && p.userWon && !p.claimed
+          (p: { isResolved: boolean; userWon: boolean; refundable?: boolean; claimed: boolean }) =>
+            p.isResolved && (p.userWon || p.refundable) && !p.claimed
         ).length;
 
         setCount(unclaimed);
@@ -63,4 +63,3 @@ export function useUnclaimedWinnings(): number {
 
   return count;
 }
-

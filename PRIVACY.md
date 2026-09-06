@@ -2,12 +2,13 @@
 
 **Last Updated:** July 6, 2026
 
-At ArcSignal, we respect your privacy and are committed to protecting any information you share with us. This Privacy Policy explains how we collect, use, and safeguard your data when you interact with the ArcSignal interface.
+This Privacy Policy explains the data processed when you use the ArcSignal interface, its operated services, and the selected smart contract.
 
 ## 1. Data Collection
-Due to the decentralized architecture of ArcSignal, we inherently collect very little personal information. 
-*   **Wallet Addresses:** When you connect to the protocol, your public wallet address is visible to us and is recorded on the public blockchain. We do not link this address to your real-world identity.
-*   **Analytics:** We may use privacy-preserving, cookieless analytics tools to monitor website traffic and usage patterns to improve the frontend experience. This data is aggregated and anonymized.
+ArcSignal minimizes application data where practical, but using the interface and its integrations creates public blockchain records and ordinary provider request logs.
+*   **Wallet and transaction data:** Connected addresses, public transactions, stakes, claims, and profile records are read from the blockchain and may be copied into the application index for display and operations.
+*   **Profiles and uploads:** If you create a profile, its username, bio, and avatar URL are public on-chain. Avatar files are sent to the configured image host after the wallet signs a short-lived upload authorization. The service stores the authorization signature and wallet address to prevent replay and enforce upload limits.
+*   **Operational data:** Hosting, RPC, database, wallet-connection, AI, sports-data, and image-hosting providers may receive ordinary request metadata such as IP address, browser information, timestamps, and requested resources under their own policies.
 
 ## 2. Blockchain Transparency
 Please be aware that ArcSignal operates on a public blockchain (the ARC Testnet). All transactions, stakes, claims, and wallet interactions are immutable, public, and transparent. Anyone can view your trading history and wallet balances. We have no control over this public ledger.
@@ -19,10 +20,10 @@ We use the minimal data we collect strictly to:
 *   Maintain and improve the performance and security of the website.
 
 ## 4. Third-Party Services
-We may utilize third-party RPC nodes or APIs (such as those provided by the ARC Network or specialized data providers for the AI) to fetch on-chain data and market statistics. These third parties may have their own privacy policies regarding network requests, but ArcSignal does not share any personally identifiable information with them.
+ArcSignal may use ARC RPC providers, Neon, Vercel, Circle Bridge Kit, Gemini or Groq, API-Football, and ImgBB. A request is sent only when the related feature is used. Circle Bridge Kit error reporting is disabled in the application configuration, but wallet and bridge providers still process the requests needed to connect wallets, quote routes, and submit transactions. Review each provider's policy before using the feature.
 
 ## 5. Security
-We employ industry-standard security measures to protect the frontend interface against unauthorized access and attacks. However, you are solely responsible for the security of your own private keys and wallet seed phrases. ArcSignal will never ask for your private keys.
+We use technical controls intended to reduce unauthorized access, including signed avatar-upload requests, replay and rate limits, restrictive response headers, and server-side secrets. No control eliminates all risk. You are responsible for your private keys and seed phrases; ArcSignal will never ask for them.
 
 ## 6. Changes to this Policy
 We may update this Privacy Policy from time to time as our protocol evolves. We will notify users of any significant changes by updating the "Last Updated" date at the top of this document.

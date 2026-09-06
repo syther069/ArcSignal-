@@ -68,12 +68,33 @@ create table if not exists oracle_attempts (
   outcome smallint,
   status text not null,
   transaction_hash text,
-  error_message text
+  error_message text,
+  provider text,
+  observed_value text,
+  observed_at timestamptz,
+  decision_reason text,
+  question_result text,
+  prediction text
 );
+
+create table if not exists profile_uploads (
+  signature text primary key,
+  wallet_address text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists profile_uploads_wallet_created_idx
+  on profile_uploads (lower(wallet_address), created_at desc);
 
 alter table markets_index add column if not exists status text not null default 'OPEN';
 alter table sync_state add column if not exists lease_token text;
 alter table sync_state add column if not exists lease_expires_at timestamptz;
+alter table oracle_attempts add column if not exists provider text;
+alter table oracle_attempts add column if not exists observed_value text;
+alter table oracle_attempts add column if not exists observed_at timestamptz;
+alter table oracle_attempts add column if not exists decision_reason text;
+alter table oracle_attempts add column if not exists question_result text;
+alter table oracle_attempts add column if not exists prediction text;
 
 create index if not exists sync_state_lease_expiry_idx
   on sync_state (lease_expires_at);

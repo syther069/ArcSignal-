@@ -24,7 +24,7 @@ export default function TermsPage() {
       <footer className="w-full max-w-[1440px] border-t border-white/10 pt-8 pb-12 flex flex-col md:flex-row justify-between items-center gap-6 mt-16">
         <div className="text-sm text-on-surface-variant max-w-xs">
           <p className="font-bold text-on-surface mb-2">ArcSignal</p>
-          <p>The next-generation protocol for high-precision decentralized forecasting and AI analytics.</p>
+          <p>Experimental AI-generated prediction markets on Arc Testnet.</p>
         </div>
         
         <div className="flex gap-8 text-sm text-on-surface-variant">

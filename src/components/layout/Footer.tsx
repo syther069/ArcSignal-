@@ -1,6 +1,4 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 
 const footerLinks = [
@@ -18,6 +16,7 @@ const footerLinks = [
       { label: 'Documentation', href: '/docs' },
       { label: 'Smart Contracts', href: '/docs' },
       { label: 'Protocol Guide', href: '/guide' },
+      { label: 'System Status', href: '/status' },
       { label: 'Bug Bounty', href: 'https://github.com/syther069/ArcSignal-' },
     ],
   },
@@ -32,14 +31,6 @@ const footerLinks = [
 ];
 
 export default function Footer() {
-  const [currentYear, setCurrentYear] = useState<number | null>(null);
-  const [blockNumber, setBlockNumber] = useState<string | null>(null);
-
-  useEffect(() => {
-    setCurrentYear(new Date().getFullYear());
-    setBlockNumber(Math.floor(Date.now() / 12000).toLocaleString());
-  }, []);
-
   return (
     <footer className="w-full border-t border-white/5 bg-[#060e1e]">
       <div className="max-w-7xl mx-auto px-8 py-12">
@@ -55,16 +46,13 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-xs text-slate-500 leading-relaxed max-w-[220px]">
-              AI-powered prediction markets on ARC Network. Follow or fade autonomous agents with real USDC stakes.
+              Experimental AI-generated prediction markets on Arc Testnet. Follow or fade each recorded prediction with testnet USDC.
             </p>
             <div className="flex items-center gap-2 pt-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-              </span>
-              <span className="text-[10px] font-mono text-emerald-400 uppercase tracking-wider">
-                Network Online
-              </span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#fbbf24]"></span>
+              <Link href="/status" className="text-[10px] font-mono text-[#fbbf24] uppercase tracking-wider hover:text-white">
+                Check system status
+              </Link>
             </div>
           </div>
 
@@ -95,14 +83,10 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="mt-12 pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
-          <span className="text-[10px] text-slate-600 font-mono" suppressHydrationWarning>
-          </span>
+          <span className="text-[10px] text-slate-600 font-mono">Experimental ARC Testnet software</span>
           <div className="flex items-center gap-6">
             <span className="text-[10px] text-slate-600 font-mono">
               Chain ID: 5042002
-            </span>
-            <span className="text-[10px] text-slate-600 font-mono" suppressHydrationWarning>
-              Block: {blockNumber ?? ''}
             </span>
           </div>
         </div>

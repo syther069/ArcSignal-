@@ -2,12 +2,12 @@
 
 The ArcSignal documentation source lives in [`content/docs`](./content/docs) and is published as a dedicated, structured experience under the `/docs` route in the web application.
 
-> **Status Notice**: ArcSignal is experimental software deployed on ARC Testnet (Chain ID `5042002`). The current contracts are unaudited, market resolution is owner-controlled, winning users must manually call `claimWinnings`, and cancelled markets have no participant refund method in this contract version. Public developer APIs, node-operator workflows, decentralized resolution, and mainnet operation are planned roadmap items, not live features.
+> **Status Notice**: ArcSignal is experimental software on ARC Testnet (Chain ID `5042002`). The legacy address configured by default is unaudited, uses owner-controlled resolution, requires manual claims, and has no cancellation-refund path. The checked-in contract revision adds refunds, pausing, safer token transfers, input limits, and reentrancy protection, but those protections apply only after that revision is deployed and selected with `NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDRESS`. Public developer APIs, decentralized resolution, and mainnet operation remain roadmap items.
 
-## Circle App Kit funding
+## Circle Bridge Kit funding
 
-ArcSignal uses `@circle-fin/app-kit` with `@circle-fin/adapter-viem-v2` for
-browser-wallet USDC funding. The in-app funding modal estimates and bridges
+ArcSignal uses Circle's focused `@circle-fin/bridge-kit` with
+`@circle-fin/adapter-viem-v2` for browser-wallet USDC funding. The in-app funding modal estimates and bridges
 testnet USDC from Ethereum Sepolia, Base Sepolia, or Arbitrum Sepolia into the
 connected address on Arc Testnet through Circle CCTP. Arc Testnet is the fixed
 destination; bridging from Arc back to the same chain is intentionally not
@@ -26,8 +26,7 @@ RPC used by the existing wallet and contract clients.
 
 wagmi remains the connection and React contract-state layer for ArcSignal.
 Project-local viem helpers continue to approve USDC to `ARCSIGNAL_ADDRESS` and
-call `stake(marketId, side, amount)`; Circle App Kit only owns funding, bridging,
-and reusable USDC send helpers. The wagmi configuration is isolated in
+call `stake(marketId, side, amount)`; Circle Bridge Kit only owns funding and bridging. The wagmi configuration is isolated in
 `src/lib/wallet-config.ts`, while Circle-specific imports are isolated in
 `src/lib/circle-app-kit.ts`.
 

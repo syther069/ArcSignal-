@@ -3,14 +3,17 @@ import {
   assertFreshGenerationObservation,
   decideCryptoResolution,
   ORACLE_POLICY_VERSION,
+  parseMarketPrediction,
   parseCryptoOracleSpec,
   parseMarketTimeframe,
+  resolvedOutcomeForPrediction,
   type CryptoOracleSpec,
 } from '@/lib/oracle-policy';
 
 const resolutionTimestamp = 1_788_000_000;
 const spec: CryptoOracleSpec = {
   version: ORACLE_POLICY_VERSION,
+  settlementModel: 'ai-agreement-v1',
   provider: 'coingecko',
   symbol: 'BTC',
   targetPrice: 100_000,
@@ -47,13 +50,13 @@ describe('oracle policy', () => {
       symbol: 'BTC',
       price: 101_000,
       observedAt: resolutionTimestamp + 30,
-    }, resolutionTimestamp + 35)).toMatchObject({ action: 'resolve', outcome: 1 });
+    }, resolutionTimestamp + 35)).toMatchObject({ action: 'resolve', questionResult: 'YES' });
     expect(decideCryptoResolution(spec, {
       provider: 'coingecko',
       symbol: 'BTC',
       price: 99_000,
       observedAt: resolutionTimestamp + 30,
-    }, resolutionTimestamp + 35)).toMatchObject({ action: 'resolve', outcome: 2 });
+    }, resolutionTimestamp + 35)).toMatchObject({ action: 'resolve', questionResult: 'NO' });
   });
 
   it('fails closed for stale or wrong-provider observations', () => {
@@ -105,5 +108,13 @@ describe('oracle policy', () => {
   it('parses only the canonical generated market ID shape', () => {
     expect(parseMarketTimeframe('BTC-PRICE-15m-1788000000')).toBe('15m');
     expect(parseMarketTimeframe('BTC-15m-random')).toBeNull();
+  });
+
+  it('maps Follow to agreement with either a YES or NO AI prediction', () => {
+    expect(resolvedOutcomeForPrediction('YES', 'YES')).toBe(1);
+    expect(resolvedOutcomeForPrediction('YES', 'NO')).toBe(2);
+    expect(resolvedOutcomeForPrediction('NO', 'NO')).toBe(1);
+    expect(resolvedOutcomeForPrediction('NO', 'YES')).toBe(2);
+    expect(parseMarketPrediction(JSON.stringify({ prediction: 'NO' }))).toBe('NO');
   });
 });

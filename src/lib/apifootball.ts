@@ -1,5 +1,7 @@
 export interface Fixture {
   fixtureId: number;
+  leagueId: number;
+  season: number;
   homeTeam: string;
   awayTeam: string;
   homeTeamLogo: string;
@@ -48,6 +50,8 @@ interface ApiFootballFixtureResponse {
     away: number | null;
   };
   league: {
+    id: number;
+    season: number;
     round: string;
     name: string;
   };
@@ -65,6 +69,8 @@ function getHeaders() {
 function mapFixture(item: ApiFootballFixtureResponse): Fixture {
   return {
     fixtureId: item.fixture.id,
+    leagueId: item.league.id,
+    season: item.league.season,
     homeTeam: item.teams.home.name,
     awayTeam: item.teams.away.name,
     homeTeamLogo: item.teams.home.logo,
@@ -127,6 +133,11 @@ export async function fetchCompletedFixtures(
   return fetchFixtures(
     `${BASE_URL}/fixtures?league=${leagueId}&season=${season}&from=${fromDate}&to=${toDate}&status=FT`,
   );
+}
+
+export async function fetchFixtureById(fixtureId: number): Promise<Fixture | null> {
+  const fixtures = await fetchFixtures(`${BASE_URL}/fixtures?id=${fixtureId}`);
+  return fixtures[0] ?? null;
 }
 
 export async function fetchLiveMatches(): Promise<LiveMatch[]> {

@@ -35,6 +35,7 @@ export async function getIndexedAnalytics(limit = 160) {
       resolved: Boolean(row.resolved),
       outcome: Number(row.outcome) === 1 ? 'FOLLOW' : Number(row.outcome) === 2 ? 'FADE' : 'PENDING',
       confidence: Number(analysis.confidence ?? 0),
+      accuracyEligible: (analysis.oracle as Record<string, unknown> | undefined)?.settlementModel === 'ai-agreement-v1',
     };
   });
 
@@ -42,8 +43,8 @@ export async function getIndexedAnalytics(limit = 160) {
   const totalFade = markets.reduce((sum, market) => sum + market.fadePool, 0);
   const resolved = markets.filter((market) => market.resolved);
   const cancelled = resolved.filter((market) => market.outcome === 'PENDING');
-  const cryptoResolved = resolved.filter((market) => market.category === 'CRYPTO');
-  const footballResolved = resolved.filter((market) => market.category === 'FOOTBALL');
+  const cryptoResolved = resolved.filter((market) => market.accuracyEligible && market.category === 'CRYPTO');
+  const footballResolved = resolved.filter((market) => market.accuracyEligible && market.category === 'FOOTBALL');
   const cryptoCorrect = cryptoResolved.filter((market) => market.outcome === 'FOLLOW').length;
   const footballCorrect = footballResolved.filter((market) => market.outcome === 'FOLLOW').length;
 
@@ -55,10 +56,10 @@ export async function getIndexedAnalytics(limit = 160) {
   const resolvedWithAccuracy = [...resolved]
     .sort((a, b) => a.resolutionTime - b.resolutionTime)
     .map((market) => {
-    if (market.category === 'CRYPTO') {
+    if (market.accuracyEligible && market.category === 'CRYPTO') {
       runningCryptoTotal += 1;
       if (market.outcome === 'FOLLOW') runningCryptoCorrect += 1;
-    } else if (market.category === 'FOOTBALL') {
+    } else if (market.accuracyEligible && market.category === 'FOOTBALL') {
       runningFootballTotal += 1;
       if (market.outcome === 'FOLLOW') runningFootballCorrect += 1;
     }
@@ -108,7 +109,9 @@ export async function getIndexedAnalytics(limit = 160) {
       dataSource: 'NEON INDEX',
       followPercent: totalVolume ? Math.round((totalFollow / totalVolume) * 100) : 0,
       fadePercent: totalVolume ? Math.round((totalFade / totalVolume) * 100) : 0,
-      aiAccuracy: resolved.length ? Math.round(((cryptoCorrect + footballCorrect) / resolved.length) * 100) : null,
+      aiAccuracy: cryptoResolved.length + footballResolved.length
+        ? Math.round(((cryptoCorrect + footballCorrect) / (cryptoResolved.length + footballResolved.length)) * 100)
+        : null,
     },
   };
 }

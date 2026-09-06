@@ -3,6 +3,7 @@ import { getSingleMarketFromChain, serializeMarket } from '@/lib/markets';
 import { getIndexedMarketById } from '@/lib/indexed-markets';
 import { toUiMarket } from '@/lib/ui-market';
 import { notFound } from 'next/navigation';
+import { getResolutionEvidence } from '@/lib/oracle-evidence';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,8 @@ export default async function MarketDetailPage({
 
   const serialized = serializeMarket(rawMarket);
   const market = toUiMarket(serialized);
+  const resolutionEvidence = market.resolved ? await getResolutionEvidence(id) : null;
 
-  return <MarketDetailClient market={market} />;
+  return <MarketDetailClient market={market} resolutionEvidence={resolutionEvidence} />;
 }
 

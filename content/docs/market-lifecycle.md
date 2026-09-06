@@ -26,9 +26,9 @@ The owner calls `resolveMarket` with outcome `1` for Follow or `2` for Fade. A r
 
 The owner can call `cancelMarket`, which sets `resolved` to true and `outcome` to zero. The interface maps that state to voided or cancelled.
 
-:::security Cancellation limitation
-The current `ARCSignal.sol` contract has no refund function for cancelled markets, and `claimWinnings` explicitly rejects outcome zero. Funds staked in a cancelled market therefore have no participant-accessible recovery path in this contract version.
+:::security Cancellation behavior is versioned
+The legacy default deployment has no participant-accessible recovery path after cancellation. In the checked-in revision, `claimWinnings` returns the caller's combined Follow and Fade stakes when outcome zero is recorded. The application must be configured for the matching address and behavior.
 :::
 
-This limitation is one reason the deployment must remain testnet-only and must not be described as production-ready.
+Both versions remain testnet-only and must not be described as production-ready.
 

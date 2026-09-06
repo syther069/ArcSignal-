@@ -109,6 +109,34 @@ async function hydrateMarkets(marketIds: Set<string>, blockNumber: bigint, deadl
   return markets;
 }
 
+async function reconcileDueMarkets(
+  sql: ReturnType<typeof getSql>,
+  blockNumber: bigint,
+  deadline: number,
+) {
+  const rows = await sql`
+    select market_id
+    from markets_index
+    where resolved = false and resolution_time <= extract(epoch from now())::bigint
+    order by resolution_time asc
+    limit 100
+  `;
+  const marketIds = new Set(rows.map((row) => String(row.market_id)));
+  if (marketIds.size === 0) return 0;
+  const markets = await hydrateMarkets(marketIds, blockNumber, deadline);
+  const changed = markets.filter((market) => market.resolved);
+  if (changed.length === 0) return 0;
+  await sql.transaction((tx) => changed.map((market) => tx`
+    update markets_index set
+      category = ${market.category}, question = ${market.question}, analysis_json = ${market.analysisJson || null},
+      resolution_time = ${market.resolutionTime}, follow_pool = ${market.followPool}, fade_pool = ${market.fadePool},
+      resolved = ${market.resolved}, outcome = ${market.outcome}, status = ${market.status},
+      updated_block = greatest(coalesce(updated_block, 0), ${blockNumber}), updated_at = now()
+    where market_id = ${market.marketId}
+  `));
+  return changed.length;
+}
+
 async function sync(req: Request) {
   const authorization = authorizeCronRequest(req);
   if (!authorization.ok) return authorization.response;
@@ -147,8 +175,10 @@ async function sync(req: Request) {
     const finalizedHead = finalizedBlock(latestBlock, confirmations);
 
     if (lastBlock >= finalizedHead) {
+      const reconciledMarkets = await reconcileDueMarkets(sql, finalizedHead, deadline);
       return NextResponse.json({
         indexed: false,
+        reconciledMarkets,
         fromBlock: lastBlock.toString(),
         finalizedBlock: finalizedHead.toString(),
         latestBlock: latestBlock.toString(),
@@ -313,11 +343,13 @@ async function sync(req: Request) {
       chunksProcessed++;
     }
 
+    const reconciledMarkets = await reconcileDueMarkets(sql, finalizedHead, deadline);
     return NextResponse.json({
       indexed: chunksProcessed > 0,
       complete: cursor > finalizedHead,
       processedEvents,
       hydratedMarkets: hydratedMarketCount,
+      reconciledMarkets,
       chunksProcessed,
       nextBlock: cursor.toString(),
       fromBlock: (lastBlock + 1n).toString(),

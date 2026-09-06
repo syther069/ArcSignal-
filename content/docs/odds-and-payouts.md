@@ -35,5 +35,5 @@ Resolution only records the winning outcome. Each winning address must separatel
 - The current contract does not deduct a protocol fee in `claimWinnings`.
 - A winner must have a recorded stake on the winning side.
 - Integer division rounds down.
-- Cancelled markets have no participant refund function in the current contract. See [Resolution and claims](/docs/resolution-and-claims).
+- Cancellation recovery depends on the selected contract: the legacy default has no refund path, while the checked-in revision refunds a wallet's combined stakes through `claimWinnings`. See [Resolution and claims](/docs/resolution-and-claims).
 

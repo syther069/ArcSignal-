@@ -20,7 +20,7 @@ The application and background jobs may store supporting resolution attempts or 
 
 ## Claiming winnings
 
-Winning users call `claimWinnings(marketId)` from the address that originally staked. The contract checks that the market is resolved, the address has not already claimed, the outcome is Follow or Fade, and the address has a stake on the winning side.
+Winning users call `claimWinnings(marketId)` from the address that originally staked. The contract checks that the market is resolved, the address has not already claimed, and the address has a stake on the winning side. On a deployment of the checked-in revision, outcome zero instead returns that address's combined Follow and Fade stakes.
 
 It then marks the address as claimed before transferring the calculated USDC payout. This state-first ordering reduces re-entrant double-claim risk, although the contract has not been professionally audited.
 
@@ -30,9 +30,9 @@ The portfolio identifies resolved winning positions and presents a Claim action.
 
 ## Cancellation risk
 
-:::security No refund path in this version
-`cancelMarket` records outcome zero, while `claimWinnings` requires outcome one or two. There is no separate refund method. Test stakes in a cancelled market cannot be recovered through the participant interface or the current public contract functions.
+:::security Verify the selected contract version
+The legacy default address records outcome zero but has no participant refund path. The checked-in revision makes `claimWinnings` return both sides of a wallet's stake after cancellation and emits `Refunded`. The interface enables that action only when `NEXT_PUBLIC_ARCSIGNAL_CANCEL_REFUNDS=true`; set it only for a verified deployment of the revised contract.
 :::
 
-Do not use real-value assets with this deployment. A future contract version should define and test an explicit cancellation refund path before mainnet consideration.
+Do not use real-value assets with either testnet deployment. Verify the selected address, source, bytecode, ownership, and refund behavior before signing.
 

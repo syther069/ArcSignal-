@@ -1,22 +1,22 @@
-# ArcSignal: The AI-Driven Decentralized Prediction Market
+# ArcSignal: An AI-Guided On-Chain Prediction Market
 
 **Version 1.0**
 
 ## Abstract
 Prediction markets are widely recognized as one of the most efficient mechanisms for aggregating dispersed information and forecasting future events. However, traditional prediction markets often suffer from low liquidity, complex order-book mechanics, and a lack of baseline analytical context for casual participants. 
 
-**ArcSignal** introduces a paradigm shift by merging artificial intelligence with decentralized finance on the ARC Network. Instead of users creating arbitrary markets and waiting for a counterparty, ArcSignal deploys sophisticated AI agents to analyze data (across Crypto and Sports) and issue a baseline prediction. Participants then interact with a streamlined pari-mutuel smart contract, staking USDC to either **"Follow"** (agree) or **"Fade"** (disagree) the AI's signal. 
+**ArcSignal** combines artificial intelligence with on-chain settlement on the ARC Network. An owner-operated service uses AI and external data to frame Crypto and Sports markets and issue a baseline prediction. Participants then interact with a pari-mutuel smart contract, staking testnet USDC to either **"Follow"** (agree) or **"Fade"** (disagree) the AI's signal.
 
 The result is a highly liquid, gamified, and frictionless prediction ecosystem that tests human intuition against machine intelligence, settled transparently on-chain.
 
 ---
 
 ## 1. Introduction
-The advent of Web3 has solved the problem of trustless settlement, while the rapid evolution of Large Language Models (LLMs) and AI agents has unlocked unprecedented data analysis capabilities. Yet, these two revolutionary technologies operate largely in silos. 
+Public blockchains make contract state and payouts inspectable, while Large Language Models (LLMs) and data APIs can provide a baseline analysis. ArcSignal currently combines those properties with an owner-controlled market and resolution service.
 
 ArcSignal bridges this gap. By utilizing AI (specifically powered by Google's Gemini and specialized data APIs) as the initiator of a market, we provide participants with a data-driven thesis right out of the gate. The core loop of ArcSignal is simple:
 1. **The AI analyzes** a future event (e.g., "Will Bitcoin close above $65,000 this week?" or "Who will win the upcoming Premier League match?").
-2. **The AI publishes** its prediction, acting as the "house" thesis.
+2. **The owner service publishes** the AI prediction on-chain as the baseline thesis.
 3. **The crowd stakes** capital on whether the AI is right (Follow) or wrong (Fade).
 
 This model lowers the barrier to entry for everyday users, turning prediction markets from a complex trading environment into a highly engaging, social, and analytical experience.
@@ -53,7 +53,7 @@ ArcSignal is built for speed, transparency, and user experience, utilizing a mod
 ### 3.1 Smart Contracts (ARC Network)
 All financial logic is handled by immutable smart contracts deployed on the **ARC Testnet** (progressing to Mainnet). 
 - **Settlement Asset:** All bets are denominated in **USDC**, eliminating the volatility risk associated with native protocol tokens during the prediction lifecycle.
-- **Security:** The `ARCSignal.sol` contract is lightweight, trustless, and handles the escrow of USDC, the tracking of user stakes, and the final payout distribution upon resolution.
+- **Security:** The `ARCSignal.sol` contract escrows USDC, tracks stakes, and calculates payouts. Creation, resolution, and cancellation remain owner-controlled, and the repository has no professional audit report.
 
 ### 3.2 The Off-Chain Engine
 To provide a frictionless Web2-like experience without compromising Web3 settlement:
@@ -62,7 +62,7 @@ To provide a frictionless Web2-like experience without compromising Web3 settlem
 - **AI Oracles (Gemini & API Integrations):** The backend periodically triggers AI agents to ingest real-time market data, sentiment, or sports statistics (e.g., via API-Football) to formulate predictions and open new markets on-chain.
 
 ### 3.3 Wallet Onboarding
-Utilizing **Wagmi** and **AppKit (WalletConnect)**, ArcSignal supports both native Web3 degens and newer users, offering a seamless connection experience across desktop and mobile wallets.
+ArcSignal uses **wagmi** and viem to connect injected EVM wallets and submit testnet transactions. Circle Bridge Kit reuses that connected wallet provider for cross-chain USDC funding.
 
 ---
 
@@ -101,7 +101,7 @@ The repository includes an experimental **Prediction Pass** ERC-721 contract, bu
 ## 6. Conclusion
 ArcSignal is not just another prediction market; it is an experiment in human-computer interaction and behavioral economics. By providing a baseline AI thesis, we solve the "blank canvas" problem of traditional prediction markets, instantly polarizing participants into two camps: the Followers and the Faders. 
 
-Through the security of the ARC Network, the stability of USDC, and the intelligence of modern AI, ArcSignal is building the ultimate arena for predictive alpha.
+ArcSignal is an experimental testnet arena for comparing human judgment with an AI baseline. Its current trust assumptions, external data dependencies, and contract risks are documented in the product and repository.
 
 ---
 *Disclaimer: ArcSignal is currently in Testnet. The smart contracts are unaudited and this whitepaper is for informational purposes only. It does not constitute financial advice.*

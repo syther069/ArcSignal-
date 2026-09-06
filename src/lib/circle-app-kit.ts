@@ -1,9 +1,8 @@
-import { AppKit, isRetryableError } from '@circle-fin/app-kit';
+import { BridgeKit, isRetryableError } from '@circle-fin/bridge-kit';
 import type {
   BridgeEstimateResult,
   BridgeResult,
-  BridgeStep,
-} from '@circle-fin/app-kit';
+} from '@circle-fin/bridge-kit';
 import {
   createViemAdapterFromProvider,
   type ViemAdapter,
@@ -26,15 +25,17 @@ export type CircleBridgeResult = BridgeResult;
 
 export type CircleBridgeProgress = {
   name: string;
-  state: BridgeStep['state'];
+  state: BridgeResult['steps'][number]['state'];
   txHash?: string;
   explorerUrl?: string;
   errorMessage?: string;
 };
 
-// Circle App Kit is stateless between calls apart from event subscriptions, so
-// one shared instance is safe. Callers always unsubscribe their own handlers.
-export const circleAppKit = new AppKit();
+// Circle Bridge Kit is stateless between calls apart from event subscriptions,
+// so one shared instance is safe. Callers unsubscribe their own handlers.
+export const circleBridgeKit = new BridgeKit({
+  disableErrorReporting: true,
+});
 
 export async function createBrowserWalletViemAdapter(
   provider: EIP1193Provider,
@@ -97,7 +98,7 @@ export async function estimateBridgeUsdc({
   sourceChain,
   amount,
 }: BridgeInput): Promise<BridgeEstimateResult> {
-  return circleAppKit.estimateBridge(
+  return circleBridgeKit.estimate(
     createBridgeParams({ adapter, sourceChain, amount }),
   );
 }
@@ -111,11 +112,11 @@ export async function bridgeUsdcToArc(
     if (progress) onProgress?.(progress);
   };
 
-  circleAppKit.on('*', handler);
+  circleBridgeKit.on('*', handler);
   try {
-    return await circleAppKit.bridge(createBridgeParams(input));
+    return await circleBridgeKit.bridge(createBridgeParams(input));
   } finally {
-    circleAppKit.off('*', handler);
+    circleBridgeKit.off('*', handler);
   }
 }
 
@@ -129,11 +130,11 @@ export async function retryBridgeUsdc(
     if (progress) onProgress?.(progress);
   };
 
-  circleAppKit.on('*', handler);
+  circleBridgeKit.on('*', handler);
   try {
-    return await circleAppKit.retryBridge(result, { from: adapter, to: adapter });
+    return await circleBridgeKit.retry(result, { from: adapter, to: adapter });
   } finally {
-    circleAppKit.off('*', handler);
+    circleBridgeKit.off('*', handler);
   }
 }
 
@@ -141,21 +142,4 @@ export function canRetryCircleBridge(result: BridgeResult) {
   const failedStep = result.steps.find((step) => step.state === 'error');
   if (!failedStep || failedStep.errorCategory === 'user_rejected') return false;
   return !failedStep.error || isRetryableError(failedStep.error);
-}
-
-export async function sendUsdc({
-  adapter,
-  recipient,
-  amount,
-}: {
-  adapter: ViemAdapter;
-  recipient: `0x${string}`;
-  amount: string;
-}) {
-  return circleAppKit.send({
-    from: { adapter, chain: ARC_CIRCLE_CHAIN },
-    to: recipient,
-    amount,
-    token: 'USDC',
-  });
 }

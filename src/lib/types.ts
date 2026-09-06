@@ -13,6 +13,12 @@ export interface AIAnalysis {
   riskFactors?: string[];
   sources: string[];
   generatedAt: string;
+  oracle?: {
+    version?: number;
+    settlementModel?: string;
+    provider?: string;
+    [key: string]: unknown;
+  };
 }
 
 export interface Market {

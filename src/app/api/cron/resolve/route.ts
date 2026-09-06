@@ -3,13 +3,17 @@ import { createWalletClient, decodeEventLog, http, createPublicClient } from 'vi
 import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { fetchFreshCryptoPrices } from '@/lib/coingecko';
-import { fetchCompletedFixtures } from '@/lib/apifootball';
+import { fetchFixtureById } from '@/lib/apifootball';
 import { authorizeCronRequest } from '@/lib/cron-auth';
+import { isMarketAutomationEnabled } from '@/lib/automation-policy';
 import { getSql } from '@/lib/db';
 import {
   decideCryptoResolution,
+  parseFootballOracleSpec,
   parseCryptoOracleSpec,
+  parseMarketPrediction,
   parseMarketTimeframe,
+  resolvedOutcomeForPrediction,
 } from '@/lib/oracle-policy';
 
 export const dynamic = 'force-dynamic';
@@ -37,18 +41,35 @@ const resolvePublicClient = createPublicClient({
 const RESOLUTION_SCAN_LIMIT = Number(process.env.RESOLUTION_SCAN_LIMIT ?? 40);
 const VALID_TIMEFRAMES = new Set(['5m', '15m', '1h', '4h', '24h']);
 
+type OracleEvidence = {
+  provider: string;
+  observedValue: string;
+  observedAt: number;
+  decisionReason: string;
+  questionResult: 'YES' | 'NO';
+  prediction: 'YES' | 'NO';
+};
+
 async function recordOracleAttempt(
   marketId: string,
   status: 'SUBMITTED' | 'CONFIRMED' | 'SKIPPED' | 'FAILED',
   outcome?: number,
   transactionHash?: string,
   errorMessage?: string,
+  evidence?: OracleEvidence,
 ) {
   try {
     const sql = getSql();
     await sql`
-      insert into oracle_attempts (market_id, outcome, status, transaction_hash, error_message)
-      values (${marketId}, ${outcome ?? null}, ${status}, ${transactionHash ?? null}, ${errorMessage ?? null})
+      insert into oracle_attempts (
+        market_id, outcome, status, transaction_hash, error_message,
+        provider, observed_value, observed_at, decision_reason, question_result, prediction
+      ) values (
+        ${marketId}, ${outcome ?? null}, ${status}, ${transactionHash ?? null}, ${errorMessage ?? null},
+        ${evidence?.provider ?? null}, ${evidence?.observedValue ?? null},
+        ${evidence ? new Date(evidence.observedAt * 1000).toISOString() : null},
+        ${evidence?.decisionReason ?? null}, ${evidence?.questionResult ?? null}, ${evidence?.prediction ?? null}
+      )
     `;
   } catch (error) {
     console.warn(`Unable to record oracle attempt for ${marketId}:`, error);
@@ -78,7 +99,7 @@ export async function POST(req: Request) {
   const authorization = authorizeCronRequest(req);
   if (!authorization.ok) return authorization.response;
 
-  if (process.env.ENABLE_MARKET_AUTOMATION === 'false') {
+  if (!isMarketAutomationEnabled(process.env.ENABLE_MARKET_AUTOMATION)) {
     return NextResponse.json({ error: 'Market automation is disabled' }, { status: 503 });
   }
 
@@ -98,6 +119,14 @@ export async function POST(req: Request) {
   }
 
   const account = privateKeyToAccount(privateKey as `0x${string}`);
+  const contractOwner = await resolvePublicClient.readContract({
+    address: CONTRACT_ADDRESS,
+    abi: ARCSIGNAL_ABI,
+    functionName: 'owner',
+  });
+  if (String(contractOwner).toLowerCase() !== account.address.toLowerCase()) {
+    return NextResponse.json({ error: 'Resolver wallet is not the ArcSignal owner' }, { status: 503 });
+  }
   const walletClient = createWalletClient({
     account,
     chain: arcTestnet,
@@ -111,7 +140,23 @@ export async function POST(req: Request) {
 
   // ── 1. Fetch recent market IDs without the large getAllMarketIds payload ──
   let marketCount = 0;
-  const targetIds: string[] = [];
+  const targetIds = new Set<string>();
+  try {
+    const sql = getSql();
+    const queued = await sql`
+      select market_id
+      from markets_index
+      where resolved = false and resolution_time <= ${now}
+      order by resolution_time asc
+      limit ${RESOLUTION_SCAN_LIMIT}
+    `;
+    for (const row of queued) {
+      const marketId = String(row.market_id);
+      if (!timeframe || parseMarketTimeframe(marketId) === timeframe) targetIds.add(marketId);
+    }
+  } catch (error) {
+    console.warn('Durable resolution queue unavailable; falling back to recent chain scan:', error);
+  }
   try {
     const count = await readWithRetry('getMarketCount', () => resolvePublicClient.readContract({
       address: CONTRACT_ADDRESS,
@@ -135,20 +180,20 @@ export async function POST(req: Request) {
           await sleep(100);
           continue;
         }
-        targetIds.push(marketId);
+        targetIds.add(marketId);
         await sleep(250);
       } catch (err) {
         errors.push(`index ${index}: failed to read market id - ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   } catch (err) {
-    return NextResponse.json({
-      error: `Failed to read market count: ${err instanceof Error ? err.message : String(err)}`,
-      contractUsed: CONTRACT_ADDRESS,
-    }, { status: 500 });
+    errors.push(`Failed to read market count: ${err instanceof Error ? err.message : String(err)}`);
+    if (targetIds.size === 0) {
+      return NextResponse.json({ error: errors[errors.length - 1], contractUsed: CONTRACT_ADDRESS }, { status: 500 });
+    }
   }
 
-  if (targetIds.length === 0) {
+  if (targetIds.size === 0) {
     return NextResponse.json({
       resolved: [],
       skipped,
@@ -167,19 +212,10 @@ export async function POST(req: Request) {
     errors.push(`CoinGecko fetch failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  // ── 3. Pre-fetch completed football fixtures ──────────────────────────────
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
-  let completedFixtures: Awaited<ReturnType<typeof fetchCompletedFixtures>> = [];
-  try {
-    completedFixtures = await fetchCompletedFixtures(1, 2026, yesterday, today);
-  } catch (err) {
-    errors.push(`Football fixtures fetch failed: ${err instanceof Error ? err.message : String(err)}`);
-  }
-
   // ── 4. Loop through all markets. ─────────────────────────────────────────
   for (const marketId of targetIds) {
     let expectedOutcome: 1 | 2 | undefined;
+    let evidence: OracleEvidence | undefined;
     let market: {
       marketId: string;
       category: string;
@@ -239,6 +275,7 @@ export async function POST(req: Request) {
           continue;
         }
 
+        const prediction = parseMarketPrediction(market.analysisJson);
         const decision = decideCryptoResolution(policy, {
           provider: coin.price_source,
           symbol: coin.symbol,
@@ -251,24 +288,37 @@ export async function POST(req: Request) {
           continue;
         }
         shouldResolveNow = true;
-        outcome = decision.outcome;
+        outcome = resolvedOutcomeForPrediction(prediction, decision.questionResult);
         outcomeReason = decision.reason;
+        evidence = {
+          provider: coin.price_source,
+          observedValue: coin.current_price.toString(),
+          observedAt: coin.price_observed_at,
+          decisionReason: decision.reason,
+          questionResult: decision.questionResult,
+          prediction,
+        };
 
       } else if (categoryNorm === 'FOOTBALL') {
         if (isExpired) {
-          const parts = marketId.split('-');
-          const fixtureId = parseInt(parts[1]);
-          if (!isNaN(fixtureId)) {
-            const fixture = completedFixtures.find((f) => f.fixtureId === fixtureId);
-            if (fixture && fixture.homeScore !== null && fixture.awayScore !== null) {
-              shouldResolveNow = true;
-              outcome = fixture.homeScore > fixture.awayScore ? 1 : 2;
-              outcomeReason = `fixture ${fixtureId}: ${fixture.homeScore}-${fixture.awayScore} → ${outcome === 1 ? 'Home wins (Follow)' : 'Away/Draw (Fade)'}`;
-            } else {
-              skipped.push(`${marketId}: reason=fixture_not_completed (fixtureId=${fixtureId})`);
-            }
+          const policy = parseFootballOracleSpec(market.analysisJson, Number(market.resolutionTime));
+          const prediction = parseMarketPrediction(market.analysisJson);
+          const fixture = await fetchFixtureById(policy.fixtureId);
+          if (fixture?.status === 'FT' && fixture.homeScore !== null && fixture.awayScore !== null) {
+            const questionResult = fixture.homeScore > fixture.awayScore ? 'YES' : 'NO';
+            shouldResolveNow = true;
+            outcome = resolvedOutcomeForPrediction(prediction, questionResult);
+            outcomeReason = `fixture ${policy.fixtureId}: ${fixture.homeScore}-${fixture.awayScore}; question=${questionResult}; prediction=${prediction}`;
+            evidence = {
+              provider: policy.provider,
+              observedValue: `${fixture.homeScore}-${fixture.awayScore}`,
+              observedAt: now,
+              decisionReason: outcomeReason,
+              questionResult,
+              prediction,
+            };
           } else {
-            skipped.push(`${marketId}: reason=invalid_fixture_id`);
+            skipped.push(`${marketId}: reason=fixture_not_final (fixtureId=${policy.fixtureId})`);
           }
         }
       }
@@ -304,7 +354,7 @@ export async function POST(req: Request) {
         args: [marketId, outcome],
       });
 
-      await recordOracleAttempt(marketId, 'SUBMITTED', outcome, hash);
+      await recordOracleAttempt(marketId, 'SUBMITTED', outcome, hash, undefined, evidence);
 
       const receipt = await resolvePublicClient.waitForTransactionReceipt({ hash });
       if (receipt.status !== 'success') {
@@ -324,7 +374,7 @@ export async function POST(req: Request) {
       if (!resolvedEvent) {
         throw new Error(`MarketResolved event missing or mismatched for ${marketId}`);
       }
-      await recordOracleAttempt(marketId, 'CONFIRMED', outcome, hash);
+      await recordOracleAttempt(marketId, 'CONFIRMED', outcome, hash, undefined, evidence);
       resolved.push(`${marketId}: outcome=${outcome} (${outcomeReason}) tx=${hash}`);
       await new Promise(r => setTimeout(r, 500));
 
@@ -343,11 +393,11 @@ export async function POST(req: Request) {
         if (currentMarket.resolved && expectedOutcome !== undefined) {
           if (Number(currentMarket.outcome) === expectedOutcome) {
             skipped.push(`${marketId}: already resolved by another run with matching outcome`);
-            await recordOracleAttempt(marketId, 'SKIPPED', expectedOutcome);
+            await recordOracleAttempt(marketId, 'SKIPPED', expectedOutcome, undefined, undefined, evidence);
           } else {
             const message = `critical outcome mismatch: expected ${expectedOutcome}, chain has ${currentMarket.outcome}`;
             errors.push(`${marketId}: ${message}`);
-            await recordOracleAttempt(marketId, 'FAILED', expectedOutcome, undefined, message);
+            await recordOracleAttempt(marketId, 'FAILED', expectedOutcome, undefined, message, evidence);
           }
         } else {
           const message = err instanceof Error ? err.message : String(err);
@@ -367,7 +417,7 @@ export async function POST(req: Request) {
     contractUsed: CONTRACT_ADDRESS,
     timeframe: timeframe ?? 'all',
     marketCount,
-    scanned: targetIds.length,
+    scanned: targetIds.size,
     resolved,
     skipped,
     errors,

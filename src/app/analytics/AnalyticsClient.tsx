@@ -133,7 +133,10 @@ export default function AnalyticsClient({
   );
   const rangeStats = useMemo(() => {
     const totalVolume = filteredMarkets.reduce((sum, market) => sum + Number(market.followPool ?? 0) + Number(market.fadePool ?? 0), 0);
-    const validResolved = filteredResolvedMarkets.filter((market) => market.outcome === 'FOLLOW' || market.outcome === 'FADE');
+    const validResolved = filteredResolvedMarkets.filter(
+      (market) => market.accuracyEligible
+        && (market.outcome === 'FOLLOW' || market.outcome === 'FADE'),
+    );
     const correct = validResolved.filter((market) => market.outcome === 'FOLLOW').length;
     return {
       totalVolume,

@@ -12,7 +12,7 @@ interface WalletModalProps {
   onClose: () => void;
 }
 
-type WalletBrand = 'rabby' | 'metamask' | 'coinbase' | 'okx' | 'walletconnect' | 'phantom' | 'trust' | 'generic';
+type WalletBrand = 'rabby' | 'metamask' | 'coinbase' | 'okx' | 'phantom' | 'trust' | 'generic';
 
 interface WalletOption {
   key: string;
@@ -73,7 +73,6 @@ function getWalletBrand(connector?: Connector | null): WalletBrand {
   if (id.includes('metamask') || name.includes('metamask') || id === 'injected') return 'metamask';
   if (id.includes('coinbase') || name.includes('coinbase')) return 'coinbase';
   if (id.includes('okx') || id.includes('okex') || name.includes('okx')) return 'okx';
-  if (id.includes('walletconnect') || name.includes('walletconnect')) return 'walletconnect';
   if (id.includes('phantom') || name.includes('phantom')) return 'phantom';
   if (id.includes('trust') || name.includes('trust')) return 'trust';
   return 'generic';
@@ -86,7 +85,6 @@ function getConnectorLabel(connector?: Connector | null): string {
   if (brand === 'metamask') return 'MetaMask';
   if (brand === 'coinbase') return 'Coinbase Wallet';
   if (brand === 'okx') return 'OKX Wallet';
-  if (brand === 'walletconnect') return 'WalletConnect';
   if (brand === 'phantom') return 'Phantom';
   if (brand === 'trust') return 'Trust Wallet';
   return String(connector.name || 'Browser Wallet');
@@ -94,7 +92,6 @@ function getConnectorLabel(connector?: Connector | null): string {
 
 function getDescription(brand: WalletBrand, isRecent: boolean, isDetected: boolean) {
   if (isRecent) return 'Recent';
-  if (brand === 'walletconnect') return 'QR & mobile';
   if (isDetected) return 'Detected';
   return 'Available';
 }
@@ -105,10 +102,9 @@ function brandRank(brand: WalletBrand): number {
     case 'metamask': return 2;
     case 'okx': return 3;
     case 'coinbase': return 4;
-    case 'walletconnect': return 5;
-    case 'phantom': return 6;
-    case 'trust': return 7;
-    default: return 8;
+    case 'phantom': return 5;
+    case 'trust': return 6;
+    default: return 7;
   }
 }
 
@@ -170,12 +166,6 @@ function WalletIcon({ brand, iconUrl }: { brand: WalletBrand; iconUrl?: string }
           <path fill="#233447" d="m93.6 136.2 39.9 30.7-20 9.7-19.9-40.4z" />
           <path fill="#CD6116" d="m278.3 114.2 8.5-41.9-12.7-36.8-98.9 73.9 38.3 32 53.6 15.6 11.8-13.8-4.9-3.5 7.7-6.8-6.1-4.7 7.7-5.5z" />
           <path fill="#CD6116" d="m44.5 35.5-12.7 36.8 8.5 41.9-4.5 1.1 7.7 5.5-6.1 4.7 7.7 6.8-4.9 3.5 11.8 13.8 53.6-15.6 38.3-32z" />
-        </svg>
-      )}
-      {brand === 'walletconnect' && (
-        <svg viewBox="0 0 48 48" width="22" height="22" role="img">
-          <circle cx="24" cy="24" r="22" fill="#3B99FC" />
-          <path fill="#fff" d="M14.7 20.5c5.1-5 13.4-5 18.5 0l.6.6a.6.6 0 0 1 0 .9l-2.1 2.1a.6.6 0 0 1-.9 0l-.9-.9c-3.3-3.2-8.6-3.2-11.9 0l-1 .9a.6.6 0 0 1-.8 0L14.1 22a.6.6 0 0 1 0-.9zm22.9 4 1.9 1.9a.6.6 0 0 1 0 .9l-8.4 8.3a.6.6 0 0 1-.8 0l-6-5.9a.3.3 0 0 0-.4 0l-6 5.9a.6.6 0 0 1-.8 0l-8.4-8.3a.6.6 0 0 1 0-.9l1.9-1.9a.6.6 0 0 1 .9 0l6 6a.3.3 0 0 0 .4 0l6-6a.6.6 0 0 1 .9 0l6 6a.3.3 0 0 0 .4 0l6-6a.6.6 0 0 1 .8 0z" />
         </svg>
       )}
       {brand === 'coinbase' && (

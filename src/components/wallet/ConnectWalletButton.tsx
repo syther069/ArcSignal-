@@ -8,6 +8,7 @@ import { useWallet } from '@/hooks/useWallet';
 import { arcTestnet } from '@/lib/contracts';
 import WalletModal from './WalletModal';
 import { useFundUSDCModalLoader } from '@/hooks/useFundUSDCModalLoader';
+import { formatUnits } from 'viem';
 
 export default function ConnectWalletButton() {
   const { 
@@ -122,10 +123,7 @@ export default function ConnectWalletButton() {
               <div>
                 <span className="mb-1 block font-mono text-[13px] uppercase tracking-wider text-[#b0abb5]">Network</span>
                 <div className="flex items-center gap-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#4fdbc8] opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#4fdbc8]"></span>
-                  </span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#b0abb5]"></span>
                   <span className="text-sm font-semibold text-[#f1eef4]">Arc Testnet</span>
                 </div>
               </div>
@@ -137,7 +135,7 @@ export default function ConnectWalletButton() {
               <div className="border-b border-white/[0.08] p-4">
                 <span className="mb-1 block font-mono text-[13px] uppercase tracking-wider text-[#b0abb5]">Native Balance</span>
                 <div className="flex items-center justify-between text-sm font-semibold text-[#f1eef4]">
-                  <span className="font-mono">{Number(balance.formatted).toFixed(4)} {balance.symbol}</span>
+                  <span className="font-mono">{Number(formatUnits(balance.value, balance.decimals)).toFixed(4)} {balance.symbol}</span>
                   <button
                     onClick={() => {
                       setIsDropdownOpen(false);

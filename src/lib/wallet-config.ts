@@ -1,7 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { createConfig, http } from 'wagmi';
 import { mainnet, sepolia } from 'wagmi/chains';
-import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors';
+import { injected } from 'wagmi/connectors/injected';
 import { arcTestnet } from './contracts';
 
 export { arcTestnet };
@@ -19,20 +19,7 @@ export const arcTestnetConfig = {
 
 function getConnectors() {
   try {
-    const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
-    const connectorValues = [
-      injected(),
-      projectId ? walletConnect({ projectId }) : null,
-      coinbaseWallet({ appName: 'ArcSignal' }),
-    ];
-
-    if (connectorValues == null) {
-      return [];
-    }
-
-    return Object.values(connectorValues).filter(
-      (connector): connector is NonNullable<typeof connector> => connector != null,
-    );
+    return [injected()];
   } catch {
     return [];
   }

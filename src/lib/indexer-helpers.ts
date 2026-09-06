@@ -51,7 +51,7 @@ export function projectionForEvent(eventName: string, args: Record<string, unkno
     };
   }
 
-  if (eventName === 'Claimed') {
+  if (eventName === 'Claimed' || eventName === 'Refunded') {
     return {
       kind: 'claim',
       marketId: requiredString(args, 'marketId', eventName),

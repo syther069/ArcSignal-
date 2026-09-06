@@ -27,6 +27,7 @@ interface Position {
   payout: number;         // what they get back if they won (stake + profit)
   netPnl: number;         // +profit or -stake
   isCancelled: boolean;
+  refundable: boolean;
 }
 
 type Tab = 'open' | 'resolved' | 'all';
@@ -134,6 +135,7 @@ export default function PortfolioClient() {
             userWon: boolean | null;
             payout: number;
             netPnl: number;
+            refundable?: boolean;
             market: {
               marketId: string;
               category: string;
@@ -164,6 +166,7 @@ export default function PortfolioClient() {
                 status: position.market.resolved ? (position.market.outcome === 0 ? 'CANCELLED' : 'RESOLVED') : 'OPEN',
               },
               isCancelled: position.isResolved && position.outcome === 0,
+              refundable: position.refundable === true,
             } as Position));
 
           // Keep a confirmed on-chain position in memory while Neon/background
@@ -301,7 +304,7 @@ export default function PortfolioClient() {
         if (log.address.toLowerCase() !== ARCSIGNAL_ADDRESS.toLowerCase()) return false;
         try {
           const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: log.data, topics: log.topics });
-          if (decoded.eventName !== 'Claimed') return false;
+          if (decoded.eventName !== 'Claimed' && decoded.eventName !== 'Refunded') return false;
           const args = decoded.args as { marketId: string; user: string; amount: bigint };
           return args.marketId === marketId
             && args.user.toLowerCase() === address.toLowerCase()
@@ -317,12 +320,13 @@ export default function PortfolioClient() {
 
       // Optimistically mark position as claimed so UI updates instantly
       setPositions(prev => prev.map(p =>
-        p.market.marketId === marketId && p.userWon === true
+        p.market.marketId === marketId && (p.userWon === true || p.refundable)
           ? { ...p, claimed: true }
           : p
       ));
 
-      toast.success('Winnings claimed!', { id: toastId });
+      const wasRefund = positions.some((position) => position.market.marketId === marketId && position.refundable);
+      toast.success(wasRefund ? 'Refund claimed!' : 'Winnings claimed!', { id: toastId });
       // Background refresh for full data sync
       fetchPortfolio();
     } catch (err: any) {
@@ -344,7 +348,7 @@ export default function PortfolioClient() {
     } finally {
       setClaiming(p => ({ ...p, [marketId]: false }));
     }
-  }, [walletClient, publicClient, address, fetchPortfolio]);
+  }, [walletClient, publicClient, address, fetchPortfolio, positions]);
 
   // ─── Stats ──────────────────────────────────────────────────────────────────
   const stats = useMemo(() => {
@@ -357,7 +361,7 @@ export default function PortfolioClient() {
 
     positions.forEach(p => {
       totalStaked += p.stakeUsdc;
-      if (!p.isResolved || (p.userWon && !p.claimed)) openCount++;
+      if (!p.isResolved || ((p.userWon || p.refundable) && !p.claimed)) openCount++;
       if (p.isResolved && !p.isCancelled && p.userWon !== null) {
         resolved++;
         totalPnl += p.netPnl;
@@ -374,7 +378,7 @@ export default function PortfolioClient() {
 
   // ─── Filtered Positions ─────────────────────────────────────────────────────
   const displayed = useMemo(() => {
-    if (activeTab === 'open')     return positions.filter(p => !p.isResolved || (p.isResolved && p.userWon && !p.claimed));
+    if (activeTab === 'open')     return positions.filter(p => !p.isResolved || (p.isResolved && (p.userWon || p.refundable) && !p.claimed));
     if (activeTab === 'resolved') return positions.filter(p => p.isResolved);
     return positions;
   }, [positions, activeTab]);
@@ -550,7 +554,7 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming, 
   const sidePool  = isFollow ? followPoolUsdc : fadePoolUsdc;
   const odds      = sidePool > 0 && totalPool > 0 ? (totalPool / sidePool).toFixed(2) : '—';
 
-  const canClaim = pos.isResolved && pos.userWon === true && !pos.claimed;
+  const canClaim = pos.isResolved && (pos.userWon === true || pos.refundable) && !pos.claimed;
   const awaitingResolution = !pos.isResolved && Math.floor(Date.now() / 1000) >= pos.market.resolutionTime;
   const stageLabel = pos.isCancelled ? 'Cancelled' : pos.isResolved ? 'Settled' : awaitingResolution ? 'Awaiting resolution' : 'Open for staking';
   const stageProgress = pos.isResolved || pos.isCancelled ? 100 : awaitingResolution ? 75 : 35;
@@ -592,7 +596,7 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming, 
               </span>
             )}
             {pos.isCancelled && (
-              <span className="px-2 py-0.5 rounded text-[13px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#f2c66d]/30 text-[#f2c66d] bg-[#f2c66d]/10">CANCELLED</span>
+              <span className="px-2 py-0.5 rounded text-[13px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#f2c66d]/30 text-[#f2c66d] bg-[#f2c66d]/10">{pos.refundable ? 'REFUND AVAILABLE' : pos.claimed ? 'REFUNDED' : 'CANCELLED'}</span>
             )}
             {pos.isResolved && !pos.isCancelled && pos.userWon === false && (
               <span className="px-2 py-0.5 rounded text-[13px] font-[family-name:var(--font-jetbrains-mono)] uppercase tracking-widest border border-[#f3a6c8]/30 text-[#f3a6c8] bg-[#f3a6c8]/10">
@@ -611,7 +615,7 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming, 
         <div className="space-y-2">
           <div className="flex items-center justify-between font-[family-name:var(--font-jetbrains-mono)] text-[13px] uppercase tracking-widest text-[#b0abb5]"><span>Position progress</span><span className="text-[#ddb7ff]">{stageLabel}</span></div>
           <div className="h-1.5 rounded-full bg-[#252229] overflow-hidden"><div className="h-full rounded-full bg-[#ddb7ff]" style={{ width: `${stageProgress}%` }} /></div>
-          <p className="text-[13px] text-[#b0abb5]">{pos.isCancelled ? 'This market was cancelled. No outcome was recorded.' : pos.isResolved ? 'Settlement is complete.' : `Resolution target: ${new Date(pos.market.resolutionTime * 1000).toLocaleString()}`}</p>
+          <p className="text-[13px] text-[#b0abb5]">{pos.isCancelled ? (pos.refundable ? 'This market was cancelled. Claim returns all of your stakes in this market.' : pos.claimed ? 'This market was cancelled and your refund was claimed.' : 'This deployment does not expose participant refunds for cancelled markets.') : pos.isResolved ? 'Settlement is complete.' : `Resolution target: ${new Date(pos.market.resolutionTime * 1000).toLocaleString()}`}</p>
         </div>
 
         {/* Stats grid */}
@@ -620,7 +624,7 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming, 
           <MiniStat label="Staked" value={`${pos.stakeUsdc.toFixed(2)} USDC`} />
           <MiniStat label="Pool Odds" value={`${odds}×`} />
           {pos.isCancelled ? (
-            <MiniStat label="Settlement" value="Cancelled" color="#f2c66d" />
+            <MiniStat label={pos.refundable ? 'Refund' : 'Settlement'} value={pos.refundable ? `${pos.payout.toFixed(2)} USDC` : pos.claimed ? 'Refunded' : 'Cancelled'} color="#f2c66d" />
           ) : pos.isResolved ? (
             pos.userWon === true ? (
               <MiniStat label="Payout" value={`+${pos.payout.toFixed(2)} USDC`} color="#4fdbc8" />
@@ -658,7 +662,7 @@ const PositionCard = React.memo(function PositionCard({ pos, onClaim, claiming, 
                 Claiming…
               </>
             ) : (
-              `Claim Winnings (${pos.payout.toFixed(2)} USDC)`
+              `${pos.refundable ? 'Claim Refund' : 'Claim Winnings'} (${pos.payout.toFixed(2)} USDC)`
             )}
           </button>
         )}
