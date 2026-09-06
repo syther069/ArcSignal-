@@ -1,7 +1,7 @@
 import { QueryClient } from '@tanstack/react-query';
 import { createConfig, http } from 'wagmi';
 import { mainnet, sepolia } from 'wagmi/chains';
-import { injected } from 'wagmi/connectors';
+import { injected } from 'wagmi/connectors/injected';
 import { arcTestnet } from './contracts';
 
 export { arcTestnet };

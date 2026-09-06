@@ -322,7 +322,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
       if (approveReceipt.status !== 'success' || approveReceipt.to?.toLowerCase() !== USDC_ADDRESS.toLowerCase()) {
         throw new Error('USDC approval transaction failed on-chain.');
       }
-      await Promise.all([refetchBalance(), refetchAllowance()]);
+      await refetchWalletUsdc();
       toast.success('USDC approved successfully!');
       setStep('idle');
     } catch (err: any) {
@@ -369,12 +369,12 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
       const reserve = calculateArcGasReserveUsdc(gasPrice, false);
       setGasReserve(reserve);
       if (freshBalance < amountBigInt + reserve) {
-        await refetchBalance();
+        await refetchWalletUsdc();
         throw new Error(`Insufficient USDC balance. You need ${amountStr} USDC plus ${formatUnits(reserve, 6)} USDC reserved for network fees.`);
       }
 
       if (freshAllowance < amountBigInt) {
-        await refetchAllowance();
+        await refetchWalletUsdc();
         throw new Error('Insufficient USDC allowance. Please approve first.');
       }
 
@@ -460,7 +460,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
       }
 
       clearMarketCache();
-      await Promise.all([refetchBalance(), refetchAllowance()]);
+      await refetchWalletUsdc();
       router.refresh();
       setTxHash(stakeHash);
       setEstimatedGas(null);
@@ -944,7 +944,7 @@ export function StakeModal({ market, side, isOpen, onClose }: StakeModalProps) {
       onClose={() => setFundingOpen(false)}
       suggestedAmount={amount}
       onFunded={async () => {
-        await refetchBalance();
+        await refetchWalletUsdc();
       }}
     />}
     </>
