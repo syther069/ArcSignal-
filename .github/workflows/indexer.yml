@@ -15,12 +15,12 @@ concurrency:
 jobs:
   index:
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 3
     steps:
       - name: Apply additive index schema
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          MIGRATION_URL: https://arc-signal-nine.vercel.app/api/cron/migrate-index
+          MIGRATION_URL: https://arc-signal.xyz/api/cron/migrate-index
         run: |
           test -n "$CRON_SECRET"
           curl \
@@ -38,7 +38,7 @@ jobs:
       - name: Advance finalized Arc index
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          INDEX_URL: https://arc-signal-nine.vercel.app/api/cron/index
+          INDEX_URL: https://arc-signal.xyz/api/cron/index
         run: |
           test -n "$CRON_SECRET"
           curl \
@@ -49,5 +49,24 @@ jobs:
             --retry-all-errors \
             --connect-timeout 10 \
             --max-time 55 \
+            --request POST \
             --header "Authorization: Bearer $CRON_SECRET" \
             "$INDEX_URL"
+
+      - name: Resolve due markets
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          MAINTENANCE_URL: https://arc-signal.xyz/api/cron/maintain
+        run: |
+          test -n "$CRON_SECRET"
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --retry 2 \
+            --retry-all-errors \
+            --connect-timeout 10 \
+            --max-time 55 \
+            --request POST \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "$MAINTENANCE_URL"
