@@ -6,7 +6,7 @@ You need an EVM-compatible wallet and testnet USDC on ARC Testnet. USDC pays bot
 Network | ARC Testnet
 Chain ID | 5042002
 Native currency | USDC
-RPC fallback | https://rpc.testnet.arc.network
+RPC fallback | https://rpc.testnet.arc.io
 Block explorer | https://testnet.arcscan.app
 :::
 

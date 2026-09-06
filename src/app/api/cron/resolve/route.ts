@@ -25,7 +25,7 @@ const CONTRACT_ADDRESS = ARCSIGNAL_ADDRESS;
 const RPC_URL = process.env.ARC_RPC_URL
   ?? process.env.ARC_TESTNET_RPC_URL
   ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL
-  ?? 'https://rpc.testnet.arc.network';
+  ?? 'https://rpc.testnet.arc.io';
 
 const resolvePublicClient = createPublicClient({
   chain: arcTestnet,

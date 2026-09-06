@@ -5,7 +5,7 @@ const ARCSIGNAL_ADDRESS = '0x4f33115a18fe6a181be98610ddde3fab71efabed';
 
 const publicClient = createPublicClient({
   chain: arcTestnet,
-  transport: http('https://rpc.testnet.arc.network'),
+  transport: http('https://rpc.testnet.arc.io'),
 });
 
 async function main() {

@@ -8,7 +8,7 @@ dotenv.config({ path: resolve(process.cwd(), '.env') });
 const RPC_URL = process.env.ARC_RPC_URL
   ?? process.env.ARC_TESTNET_RPC_URL
   ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL
-  ?? 'https://rpc.testnet.arc.network';
+  ?? 'https://rpc.testnet.arc.io';
 const ARCSIGNAL_ADDRESS = (
   process.env.ARCSIGNAL_ADDRESS
   ?? '0x4f33115a18fe6a181be98610ddde3fab71efabed'

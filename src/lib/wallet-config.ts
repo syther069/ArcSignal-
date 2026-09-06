@@ -8,7 +8,7 @@ export { arcTestnet };
 
 const rpcUrl =
   process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ??
-  'https://rpc.testnet.arc.network';
+  'https://rpc.testnet.arc.io';
 
 export const arcTestnetConfig = {
   chainId: arcTestnet.id,

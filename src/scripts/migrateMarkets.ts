@@ -10,7 +10,7 @@ const NEW_CONTRACT = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as Address;
 const RPC_URL = process.env.ARC_RPC_URL
   ?? process.env.ARC_TESTNET_RPC_URL
   ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL
-  ?? 'https://rpc.testnet.arc.network';
+  ?? 'https://rpc.testnet.arc.io';
 const privateKey = process.env.RESOLVER_PRIVATE_KEY;
 
 if (process.env.ENABLE_CONTRACT_MIGRATION !== 'true') {

@@ -19,7 +19,7 @@ export const maxDuration = 60;
 const RPC_URL = process.env.ARC_RPC_URL
   ?? process.env.ARC_TESTNET_RPC_URL
   ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL
-  ?? 'https://rpc.testnet.arc.network';
+  ?? 'https://rpc.testnet.arc.io';
 const RUN_BUDGET_MS = 45_000;
 const LEASE_SECONDS = 55;
 

@@ -3,7 +3,7 @@ import { createPublicClient, http, parseAbi } from 'viem';
 const fallbackArcChainId = 5042002;
 const browserRpcUrl =
   process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ??
-  'https://rpc.testnet.arc.network';
+  'https://rpc.testnet.arc.io';
 const serverRpcUrl =
   process.env.ARC_RPC_URL ??
   process.env.ARC_TESTNET_RPC_URL ??

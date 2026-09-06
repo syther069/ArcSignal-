@@ -5,7 +5,7 @@ const { createPublicClient, createWalletClient, http } = require('viem');
 const { privateKeyToAccount } = require('viem/accounts');
 
 const ROOT = path.resolve(__dirname, '../../..');
-const RPC_URL = process.env.ARC_RPC_URL || 'https://rpc.testnet.arc.network';
+const RPC_URL = process.env.ARC_RPC_URL || 'https://rpc.testnet.arc.io';
 const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
 const arcTestnet = {
   id: 5042002,
