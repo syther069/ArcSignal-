@@ -7,6 +7,10 @@ const STAKE_ONLY_GAS_UNITS = 200_000n;
 
 export const ARC_NETWORK_FEE_HELPER = 'Paid in native USDC on Arc.';
 
+export function erc20UsdcToNativeWei(amount: bigint) {
+  return amount * NATIVE_TO_ERC20_DECIMAL_SCALE;
+}
+
 function nativeFeeWei(gasLimit: bigint, maxFeePerGas: bigint) {
   return gasLimit * maxFeePerGas;
 }

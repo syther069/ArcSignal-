@@ -14,6 +14,7 @@ import {
   ARC_NETWORK_FEE_HELPER,
   calculateArcGasReserveUsdc,
   calculateMaxArcStakeForAllowance,
+  erc20UsdcToNativeWei,
   formatArcNetworkFee,
 } from '@/lib/arc-gas';
 import { useWallet } from '@/hooks/useWallet';
@@ -43,10 +44,12 @@ function friendlyError(err: unknown): string {
 
   if (lower.includes('user rejected') || lower.includes('user denied') || lower.includes('rejected the request'))
     return 'Transaction cancelled — you rejected the request in your wallet.';
+  if (lower.includes('insufficient native usdc') || (lower.includes('gas') && lower.includes('insufficient')))
+    return 'Insufficient native USDC for Arc gas. Add native USDC or reduce activity and try again.';
   if (lower.includes('insufficient funds') || lower.includes('exceeds the balance'))
     return 'Insufficient USDC for the stake and Arc network fee. Reduce the amount or top up.';
-  if (lower.includes('insufficient usdc') || lower.includes('insufficient balance'))
-    return 'Insufficient USDC balance for this stake.';
+  if (lower.includes('insufficient erc-20 usdc') || lower.includes('insufficient usdc') || lower.includes('insufficient balance'))
+    return 'Insufficient ERC-20 USDC balance for this stake.';
   if (lower.includes('allowance') || lower.includes('approve first'))
     return 'USDC allowance too low. Please approve first.';
   if (lower.includes('market expired') || lower.includes('market already resolved'))
@@ -118,12 +121,15 @@ export function MarketDetailStakeModal({
   const publicClient = usePublicClient({ chainId: arcTestnet.id });
   const { isWrongNetwork, switchChain } = useWallet();
   const {
+    nativeWei,
     erc20Raw,
     allowanceRaw,
     refetch: refetchWalletUsdc,
   } = useArcUsdcBalance(address);
 
   const usdcBalanceKnown = erc20Raw != null;
+  const nativeBalanceKnown = nativeWei != null;
+  const nativeGasBalanceRaw = nativeWei ?? 0n;
   const usdcBalanceBigInt = erc20Raw ?? 0n;
   const currentAllowance = allowanceRaw ?? 0n;
 
@@ -234,8 +240,9 @@ export function MarketDetailStakeModal({
   const minStake = 1.0;
   const hasAmount = parsedAmount > 0;
   const belowMinimum = hasAmount && parsedAmount < minStake;
-  const availableForStake = usdcBalanceBigInt > gasReserve ? usdcBalanceBigInt - gasReserve : 0n;
-  const insufficientBalance = hasAmount && amountBigInt > availableForStake;
+  const nativeGasReserveWei = erc20UsdcToNativeWei(gasReserve);
+  const insufficientNativeGas = hasAmount && nativeBalanceKnown && nativeGasBalanceRaw < nativeGasReserveWei;
+  const insufficientBalance = hasAmount && usdcBalanceKnown && amountBigInt > usdcBalanceBigInt;
 
   const validationMessage = marketClosed
     ? 'This market has closed. Trading is disabled.'
@@ -243,8 +250,10 @@ export function MarketDetailStakeModal({
       ? 'Enter a valid USDC amount with no more than 6 decimal places.'
       : belowMinimum
         ? `Minimum stake: ${minStake.toFixed(2)} USDC`
+        : insufficientNativeGas
+          ? `Add native USDC for Arc gas. Keep at least ${formatMarketDetailUSDC(gasReserve)} native USDC available.`
         : insufficientBalance
-          ? `Insufficient USDC balance after reserving ${formatMarketDetailUSDC(gasReserve)} for Arc network fees.`
+          ? 'Insufficient ERC-20 USDC balance for this stake.'
           : null;
 
   const canContinue = step === 'idle' && hasAmount && !validationMessage && !isWrongNetwork;
@@ -255,6 +264,8 @@ export function MarketDetailStakeModal({
       ? 'Market closed'
       : belowMinimum
         ? 'Minimum 1.00 USDC'
+        : insufficientNativeGas
+          ? 'Insufficient Native Gas'
         : insufficientBalance
           ? 'Insufficient USDC Balance'
           : 'Review Position';
@@ -275,15 +286,11 @@ export function MarketDetailStakeModal({
       ]);
       const balance = latest.data ? BigInt(latest.data.erc20Raw) : 0n;
       const allowance = latest.data ? BigInt(latest.data.allowanceRaw) : 0n;
-      const { reserve, maxStake } = calculateMaxArcStakeForAllowance(
-        balance,
-        allowance,
-        gasPrice,
-      );
+      const { reserve } = calculateMaxArcStakeForAllowance(balance, allowance, gasPrice);
       setGasReserve(reserve);
-      setAmount(formatUnits(maxStake, 6));
-      setError(maxStake < parseUnits('1', 6)
-        ? 'Balance is too low after reserving USDC for network fees.'
+      setAmount(formatUnits(balance, 6));
+      setError(balance < parseUnits('1', 6)
+        ? 'ERC-20 USDC balance is below the minimum stake.'
         : null);
     } catch (err) {
       const message = friendlyError(err);
@@ -307,31 +314,39 @@ export function MarketDetailStakeModal({
     try {
       setError(null);
       setStep('approving');
-      const [freshBalance, gasPrice] = await Promise.all([
-        publicClient.readContract({
-          address: USDC_ADDRESS,
-          abi: USDC_ABI,
-          functionName: 'balanceOf',
-          args: [address],
-        }),
-        publicClient.getGasPrice(),
-      ]);
-      const reserve = calculateArcGasReserveUsdc(gasPrice, true);
+      const walletUsdc = await refetchWalletUsdc();
+      const reserve = gasReserve;
       setGasReserve(reserve);
-      if (freshBalance < amountBigInt + reserve) {
-        throw new Error(`Insufficient USDC balance for the stake plus ${formatMarketDetailUSDC(reserve)} reserved for network fees.`);
+      if (!walletUsdc.data) {
+        throw new Error('USDC balance is temporarily unavailable. Retry in a moment.');
       }
-      const { request } = await publicClient.simulateContract({
+      const freshBalance = BigInt(walletUsdc.data.erc20Raw);
+      const freshNative = BigInt(walletUsdc.data.nativeWei);
+      if (freshNative < erc20UsdcToNativeWei(reserve)) {
+        throw new Error(`Insufficient native USDC for Arc gas. Keep at least ${formatMarketDetailUSDC(reserve)} native USDC available for approval and staking.`);
+      }
+      if (freshBalance < amountBigInt) {
+        throw new Error('Insufficient ERC-20 USDC balance for this stake.');
+      }
+      const approveHash = await walletClient.writeContract({
         account: address,
+        chain: arcTestnet,
         address: USDC_ADDRESS,
         abi: USDC_ABI,
         functionName: 'approve',
         args: [ARCSIGNAL_ADDRESS, amountBigInt],
       });
-      const approveHash = await walletClient.writeContract(request);
-      const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
-      if (approveReceipt.status !== 'success' || approveReceipt.to?.toLowerCase() !== USDC_ADDRESS.toLowerCase()) {
-        throw new Error('USDC approval transaction failed on-chain.');
+      try {
+        const approveReceipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
+        if (approveReceipt.status !== 'success' || approveReceipt.to?.toLowerCase() !== USDC_ADDRESS.toLowerCase()) {
+          throw new Error('USDC approval transaction failed on-chain.');
+        }
+      } catch (receiptError) {
+        const refreshed = await refetchWalletUsdc();
+        const refreshedAllowance = refreshed.data ? BigInt(refreshed.data.allowanceRaw) : 0n;
+        if (refreshedAllowance < amountBigInt) {
+          throw new Error('Approval was submitted, but ArcSignal could not verify the updated allowance yet. Check the transaction in your wallet and retry in a moment.', { cause: receiptError });
+        }
       }
       await refetchWalletUsdc();
       toast.success('USDC approved successfully!');
@@ -367,21 +382,29 @@ export function MarketDetailStakeModal({
         throw new Error('ArcSignal contract address is not configured.');
       }
 
-      const [walletUsdc, gasPrice] = await Promise.all([
-        refetchWalletUsdc(),
-        publicClient.getGasPrice(),
-      ]);
+      const walletUsdc = await refetchWalletUsdc();
+      let gasPrice: bigint | null = null;
+      try {
+        gasPrice = await publicClient.getGasPrice();
+      } catch {
+        gasPrice = null;
+      }
       if (!walletUsdc.data) {
         throw new Error('USDC balance is temporarily unavailable. Retry in a moment.');
       }
       const freshBalance = BigInt(walletUsdc.data.erc20Raw);
       const freshAllowance = BigInt(walletUsdc.data.allowanceRaw);
+      const freshNative = BigInt(walletUsdc.data.nativeWei);
 
-      const reserve = calculateArcGasReserveUsdc(gasPrice, false);
+      const reserve = gasPrice ? calculateArcGasReserveUsdc(gasPrice, false) : gasReserve;
       setGasReserve(reserve);
-      if (freshBalance < amountBigInt + reserve) {
+      if (freshNative < erc20UsdcToNativeWei(reserve)) {
         await refetchWalletUsdc();
-        throw new Error(`Insufficient USDC balance. You need ${formatMarketDetailUSDC(amountBigInt)} plus ${formatMarketDetailUSDC(reserve)} reserved for network fees.`);
+        throw new Error(`Insufficient native USDC for Arc gas. Keep at least ${formatMarketDetailUSDC(reserve)} native USDC available for staking.`);
+      }
+      if (freshBalance < amountBigInt) {
+        await refetchWalletUsdc();
+        throw new Error(`Insufficient ERC-20 USDC balance. You need ${formatMarketDetailUSDC(amountBigInt)} for this stake.`);
       }
 
       if (freshAllowance < amountBigInt) {
@@ -390,24 +413,30 @@ export function MarketDetailStakeModal({
       }
 
       setStep('staking');
-      const { request } = await publicClient.simulateContract({
+
+      if (gasPrice) {
+        try {
+          const gas = await publicClient.estimateContractGas({
+            account: address,
+            address: ARCSIGNAL_ADDRESS,
+            abi: ARCSIGNAL_ABI,
+            functionName: 'stake',
+            args: [market.marketId, selectedSide, amountBigInt],
+          });
+          setEstimatedGas(formatArcNetworkFee(gas, gasPrice));
+        } catch {
+          setEstimatedGas(null);
+        }
+      }
+
+      const stakeHash = await walletClient.writeContract({
         account: address,
+        chain: arcTestnet,
         address: ARCSIGNAL_ADDRESS,
         abi: ARCSIGNAL_ABI,
         functionName: 'stake',
         args: [market.marketId, selectedSide, amountBigInt],
       });
-
-      const gas = await publicClient.estimateContractGas({
-        account: address,
-        address: ARCSIGNAL_ADDRESS,
-        abi: ARCSIGNAL_ABI,
-        functionName: 'stake',
-        args: [market.marketId, selectedSide, amountBigInt],
-      });
-      setEstimatedGas(formatArcNetworkFee(gas, gasPrice));
-
-      const stakeHash = await walletClient.writeContract(request);
       setStep('confirming');
 
       const stakeReceipt = await publicClient.waitForTransactionReceipt({ hash: stakeHash });
@@ -810,10 +839,15 @@ export function MarketDetailStakeModal({
                     </label>
                     <div className="text-right font-mono text-xs">
                       <span className="text-[#B0ABB5]">
-                        Balance:{' '}
+                        ERC-20:{' '}
                         <strong className="text-[#F1EEF4] tabular-nums">
                           {usdcBalanceKnown ? formatMarketDetailUSDC(usdcBalanceBigInt) : '…'}
-                        </strong>
+                        </strong>{' '}
+                        · Gas:{' '}
+                        <strong className="text-[#F1EEF4] tabular-nums">
+                          {nativeBalanceKnown ? Number(formatUnits(nativeGasBalanceRaw, 18)).toFixed(4) : '…'}
+                        </strong>{' '}
+                        native
                       </span>
                     </div>
                   </div>
@@ -872,10 +906,10 @@ export function MarketDetailStakeModal({
                   </div>
 
                   <p className="font-sans text-[11px] text-[#B0ABB5]/80">
-                    MAX reserves at least {formatMarketDetailUSDC(gasReserve)} for Arc network gas fees.
+                    Arc gas is paid from native USDC. Keep at least {formatMarketDetailUSDC(gasReserve)} native USDC available.
                   </p>
 
-                  {insufficientBalance && (
+                  {(insufficientBalance || insufficientNativeGas) && (
                     <button
                       type="button"
                       onClick={() => {

@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk';
 import type { AIAnalysis } from '@/lib/types';
+import { providerModelIdentity } from '@/lib/signal-intelligence/model-identity';
 
 type MarketContext = Record<string, unknown>;
 
@@ -73,7 +74,7 @@ function parseAnalysisJson(raw: string, provider?: 'gemini' | 'groq'): AIAnalysi
   return parsed as AIAnalysis;
 }
 
-async function callGemini(apiKey: string, prompt: string): Promise<string> {
+async function callGemini(apiKey: string, prompt: string) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
   const response = await fetch(url, {
     method: 'POST',
@@ -92,10 +93,10 @@ async function callGemini(apiKey: string, prompt: string): Promise<string> {
   const data = await response.json();
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new AIAnalysisError('Gemini API returned empty text', 'gemini');
-  return text;
+  return { raw: text as string, identity: providerModelIdentity('gemini-1.5-flash', data) };
 }
 
-async function generateAnalysis(prompt: string): Promise<AIAnalysis> {
+export async function generateAnalysis(prompt: string, audited = false): Promise<AIAnalysis> {
   const geminiKey = process.env.GEMINI_API_KEY;
   const groqKey = process.env.GROQ_API_KEY;
 
@@ -109,8 +110,10 @@ async function generateAnalysis(prompt: string): Promise<AIAnalysis> {
   if (geminiKey && geminiKey.startsWith('AIzaSy')) {
     for (let attempt = 0; attempt < retryDelays.length; attempt++) {
       try {
-        const raw = await callGemini(geminiKey, prompt);
-        return parseAnalysisJson(raw, 'gemini');
+        const { raw, identity } = await callGemini(geminiKey, prompt);
+        return { ...parseAnalysisJson(raw, 'gemini'), ...(audited ? { provenance: { provider: 'Google', model: identity.modelName,
+          version: identity.modelVersion, versionSource: identity.modelVersionSource, responseId: identity.providerResponseId,
+          raw, generatedAt: new Date().toISOString() } } : {}) };
       } catch (error) {
         lastError = error;
         if (attempt < retryDelays.length - 1) {
@@ -137,7 +140,11 @@ async function generateAnalysis(prompt: string): Promise<AIAnalysis> {
 
         const raw = completion.choices[0]?.message?.content;
         if (!raw) throw new AIAnalysisError('Groq returned empty response', 'groq');
-        return parseAnalysisJson(raw, 'groq');
+        const identity = providerModelIdentity(completion.model || selectedModel, completion);
+        return { ...parseAnalysisJson(raw, 'groq'), ...(audited ? { provenance: { provider: 'Groq', model: identity.modelName,
+          version: identity.modelVersion, versionSource: identity.modelVersionSource,
+          systemFingerprint: identity.systemFingerprint, responseId: identity.providerResponseId,
+          raw, generatedAt: new Date().toISOString() } } : {}) };
       } catch (error) {
         lastError = error;
         if (attempt < retryDelays.length - 1) {

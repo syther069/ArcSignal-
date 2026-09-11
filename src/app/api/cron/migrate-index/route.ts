@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { authorizeCronRequest } from '@/lib/cron-auth';
 import { getSql } from '@/lib/db';
+import { SIGNAL_OPERATIONS_MIGRATION } from '@/lib/signal-intelligence/schema';
+import { V2_INDEX_MIGRATION } from '@/lib/v2-schema';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-export const maxDuration = 15;
+export const maxDuration = 45;
 
 const MIGRATION_STATEMENTS = [
   'alter table sync_state add column if not exists lease_token text',
@@ -21,11 +23,12 @@ export async function POST(request: Request) {
 
   try {
     const sql = getSql();
-    for (const statement of MIGRATION_STATEMENTS) {
+    const statements = [...MIGRATION_STATEMENTS, ...SIGNAL_OPERATIONS_MIGRATION, ...V2_INDEX_MIGRATION];
+    for (const statement of statements) {
       await sql.query(statement);
     }
 
-    return NextResponse.json({ migrated: true, statements: MIGRATION_STATEMENTS.length });
+    return NextResponse.json({ migrated: true, statements: statements.length });
   } catch (error) {
     console.error('Indexer schema migration failed:', error);
     return NextResponse.json(

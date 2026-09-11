@@ -1,5 +1,5 @@
 import { createPublicClient, http } from 'viem';
-import { arcTestnet } from '../../src/lib/arc';
+import { arcTestnet } from '../../src/lib/contracts';
 import * as dotenv from 'dotenv';
 import { resolve } from 'path';
 
@@ -20,8 +20,7 @@ async function checkOwner() {
     transport: http(RPC_URL),
   });
 
-  try {
-    const owner = await publicClient.readContract({
+  const owner = await publicClient.readContract({
       address: ARCSIGNAL_ADDRESS,
       abi: [{
         type: 'function',
@@ -32,10 +31,10 @@ async function checkOwner() {
       }],
       functionName: 'owner',
     });
-    console.log('Contract owner address from blockchain:', owner);
-  } catch (error) {
-    console.error('Failed to fetch contract owner:', error);
-  }
+  console.log('Contract owner address from blockchain:', owner);
 }
 
-checkOwner().catch(console.error);
+checkOwner().catch((error) => {
+  console.error('Failed to fetch contract owner:', error);
+  process.exit(1);
+});

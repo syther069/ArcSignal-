@@ -4,6 +4,11 @@ import Sidebar from '@/components/layout/Sidebar';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS, CANCELLATION_REFUNDS_ENABLED, publicClient } from '@/lib/contracts';
 import { getMarketIndexHealth, MARKET_INDEX_MAX_AGE_MS, MARKET_INDEX_MAX_LAG_BLOCKS } from '@/lib/indexed-markets';
 import { getSql } from '@/lib/db';
+import {
+  ARCSIGNAL_FACTORY_V2_ABI,
+  ARCSIGNAL_V2_ENABLED,
+  ARCSIGNAL_V2_FACTORY_ADDRESS,
+} from '@/lib/contracts-v2';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +23,37 @@ async function getDatabaseStatus() {
     from markets_index
   `;
   return rows[0];
+}
+
+async function getV2DatabaseStatus() {
+  const rows = await getSql()`
+    select
+      count(*)::int as total,
+      count(*) filter (where market_state = 'OPEN')::int as open,
+      count(*) filter (where market_state = 'CLOSED')::int as closed,
+      count(*) filter (where market_state = 'RESOLVED')::int as resolved,
+      count(*) filter (where market_state = 'VOIDED')::int as voided,
+      count(*) filter (where oracle_state = 'DISPUTED')::int as disputed,
+      max(updated_at) as latest_market_update
+    from markets_v2
+  `;
+  const reconciliation = await getSql()`
+    select count(*)::int as insolvent from (
+      select distinct on (market_address) market_address, is_solvent
+      from market_reconciliation_v2 order by market_address, checked_block desc
+    ) latest where not is_solvent
+  `;
+  const status = rows[0];
+  return {
+    total: Number(status?.total ?? 0),
+    open: Number(status?.open ?? 0),
+    closed: Number(status?.closed ?? 0),
+    resolved: Number(status?.resolved ?? 0),
+    voided: Number(status?.voided ?? 0),
+    disputed: Number(status?.disputed ?? 0),
+    latestMarketUpdate: status?.latest_market_update ? String(status.latest_market_update) : null,
+    insolvent: Number(reconciliation[0]?.insolvent ?? 0),
+  };
 }
 
 function resultValue<T>(result: PromiseSettledResult<T>): T | null {
@@ -38,6 +74,24 @@ export default async function StatusPage() {
   const paused = resultValue(pausedResult);
   const health = resultValue(healthResult);
   const database = resultValue(databaseResult);
+  const v2Results = ARCSIGNAL_V2_ENABLED && ARCSIGNAL_V2_FACTORY_ADDRESS
+    ? await Promise.allSettled([
+      publicClient.readContract({
+        address: ARCSIGNAL_V2_FACTORY_ADDRESS,
+        abi: ARCSIGNAL_FACTORY_V2_ABI,
+        functionName: 'PROTOCOL_VERSION',
+      }),
+      publicClient.readContract({
+        address: ARCSIGNAL_V2_FACTORY_ADDRESS,
+        abi: ARCSIGNAL_FACTORY_V2_ABI,
+        functionName: 'globalExposurePaused',
+      }),
+      getV2DatabaseStatus(),
+    ])
+    : null;
+  const v2Version = v2Results ? resultValue(v2Results[0]) : null;
+  const v2Paused = v2Results ? resultValue(v2Results[1]) : null;
+  const v2Database = v2Results ? resultValue(v2Results[2]) : null;
   const lag = head != null && health ? head - health.lastBlock : null;
   const indexAgeMs = health ? Date.now() - health.updatedAtMs : null;
   const indexHealthy = lag != null && lag >= 0n && lag <= MARKET_INDEX_MAX_LAG_BLOCKS && indexAgeMs != null && indexAgeMs <= MARKET_INDEX_MAX_AGE_MS;
@@ -83,6 +137,31 @@ export default async function StatusPage() {
               icon={<AlertTriangle size={18} />}
             />
           </div>
+
+          <section className="space-y-4">
+            <div>
+              <h2 className="font-[family-name:var(--font-hanken)] text-xl font-semibold">V2 readiness</h2>
+              <p className="mt-1 text-sm text-[#b0abb5]">V2 is shown only after a verified factory address and deployment block are configured.</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <StatusCard
+                title="V2 deployment"
+                healthy={v2Version === 2n}
+                value={!ARCSIGNAL_V2_ENABLED ? 'Not deployed' : v2Version === 2n ? 'Protocol version 2' : 'Unavailable'}
+                detail={ARCSIGNAL_V2_FACTORY_ADDRESS ?? 'No V2 factory is active in this application.'}
+                icon={<Shield size={18} />}
+              />
+              <StatusCard
+                title="V2 solvency monitor"
+                healthy={v2Database != null && Number(v2Database.insolvent ?? 0) === 0}
+                value={v2Database ? `${Number(v2Database.insolvent ?? 0)} insolvent markets` : 'Inactive'}
+                detail={v2Database
+                  ? `${Number(v2Database.open ?? 0)} open · ${Number(v2Database.closed ?? 0)} closed · ${Number(v2Database.disputed ?? 0)} disputed · exposure ${v2Paused ? 'paused' : 'active'}`
+                  : 'The V2 index and reconciliation monitor start after deployment.'}
+                icon={<Database size={18} />}
+              />
+            </div>
+          </section>
 
           <section className="rounded-xl border border-[#403947] bg-[#1c1b1b] p-5 space-y-3">
             <h2 className="font-[family-name:var(--font-hanken)] text-lg font-semibold">Deployment facts</h2>

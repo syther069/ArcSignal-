@@ -60,6 +60,12 @@ async function recordOracleAttempt(
 ) {
   try {
     const sql = getSql();
+    const indexed = await sql`
+      select 1 from markets_index
+      where market_id = ${marketId} and coalesce(protocol_version, 1) = 1
+      limit 1
+    `;
+    if (indexed.length === 0) return;
     await sql`
       insert into oracle_attempts (
         market_id, outcome, status, transaction_hash, error_message,
@@ -146,7 +152,7 @@ export async function POST(req: Request) {
     const queued = await sql`
       select market_id
       from markets_index
-      where resolved = false and resolution_time <= ${now}
+      where coalesce(protocol_version, 1) = 1 and resolved = false and resolution_time <= ${now}
       order by resolution_time asc
       limit ${RESOLUTION_SCAN_LIMIT}
     `;
@@ -375,6 +381,14 @@ export async function POST(req: Request) {
         throw new Error(`MarketResolved event missing or mismatched for ${marketId}`);
       }
       await recordOracleAttempt(marketId, 'CONFIRMED', outcome, hash, undefined, evidence);
+      // Score immediately from the verified receipt, even if the market index is
+      // still behind. The indexer retries independently after database outages.
+      try {
+        const { reconcileSignals } = await import('@/lib/signal-intelligence/resolution');
+        await reconcileSignals(Date.now() + 12_000, { marketId, transactionHash: hash });
+      } catch {
+        console.warn(`Signal scoring deferred to indexer for ${marketId}`);
+      }
       resolved.push(`${marketId}: outcome=${outcome} (${outcomeReason}) tx=${hash}`);
       await new Promise(r => setTimeout(r, 500));
 

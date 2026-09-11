@@ -33,7 +33,7 @@ interface MarketFiltersDrawerProps {
   };
 }
 
-const CATEGORIES = ['All Markets', 'Crypto', 'Football'];
+const CATEGORIES = ['All Markets', 'Crypto', 'Football', 'Sports', 'Politics', 'Technology', 'Economics', 'Culture'];
 const TIMEFRAMES = ['5m', '15m', '1h', '4h', '24h'];
 
 const SORT_OPTIONS: { value: MarketSort; label: string; desc: string }[] = [
@@ -91,7 +91,7 @@ export function MarketFiltersDrawer({
           <label className="font-mono text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
             Category
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
@@ -139,7 +139,7 @@ export function MarketFiltersDrawer({
         </div>
 
         {/* Timeframe section */}
-        {selectedCategory !== 'Football' && (
+        {(selectedCategory === 'Crypto' || selectedCategory === 'All Markets') && (
           <div className="space-y-2 font-sans">
             <label className="font-mono text-xs font-bold uppercase tracking-wider text-[#94a3b8]">
               Crypto Timeframe

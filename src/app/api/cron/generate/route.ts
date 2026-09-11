@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
-import { createWalletClient, decodeEventLog, http } from 'viem';
+import { createWalletClient, decodeEventLog, http, keccak256, stringToHex, toBytes, type Address } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, publicClient, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import {
+  ARCSIGNAL_FACTORY_V2_ABI,
+  ARCSIGNAL_V2_ENABLED,
+  ARCSIGNAL_V2_FACTORY_ADDRESS,
+} from '@/lib/contracts-v2';
 import {
   fetchCryptoMarkets,
   fetchFreshCryptoPrices,
@@ -22,6 +27,66 @@ import { clearMarketCache } from '@/lib/markets';
 
 const CONTRACT_ADDRESS = ARCSIGNAL_ADDRESS;
 
+const MARKET_CREATION_VERSION = process.env.ARCSIGNAL_MARKET_CREATION_VERSION;
+const V2_METADATA_SCHEMA_VERSION = 1;
+const V2_CATEGORY_VERSION = 1;
+const V2_ORACLE_POLICY_ID = 1;
+const V2_ORACLE_POLICY_VERSION = 1;
+const V2_LIVENESS_SECONDS = 3_600n;
+const V2_VOID_GRACE_SECONDS = 7_200n;
+const V2_PROPOSER_BOND = 1_000_000n;
+const V2_ORACLE_REWARD = 0n;
+const V2_INITIAL_LIQUIDITY = 0n;
+
+const V2_CATEGORY_IDS: Record<string, number> = {
+  CRYPTO: 1,
+  FOOTBALL: 2,
+  SPORTS: 2,
+  POLITICS: 3,
+  TECHNOLOGY: 4,
+  ECONOMICS: 5,
+  CULTURE: 6,
+};
+
+type CryptoTimeframe = {
+  label: '5m' | '15m' | '1h' | '4h' | '24h';
+  minutes: number;
+};
+
+type CryptoMarketJob = {
+  coin: CryptoData;
+  timeframe: CryptoTimeframe;
+  threshold: number;
+  resolutionTime: bigint;
+  resolutionDate: string;
+  question: string;
+  marketId: string;
+};
+
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([a], [b]) => a.localeCompare(b));
+    return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function v2MarketId(legacyMarketId: string): Hash {
+  return keccak256(toBytes(`arcsignal:v2:${legacyMarketId}`));
+}
+
+function commitmentHash(value: unknown): Hash {
+  return keccak256(toBytes(stableJson(value)));
+}
+
+function predictionIsYes(analysis: unknown) {
+  return typeof analysis === 'object'
+    && analysis !== null
+    && String((analysis as { prediction?: unknown }).prediction ?? '').toUpperCase() === 'YES';
+}
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -44,18 +109,41 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'RESOLVER_PRIVATE_KEY missing or invalid' }, { status: 500 });
   }
 
-  if (!/^0x[a-fA-F0-9]{40}$/.test(CONTRACT_ADDRESS)) {
+  const createOnV2 = Boolean(
+    MARKET_CREATION_VERSION !== '1'
+      && ARCSIGNAL_V2_ENABLED
+      && ARCSIGNAL_V2_FACTORY_ADDRESS,
+  );
+
+  if (!createOnV2 && !/^0x[a-fA-F0-9]{40}$/.test(CONTRACT_ADDRESS)) {
     return NextResponse.json({ error: 'Contract address missing or invalid' }, { status: 500 });
   }
 
   const account = privateKeyToAccount(privateKey as `0x${string}`);
-  const contractOwner = await publicClient.readContract({
-    address: CONTRACT_ADDRESS,
-    abi: ARCSIGNAL_ABI,
-    functionName: 'owner',
-  });
-  if (String(contractOwner).toLowerCase() !== account.address.toLowerCase()) {
-    return NextResponse.json({ error: 'Resolver wallet is not the ArcSignal owner' }, { status: 503 });
+  if (createOnV2) {
+    const creatorRole = await publicClient.readContract({
+      address: ARCSIGNAL_V2_FACTORY_ADDRESS as Address,
+      abi: ARCSIGNAL_FACTORY_V2_ABI,
+      functionName: 'MARKET_CREATOR_ROLE',
+    });
+    const canCreate = await publicClient.readContract({
+      address: ARCSIGNAL_V2_FACTORY_ADDRESS as Address,
+      abi: ARCSIGNAL_FACTORY_V2_ABI,
+      functionName: 'hasRole',
+      args: [creatorRole, account.address],
+    });
+    if (!canCreate) {
+      return NextResponse.json({ error: 'Resolver wallet does not have the V2 market creator role' }, { status: 503 });
+    }
+  } else {
+    const contractOwner = await publicClient.readContract({
+      address: CONTRACT_ADDRESS,
+      abi: ARCSIGNAL_ABI,
+      functionName: 'owner',
+    });
+    if (String(contractOwner).toLowerCase() !== account.address.toLowerCase()) {
+      return NextResponse.json({ error: 'Resolver wallet is not the ArcSignal owner' }, { status: 503 });
+    }
   }
   const walletClient = createWalletClient({
     account,
@@ -74,6 +162,129 @@ export async function POST(req: Request) {
   const indexWarnings: string[] = [];
   let totalCombinations = 0;
   const now = Math.floor(Date.now() / 1000);
+
+  async function createConfiguredMarket(input: {
+    legacyMarketId: string;
+    category: string;
+    question: string;
+    analysis: Record<string, unknown>;
+    resolutionTime: bigint;
+    resolutionCriteria: string;
+  }) {
+    const analysisJson = JSON.stringify(input.analysis);
+    if (!createOnV2) {
+      const hash: Hash = await walletClient.writeContract({
+        account,
+        chain: arcTestnet,
+        address: CONTRACT_ADDRESS,
+        abi: ARCSIGNAL_ABI,
+        functionName: 'createMarket',
+        args: [input.legacyMarketId, input.category, input.question, analysisJson, input.resolutionTime],
+      });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      if (receipt.status !== 'success') throw new Error(`createMarket transaction reverted: ${hash}`);
+      const createdEvent = receipt.logs.some((log) => {
+        try {
+          const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: log.data, topics: log.topics });
+          const args = decoded.args as { marketId?: string };
+          return decoded.eventName === 'MarketCreated' && args.marketId === input.legacyMarketId;
+        } catch {
+          return false;
+        }
+      });
+      if (!createdEvent) throw new Error(`MarketCreated event missing for ${input.legacyMarketId}`);
+      return {
+        marketId: input.legacyMarketId,
+        hash,
+        blockNumber: receipt.blockNumber,
+        protocolVersion: 1 as const,
+      };
+    }
+
+    const marketId = v2MarketId(input.legacyMarketId);
+    const categoryId = V2_CATEGORY_IDS[input.category.toUpperCase()] ?? V2_CATEGORY_IDS.CRYPTO;
+    const closeTime = input.resolutionTime;
+    const voidAfter = closeTime + V2_LIVENESS_SECONDS + V2_VOID_GRACE_SECONDS;
+    const termsHash = commitmentHash({
+      marketId,
+      question: input.question,
+      category: input.category,
+      resolutionCriteria: input.resolutionCriteria,
+      resolutionTime: Number(input.resolutionTime),
+      protocol: 'ArcSignal V2',
+    });
+    const resolutionSourceHash = commitmentHash({
+      category: input.category,
+      resolutionCriteria: input.resolutionCriteria,
+      oracle: input.analysis.oracle ?? null,
+    });
+    const ancillaryJson = stableJson({
+      marketId,
+      question: input.question,
+      category: input.category,
+      resolutionCriteria: input.resolutionCriteria,
+      resolutionTime: Number(input.resolutionTime),
+      sourceHash: resolutionSourceHash,
+    });
+    if (toBytes(ancillaryJson).length > 4096) throw new Error(`Ancillary data too large for ${input.legacyMarketId}`);
+    const ancillaryData = stringToHex(ancillaryJson);
+
+    const hash: Hash = await walletClient.writeContract({
+      account,
+      chain: arcTestnet,
+      address: ARCSIGNAL_V2_FACTORY_ADDRESS as Address,
+      abi: ARCSIGNAL_FACTORY_V2_ABI,
+      functionName: 'createMarket',
+      args: [{
+        marketId,
+        metadataSchemaVersion: V2_METADATA_SCHEMA_VERSION,
+        categoryId,
+        categoryVersion: V2_CATEGORY_VERSION,
+        oraclePolicyId: V2_ORACLE_POLICY_ID,
+        oraclePolicyVersion: V2_ORACLE_POLICY_VERSION,
+        closeTime,
+        liveness: V2_LIVENESS_SECONDS,
+        voidAfter,
+        proposerBond: V2_PROPOSER_BOND,
+        oracleReward: V2_ORACLE_REWARD,
+        termsHash,
+        resolutionSourceHash,
+        ancillaryData,
+        metadataURI: `arcsignal://v2/markets/${input.legacyMarketId}`,
+        thesisPredictsYes: predictionIsYes(input.analysis),
+        initialLiquidity: V2_INITIAL_LIQUIDITY,
+      }],
+    });
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    if (receipt.status !== 'success') throw new Error(`createMarket transaction reverted: ${hash}`);
+    let marketAddress: Address | undefined;
+    const createdEvent = receipt.logs.some((log) => {
+      try {
+        const decoded = decodeEventLog({ abi: ARCSIGNAL_FACTORY_V2_ABI, data: log.data, topics: log.topics });
+        const args = decoded.args as { marketId?: Hash; market?: Address };
+        const matched = decoded.eventName === 'MarketCreatedV2'
+          && String(args.marketId).toLowerCase() === marketId.toLowerCase();
+        if (matched) marketAddress = args.market;
+        return matched;
+      } catch {
+        return false;
+      }
+    });
+    if (!createdEvent || !marketAddress) throw new Error(`MarketCreatedV2 event missing for ${input.legacyMarketId}`);
+    return {
+      marketId,
+      hash,
+      blockNumber: receipt.blockNumber,
+      protocolVersion: 2 as const,
+      contractAddress: marketAddress,
+      categoryId,
+      categoryVersion: V2_CATEGORY_VERSION,
+      oraclePolicyId: V2_ORACLE_POLICY_ID,
+      oraclePolicyVersion: V2_ORACLE_POLICY_VERSION,
+      termsHash,
+      resolutionSourceHash,
+    };
+  }
 
   // CRYPTO MARKETS
   try {
@@ -149,7 +360,7 @@ export async function POST(req: Request) {
     }
     if (!onlyTimeframe) onlyTimeframe = '5m';
 
-    const allTimeframes = [
+    const allTimeframes: CryptoTimeframe[] = [
       { label: '5m',  minutes: 5 },
       { label: '15m', minutes: 15 },
       { label: '1h',  minutes: 60 },
@@ -193,7 +404,7 @@ export async function POST(req: Request) {
       return `Resolves YES if ${symbol}/USD on CoinGecko is at or above $${fmt(threshold)} at ${resolutionDate}; otherwise resolves NO.`;
     }
 
-    const jobs: { coin: any; timeframe: any; threshold: number; resolutionTime: bigint; resolutionDate: string; question: string; marketId: string; }[] = [];
+    const jobs: CryptoMarketJob[] = [];
 
     for (const coin of selected) {
       for (const timeframe of timeframes) {
@@ -256,42 +467,36 @@ export async function POST(req: Request) {
           const symbolUpper = job.coin.symbol.toUpperCase();
 
           try {
-            const hash: Hash = await walletClient.writeContract({
-              account,
-              chain: arcTestnet,
-              address: CONTRACT_ADDRESS,
-              abi: ARCSIGNAL_ABI,
-              functionName: 'createMarket',
-              args: [job.marketId, 'CRYPTO', job.question, JSON.stringify(analysisWithSubType), job.resolutionTime],
+            const creation = await createConfiguredMarket({
+              legacyMarketId: job.marketId,
+              category: 'CRYPTO',
+              question: job.question,
+              analysis: analysisWithSubType as Record<string, unknown>,
+              resolutionTime: job.resolutionTime,
+              resolutionCriteria: getResolutionCriteria(job.coin.symbol.toUpperCase(), job.threshold, job.resolutionDate),
             });
-            const receipt = await publicClient.waitForTransactionReceipt({ hash });
-            if (receipt.status !== 'success') {
-              throw new Error(`createMarket transaction reverted: ${hash}`);
-            }
-            const createdEvent = receipt.logs.some((log) => {
-              try {
-                const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: log.data, topics: log.topics });
-                const args = decoded.args as { marketId?: string };
-                return decoded.eventName === 'MarketCreated' && args.marketId === job.marketId;
-              } catch {
-                return false;
-              }
-            });
-            if (!createdEvent) throw new Error(`MarketCreated event missing for ${job.marketId}`);
-            created.push(`[CRYPTO] ${job.question} (Tx: ${hash})`);
+            created.push(`[V${creation.protocolVersion} CRYPTO] ${job.question} (Tx: ${creation.hash})`);
             if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
               try {
                 await upsertGeneratedMarketIndex({
-                  marketId: job.marketId,
+                  marketId: creation.marketId,
                   category: 'CRYPTO',
                   question: job.question,
                   analysisJson: JSON.stringify(analysisWithSubType),
                   resolutionTime: job.resolutionTime,
-                  createdBlock: receipt.blockNumber,
+                  createdBlock: creation.blockNumber,
+                  protocolVersion: creation.protocolVersion,
+                  contractAddress: creation.contractAddress,
+                  categoryId: creation.categoryId,
+                  categoryVersion: creation.categoryVersion,
+                  oraclePolicyId: creation.oraclePolicyId,
+                  oraclePolicyVersion: creation.oraclePolicyVersion,
+                  termsHash: creation.termsHash,
+                  resolutionSourceHash: creation.resolutionSourceHash,
                 });
               } catch (indexError) {
                 indexWarnings.push(
-                  `[${job.marketId}] immediate index update failed: ${indexError instanceof Error ? indexError.message : String(indexError)}`,
+                  `[${creation.marketId}] immediate index update failed: ${indexError instanceof Error ? indexError.message : String(indexError)}`,
                 );
               }
             }
@@ -351,41 +556,36 @@ export async function POST(req: Request) {
             },
           };
 
-          const hash: Hash = await walletClient.writeContract({
-            address: CONTRACT_ADDRESS,
-            abi: ARCSIGNAL_ABI,
-            functionName: 'createMarket',
-            args: [marketId, 'FOOTBALL', question, JSON.stringify(analysisWithOracle), resolutionTime],
+          const creation = await createConfiguredMarket({
+            legacyMarketId: marketId,
+            category: 'FOOTBALL',
+            question,
+            analysis: analysisWithOracle as Record<string, unknown>,
+            resolutionTime,
+            resolutionCriteria: `Resolves YES if ${fixture.homeTeam} wins at full time. Resolves NO if draw or ${fixture.awayTeam} wins.`,
           });
-
-          const receipt = await publicClient.waitForTransactionReceipt({ hash });
-          if (receipt.status !== 'success') {
-            throw new Error(`createMarket transaction reverted: ${hash}`);
-          }
-          const createdEvent = receipt.logs.some((log) => {
-            try {
-              const decoded = decodeEventLog({ abi: ARCSIGNAL_ABI, data: log.data, topics: log.topics });
-              const args = decoded.args as { marketId?: string };
-              return decoded.eventName === 'MarketCreated' && args.marketId === marketId;
-            } catch {
-              return false;
-            }
-          });
-          if (!createdEvent) throw new Error(`MarketCreated event missing for ${marketId}`);
-          created.push(`[FOOTBALL] ${question}`);
+          created.push(`[V${creation.protocolVersion} FOOTBALL] ${question} (Tx: ${creation.hash})`);
           if (process.env.DATABASE_URL || process.env.POSTGRES_URL) {
             try {
               await upsertGeneratedMarketIndex({
-                marketId,
+                marketId: creation.marketId,
                 category: 'FOOTBALL',
                 question,
                 analysisJson: JSON.stringify(analysisWithOracle),
                 resolutionTime,
-                createdBlock: receipt.blockNumber,
+                createdBlock: creation.blockNumber,
+                protocolVersion: creation.protocolVersion,
+                contractAddress: creation.contractAddress,
+                categoryId: creation.categoryId,
+                categoryVersion: creation.categoryVersion,
+                oraclePolicyId: creation.oraclePolicyId,
+                oraclePolicyVersion: creation.oraclePolicyVersion,
+                termsHash: creation.termsHash,
+                resolutionSourceHash: creation.resolutionSourceHash,
               });
             } catch (indexError) {
               indexWarnings.push(
-                `[${marketId}] immediate index update failed: ${indexError instanceof Error ? indexError.message : String(indexError)}`,
+                `[${creation.marketId}] immediate index update failed: ${indexError instanceof Error ? indexError.message : String(indexError)}`,
               );
             }
           }

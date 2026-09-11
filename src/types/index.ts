@@ -1,9 +1,35 @@
-export type MarketCategory = 'football' | 'crypto';
+export type MarketCategory = 'football' | 'crypto' | 'sports' | 'politics' | 'technology' | 'economics' | 'culture';
 export type CryptoSubType = 'price' | 'listing' | 'onchain';
 export type StakeSide = 0 | 1;
 
 export interface Market {
   marketId: string;
+  protocolVersion?: 1 | 2;
+  contractAddress?: string;
+  proof?: {
+    marketAddress?: string;
+    ammAddress?: string;
+    yesTokenAddress?: string;
+    noTokenAddress?: string;
+    collateralAddress?: string;
+    oracleAdapterAddress?: string;
+    categoryId?: number;
+    categoryVersion?: number;
+    oraclePolicyId?: number;
+    oraclePolicyVersion?: number;
+    feeVersion?: number;
+    metadataSchemaVersion?: number;
+    termsHash?: string;
+    resolutionSourceHash?: string;
+    ancillaryDataHash?: string;
+    metadataURI?: string;
+    liveness?: number;
+    voidAfter?: number;
+    oracleState?: string;
+    oracleRequestKey?: string | null;
+    resolutionRequestedAt?: number | null;
+    indexedThroughBlock?: string;
+  };
   category: MarketCategory;
   subType?: CryptoSubType;
   title: string;

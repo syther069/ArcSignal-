@@ -53,7 +53,12 @@ export function mapOutcome(resolved: boolean, outcome: number): MarketOutcome {
  */
 export function mapCategory(category: string): MarketCategory {
   const norm = category?.toUpperCase();
+  if (norm === 'SPORTS') return 'SPORTS';
   if (norm === 'FOOTBALL') return 'FOOTBALL';
+  if (norm === 'POLITICS') return 'POLITICS';
+  if (norm === 'TECH' || norm === 'TECHNOLOGY') return 'TECHNOLOGY';
+  if (norm === 'ECONOMY' || norm === 'ECONOMICS' || norm === 'MACRO') return 'ECONOMICS';
+  if (norm === 'CULTURE') return 'CULTURE';
   return 'CRYPTO';
 }
 

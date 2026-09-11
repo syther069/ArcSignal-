@@ -13,6 +13,9 @@ Run commands from the repository root.
 | `npm run audit:baseline` | Enforce the production dependency-audit ceiling |
 | `npm run ops:check-markets` | Read current and historical ARC market counts |
 | `npm run ops:check-owner` | Read the deployed ArcSignal contract owner |
+| `npm run ops:check-v2` | Verify V2 bytecode, dependencies, USDC, version, and role assignments |
+| `npm run contracts:build` | Compile contracts and enforce deployable bytecode-size limits |
+| `npm run contracts:test` | Run legacy and V2 Foundry unit/fuzz tests |
 | `npm run ops:scheduler` | Run one external-data scheduler diagnostic |
 
 ## Deployment utilities

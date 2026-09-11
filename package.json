@@ -6,6 +6,7 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint src next.config.mjs tailwind.config.ts",
     "test": "vitest run",
     "audit:baseline": "node scripts/check-audit-baseline.mjs",
@@ -15,6 +16,9 @@
     "db:migrate": "npx tsx scripts/migrate-db.ts",
     "ops:check-markets": "npx tsx scripts/diagnostics/check-markets.ts",
     "ops:check-owner": "npx tsx scripts/diagnostics/check-owner.ts",
+    "ops:check-v2": "npx tsx scripts/diagnostics/check-v2.ts",
+    "contracts:build": "forge build --sizes",
+    "contracts:test": "forge test",
     "ops:scheduler": "npx tsx scripts/operations/scheduler.ts"
   },
   "dependencies": {

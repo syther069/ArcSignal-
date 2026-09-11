@@ -10,6 +10,16 @@ function usdcToNumber(value: string) {
   }
 }
 
+const UI_CATEGORY_BY_CANONICAL = {
+  CRYPTO: 'crypto',
+  FOOTBALL: 'football',
+  SPORTS: 'sports',
+  POLITICS: 'politics',
+  TECHNOLOGY: 'technology',
+  ECONOMICS: 'economics',
+  CULTURE: 'culture',
+} as const;
+
 function parseFootballTeams(question: string) {
   const match = question.match(/^Will (.+?) beat (.+?) on /);
   return {
@@ -19,7 +29,7 @@ function parseFootballTeams(question: string) {
 }
 
 export function toUiMarket(market: SerializableMarket): UiMarket {
-  const category = market.category === 'FOOTBALL' ? 'football' : 'crypto';
+  const category = UI_CATEGORY_BY_CANONICAL[market.category] ?? 'crypto';
   const title = (market.question ?? market.marketId).replace(/\s*\[fixtureId:\d+\]\s*$/, '');
   const pools = {
     followPool: usdcToNumber(market.followPool),
@@ -29,6 +39,9 @@ export function toUiMarket(market: SerializableMarket): UiMarket {
 
   return {
     marketId: market.marketId,
+    protocolVersion: market.protocolVersion ?? 1,
+    contractAddress: market.contractAddress,
+    proof: market.proof,
     category,
     subType: category === 'crypto' ? 'price' : undefined,
     title,
@@ -52,7 +65,9 @@ export function toUiMarket(market: SerializableMarket): UiMarket {
     resolved: market.resolved,
     outcome: market.outcome,
     status: market.status,
-    resolution_source: category === 'football' ? 'API-Football' : 'CoinGecko',
+    resolution_source: market.proof?.resolutionSourceHash
+      ? `Committed source ${market.proof.resolutionSourceHash.slice(0, 10)}...`
+      : category === 'football' ? 'API-Football' : 'CoinGecko',
     resolution_timestamp: market.resolvedAt,
     resolution_reason: market.resolutionReason,
     createdAt: market.analysis?.generatedAt ?? new Date().toISOString(),

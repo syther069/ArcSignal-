@@ -30,6 +30,7 @@ export function useArcUsdcBalance(address?: string) {
 
   return {
     snapshot: query.data,
+    nativeWei: query.data ? BigInt(query.data.nativeWei) : undefined,
     erc20Raw: query.data ? BigInt(query.data.erc20Raw) : undefined,
     allowanceRaw: query.data ? BigInt(query.data.allowanceRaw) : undefined,
     display: query.data ? Number(query.data.usdc).toFixed(2) : null,

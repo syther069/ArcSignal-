@@ -12,6 +12,14 @@ export interface GeneratedMarketIndexRecord {
   analysisJson: string;
   resolutionTime: bigint;
   createdBlock: bigint;
+  protocolVersion?: 1 | 2;
+  contractAddress?: string;
+  categoryId?: number;
+  categoryVersion?: number;
+  oraclePolicyId?: number;
+  oraclePolicyVersion?: number;
+  termsHash?: string;
+  resolutionSourceHash?: string;
 }
 
 export interface MarketIndexHealth {
@@ -54,6 +62,7 @@ export async function getIndexedMarkets(limit: number, offset: number): Promise<
     select market_id, category, question, analysis_json, resolution_time,
            follow_pool, fade_pool, resolved, outcome, status
     from markets_index
+    where coalesce(protocol_version, 1) = 1
     order by resolution_time desc
     limit ${limit} offset ${offset}
   `;
@@ -143,17 +152,31 @@ export async function upsertGeneratedMarketIndex(record: GeneratedMarketIndexRec
   await sql`
     insert into markets_index (
       market_id, category, question, analysis_json, resolution_time,
-      follow_pool, fade_pool, resolved, outcome, status, created_block, updated_block
+      follow_pool, fade_pool, resolved, outcome, status, created_block, updated_block,
+      protocol_version, contract_address, category_id, category_version,
+      oracle_policy_id, oracle_policy_version, terms_hash, resolution_source_hash
     ) values (
       ${record.marketId}, ${record.category}, ${record.question}, ${record.analysisJson},
       ${record.resolutionTime}, 0, 0, false, 0, 'OPEN',
-      ${record.createdBlock}, ${record.createdBlock}
+      ${record.createdBlock}, ${record.createdBlock},
+      ${record.protocolVersion ?? 1}, ${record.contractAddress ?? null},
+      ${record.categoryId ?? null}, ${record.categoryVersion ?? null},
+      ${record.oraclePolicyId ?? null}, ${record.oraclePolicyVersion ?? null},
+      ${record.termsHash ?? null}, ${record.resolutionSourceHash ?? null}
     )
     on conflict (market_id) do update set
       category = excluded.category,
       question = excluded.question,
       analysis_json = excluded.analysis_json,
       resolution_time = excluded.resolution_time,
+      protocol_version = excluded.protocol_version,
+      contract_address = excluded.contract_address,
+      category_id = excluded.category_id,
+      category_version = excluded.category_version,
+      oracle_policy_id = excluded.oracle_policy_id,
+      oracle_policy_version = excluded.oracle_policy_version,
+      terms_hash = excluded.terms_hash,
+      resolution_source_hash = excluded.resolution_source_hash,
       created_block = case
         when markets_index.created_block is null or markets_index.created_block = 0
           then excluded.created_block
@@ -168,7 +191,9 @@ export async function getIndexedMarketById(marketId: string): Promise<Market | n
   const sql = getSql();
   const query = sql`
     select market_id, category, question, analysis_json, resolution_time,
-           follow_pool, fade_pool, resolved, outcome, status
+           follow_pool, fade_pool, resolved, outcome, status, protocol_version,
+           contract_address, category_id, category_version, oracle_policy_id,
+           oracle_policy_version, terms_hash, resolution_source_hash
     from markets_index
     where market_id = ${marketId}
     limit 1
@@ -206,6 +231,34 @@ export async function getIndexedMarketById(marketId: string): Promise<Market | n
         resolutionTime,
         nowUnix,
       }),
+      protocolVersion: Number(row.protocol_version ?? 1) === 2 ? 2 : 1,
+      contractAddress: row.contract_address ? String(row.contract_address) : undefined,
+      proof: Number(row.protocol_version ?? 1) === 2
+        ? {
+          marketAddress: row.contract_address ? String(row.contract_address) : '',
+          ammAddress: '',
+          yesTokenAddress: '',
+          noTokenAddress: '',
+          collateralAddress: '',
+          oracleAdapterAddress: '',
+          categoryId: row.category_id === null ? 0 : Number(row.category_id),
+          categoryVersion: row.category_version === null ? 0 : Number(row.category_version),
+          oraclePolicyId: row.oracle_policy_id === null ? 0 : Number(row.oracle_policy_id),
+          oraclePolicyVersion: row.oracle_policy_version === null ? 0 : Number(row.oracle_policy_version),
+          feeVersion: 0,
+          metadataSchemaVersion: 1,
+          termsHash: row.terms_hash ? String(row.terms_hash) : '',
+          resolutionSourceHash: row.resolution_source_hash ? String(row.resolution_source_hash) : '',
+          ancillaryDataHash: '',
+          metadataURI: '',
+          liveness: 0,
+          voidAfter: 0,
+          oracleState: 'INDEXING',
+          oracleRequestKey: null,
+          resolutionRequestedAt: null,
+          indexedThroughBlock: undefined,
+        }
+        : undefined,
       analysis: parseAnalysis(row.analysis_json),
       resolutionReason: resolved
         ? outcome === 0

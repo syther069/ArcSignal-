@@ -7,6 +7,7 @@ import { MarketRow } from '@/components/markets/MarketRow';
 import type { MarketView, MarketSort } from '@/components/markets/MarketFiltersDrawer';
 import { Market, StakeSide } from '@/types';
 import type { SerializableMarket } from '@/lib/markets';
+import type { SignalCoverageRecord } from '@/lib/signal-intelligence/types';
 import { toUiMarket } from '@/lib/ui-market';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
@@ -20,6 +21,7 @@ import {
   Zap,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 // Dynamically load heavy interactive modals to reduce initial bundle size
 const StakeModal = dynamic(() => import('@/components/markets/StakeModal').then((mod) => mod.StakeModal), {
@@ -32,9 +34,20 @@ const MarketFiltersDrawer = dynamic(
 
 interface MarketsClientProps {
   markets: SerializableMarket[];
+  signalCoverage: Record<string, SignalCoverageRecord>;
 }
 
 const TIMEFRAMES = ['5m', '15m', '1h', '4h', '24h'];
+const CATEGORIES = ['All Markets', 'Crypto', 'Football', 'Sports', 'Politics', 'Technology', 'Economics', 'Culture'];
+const CATEGORY_LABEL_TO_CANONICAL: Record<string, string> = {
+  Crypto: 'CRYPTO',
+  Football: 'FOOTBALL',
+  Sports: 'SPORTS',
+  Politics: 'POLITICS',
+  Technology: 'TECHNOLOGY',
+  Economics: 'ECONOMICS',
+  Culture: 'CULTURE',
+};
 
 interface EnrichedMarket extends SerializableMarket {
   totalLiquidityNum: number;
@@ -88,7 +101,8 @@ function useMarketBoundaryTime(markets: SerializableMarket[]): number {
   return nowUnix;
 }
 
-export default function MarketsClient({ markets }: MarketsClientProps) {
+export default function MarketsClient({ markets, signalCoverage }: MarketsClientProps) {
+  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState('All Markets');
   const [selectedTimeframe, setSelectedTimeframe] = useState<string | null>(null);
   const [selectedView, setSelectedView] = useState<MarketView>('live');
@@ -116,6 +130,14 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
     setSortBy('closingSoon');
     setSearchQuery('');
   }, []);
+
+  const handleOpenPosition = useCallback((market: SerializableMarket, side: StakeSide) => {
+    if (market.protocolVersion === 2) {
+      router.push(`/market/${market.marketId}`);
+      return;
+    }
+    setStakeModal({ market: toUiMarket(market), side });
+  }, [router]);
 
   // Pre-calculate numeric liquidity and share metrics once to avoid BigInt churn in loops
   const enrichedMarkets: EnrichedMarket[] = useMemo(() => {
@@ -184,8 +206,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
       if (selectedView === 'resolved' && !isResolved) return false;
 
       // 2. Category Filter
-      if (selectedCategory === 'Crypto' && m.category !== 'CRYPTO') return false;
-      if (selectedCategory === 'Football' && m.category !== 'FOOTBALL') return false;
+      if (selectedCategory !== 'All Markets' && m.category !== CATEGORY_LABEL_TO_CANONICAL[selectedCategory]) return false;
 
       // 3. Timeframe Filter
       if (selectedTimeframe && !m.marketId.includes(`-PRICE-${selectedTimeframe}-`)) return false;
@@ -494,12 +515,12 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                 <span className="font-mono text-[10px] uppercase tracking-wider text-[#64748b] mr-1">
                   Category:
                 </span>
-                {['All Markets', 'Crypto', 'Football'].map((cat) => (
+                {CATEGORIES.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => {
                       setSelectedCategory(cat);
-                      if (cat === 'Football') setSelectedTimeframe(null);
+                      if (cat !== 'Crypto' && cat !== 'All Markets') setSelectedTimeframe(null);
                     }}
                     aria-pressed={selectedCategory === cat}
                     className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
@@ -514,7 +535,7 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
               </div>
 
               {/* Crypto Timeframe Filter Pills */}
-              {selectedCategory !== 'Football' && (
+              {(selectedCategory === 'Crypto' || selectedCategory === 'All Markets') && (
                 <div className="flex items-center gap-1.5 font-mono text-xs">
                   <span className="text-[10px] uppercase tracking-wider text-[#64748b] mr-1 font-mono">
                     Timeframe:
@@ -567,8 +588,9 @@ export default function MarketsClient({ markets }: MarketsClientProps) {
                   <MarketRow
                     key={market.marketId}
                     market={market}
-                    onFollow={() => setStakeModal({ market: toUiMarket(market), side: 0 })}
-                    onFade={() => setStakeModal({ market: toUiMarket(market), side: 1 })}
+                    signalCoverage={signalCoverage[market.marketId]}
+                    onFollow={() => handleOpenPosition(market, 0)}
+                    onFade={() => handleOpenPosition(market, 1)}
                   />
                 ))}
               </div>

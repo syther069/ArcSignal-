@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arc-signal.xyz/schemas/v2-deployment-manifest.json",
+  "title": "ArcSignal V2 deployment manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "chainId",
+    "gitCommit",
+    "solcVersion",
+    "deploymentBlock",
+    "deploymentTransactionHash",
+    "contracts",
+    "roles",
+    "policyVersions",
+    "bytecodeHashes"
+  ],
+  "properties": {
+    "protocolVersion": { "const": 2 },
+    "chainId": { "type": "integer", "minimum": 1 },
+    "gitCommit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "solcVersion": { "const": "0.8.35" },
+    "deploymentBlock": { "type": "string", "pattern": "^[0-9]+$" },
+    "deploymentTransactionHash": { "$ref": "#/$defs/hash" },
+    "contracts": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/address" },
+      "required": [
+        "factory",
+        "marketDeployer",
+        "ammDeployer",
+        "categoryRegistry",
+        "oraclePolicyRegistry",
+        "feeController",
+        "oracleAdapter",
+        "usdc",
+        "optimisticOracle"
+      ]
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/address" },
+      "required": ["protocolAdmin", "marketCreator", "resolutionOperator", "pauseGuardian", "treasury"]
+    },
+    "policyVersions": {
+      "type": "object",
+      "required": ["categories", "oraclePolicy", "fees"]
+    },
+    "bytecodeHashes": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/hash" }
+    }
+  },
+  "$defs": {
+    "address": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+    "hash": { "type": "string", "pattern": "^0x[a-fA-F0-9]{64}$" }
+  }
+}

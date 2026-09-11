@@ -15,7 +15,7 @@ concurrency:
 jobs:
   index:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 6
     steps:
       - name: Apply additive index schema
         env:
@@ -30,7 +30,7 @@ jobs:
             --retry 2 \
             --retry-all-errors \
             --connect-timeout 10 \
-            --max-time 30 \
+            --max-time 45 \
             --request POST \
             --header "Authorization: Bearer $CRON_SECRET" \
             "$MIGRATION_URL"
@@ -53,6 +53,24 @@ jobs:
             --header "Authorization: Bearer $CRON_SECRET" \
             "$INDEX_URL"
 
+      - name: Advance finalized ArcSignal V2 index when configured
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          INDEX_V2_URL: https://arc-signal.xyz/api/cron/index-v2
+        run: |
+          test -n "$CRON_SECRET"
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --retry 2 \
+            --retry-all-errors \
+            --connect-timeout 10 \
+            --max-time 55 \
+            --request POST \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "$INDEX_V2_URL"
+
       - name: Resolve due markets
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -70,3 +88,23 @@ jobs:
             --request POST \
             --header "Authorization: Bearer $CRON_SECRET" \
             "$MAINTENANCE_URL"
+
+      - name: Generate bounded Signal Intelligence coverage
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SIGNAL_URL: https://arc-signal.xyz/api/cron/signals
+        run: |
+          test -n "$CRON_SECRET"
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --retry 2 \
+            --retry-all-errors \
+            --connect-timeout 10 \
+            --max-time 240 \
+            --request POST \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            --header "Content-Type: application/json" \
+            --data '{"action":"generate-scheduled","maxMarkets":1}' \
+            "$SIGNAL_URL"

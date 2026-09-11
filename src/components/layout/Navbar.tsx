@@ -50,6 +50,7 @@ export default function Navbar() {
     { name: 'Markets', href: '/markets' },
     { name: 'Portfolio', href: '/portfolio' },
     { name: 'Analytics', href: '/analytics' },
+    { name: 'AI Leaderboard', href: '/ai-leaderboard' },
     { name: 'Profile', href: '/profile' },
     { name: 'Docs', href: '/docs' },
   ];

@@ -176,9 +176,13 @@ async function sync(req: Request) {
 
     if (lastBlock >= finalizedHead) {
       const reconciledMarkets = await reconcileDueMarkets(sql, finalizedHead, deadline);
+      const signalReconciliation = await import('@/lib/signal-intelligence/resolution')
+        .then(({ reconcileSignals }) => reconcileSignals(deadline))
+        .catch(() => ({ error: 'Signal reconciliation unavailable; retry through /api/cron/signals.' }));
       return NextResponse.json({
         indexed: false,
         reconciledMarkets,
+        signalReconciliation,
         fromBlock: lastBlock.toString(),
         finalizedBlock: finalizedHead.toString(),
         latestBlock: latestBlock.toString(),
@@ -307,6 +311,22 @@ async function sync(req: Request) {
                 claimed_block = greatest(claims_index.claimed_block, excluded.claimed_block)
               returning market_id
             `);
+          } else if ((event.eventName === 'MarketResolved' || event.eventName === 'MarketCancelled') && event.projection.marketId) {
+            // Persist receipt references for manual/owner settlements too. A lost
+            // resolver CONFIRMED write must not leave valid signals pending forever.
+            queries.push(tx`
+              with marker as (
+                insert into indexed_events (transaction_hash, log_index, event_name, block_number)
+                select ${event.transactionHash}, ${event.logIndex}, ${event.eventName}, ${event.blockNumber}
+                where exists (
+                  select 1 from sync_state
+                  where id = 'arc-main' and lease_token = ${token} and lease_expires_at > now()
+                )
+                on conflict (transaction_hash, log_index) do nothing returning 1
+              )
+              insert into oracle_attempts (market_id, status, transaction_hash)
+              select ${event.projection.marketId}, 'INDEXED', ${event.transactionHash} from marker returning market_id
+            `);
           } else {
             queries.push(tx`
               insert into indexed_events (transaction_hash, log_index, event_name, block_number)
@@ -317,6 +337,23 @@ async function sync(req: Request) {
               )
               on conflict (transaction_hash, log_index) do nothing
               returning transaction_hash
+            `);
+          }
+        }
+
+        // Scheduling is committed with the indexed market. The separate worker
+        // leases one job at a time, so indexing never waits on model providers.
+        for (const market of markets) {
+          if (!market.resolved && market.status === 'OPEN' && ['CRYPTO', 'FOOTBALL'].includes(market.category.toUpperCase())) {
+            queries.push(tx`
+              insert into signal_generation_jobs (market_id, status)
+              select ${market.marketId}, 'scheduled'
+              where exists (
+                select 1 from sync_state
+                where id = 'arc-main' and lease_token = ${token} and lease_expires_at > now()
+              )
+              on conflict (market_id) do nothing
+              returning market_id
             `);
           }
         }
@@ -344,12 +381,16 @@ async function sync(req: Request) {
     }
 
     const reconciledMarkets = await reconcileDueMarkets(sql, finalizedHead, deadline);
+    const signalReconciliation = await import('@/lib/signal-intelligence/resolution')
+      .then(({ reconcileSignals }) => reconcileSignals(deadline))
+      .catch(() => ({ error: 'Signal reconciliation unavailable; retry through /api/cron/signals.' }));
     return NextResponse.json({
       indexed: chunksProcessed > 0,
       complete: cursor > finalizedHead,
       processedEvents,
       hydratedMarkets: hydratedMarketCount,
       reconciledMarkets,
+      signalReconciliation,
       chunksProcessed,
       nextBlock: cursor.toString(),
       fromBlock: (lastBlock + 1n).toString(),

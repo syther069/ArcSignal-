@@ -4,6 +4,7 @@ import {
   calculateArcGasReserveUsdc,
   calculateMaxArcStakeForAllowance,
   calculateMaxArcStakeUsdc,
+  erc20UsdcToNativeWei,
   formatArcNetworkFee,
   formatArcNetworkFeeUsdc,
 } from '@/lib/arc-gas';
@@ -54,6 +55,11 @@ describe('ARC native USDC gas reservation', () => {
   it('raises the reserve when gas prices spike', () => {
     expect(calculateArcGasReserveUsdc(100_000_000_000n, true)).toBe(30_000n);
     expect(calculateArcGasReserveUsdc(100_000_000_000n, false)).toBe(20_000n);
+  });
+
+  it('converts 6-decimal ERC-20 USDC units to 18-decimal native USDC wei', () => {
+    expect(erc20UsdcToNativeWei(10_000n)).toBe(10_000_000_000_000_000n);
+    expect(erc20UsdcToNativeWei(1_000_000n)).toBe(1_000_000_000_000_000_000n);
   });
 
   it('never lets MAX consume the native USDC gas reserve', () => {

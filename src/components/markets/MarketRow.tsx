@@ -7,12 +7,14 @@ import Link from 'next/link';
 import { formatUnits } from 'viem';
 import { ArrowUpRight, Check, Clock3, HelpCircle, Sparkles, X } from 'lucide-react';
 import type { SerializableMarket } from '@/lib/markets';
+import type { SignalCoverageRecord } from '@/lib/signal-intelligence/types';
 import { CountdownTimer } from './CountdownTimer';
 
 export interface MarketRowProps {
   market: SerializableMarket;
   onFollow: () => void;
   onFade: () => void;
+  signalCoverage?: SignalCoverageRecord;
 }
 
 function formatUsdc(value: bigint) {
@@ -30,8 +32,9 @@ function getTimeframe(marketId: string) {
   return marketId.match(/-PRICE-(5m|15m|1h|4h|24h)-/)?.[1] ?? null;
 }
 
-export const MarketRow = React.memo(function MarketRow({ market, onFollow, onFade }: MarketRowProps) {
+export const MarketRow = React.memo(function MarketRow({ market, onFollow, onFade, signalCoverage }: MarketRowProps) {
   const [showTooltip, setShowTooltip] = useState(false);
+  const isV2 = market.protocolVersion === 2;
 
   const followPool = asRawUsdc(market.followPool);
   const fadePool = asRawUsdc(market.fadePool);
@@ -86,6 +89,10 @@ export const MarketRow = React.memo(function MarketRow({ market, onFollow, onFad
         <div className="flex flex-wrap items-center gap-2 mb-1.5 font-mono text-[13px] tracking-[0.06em]">
           <span className="rounded px-2 py-0.5 font-bold uppercase text-[#ddb7ff] bg-[#ddb7ff]/10 border border-[#ddb7ff]/20">
             {market.category}
+          </span>
+
+          <span className={`rounded px-1.5 py-0.5 font-bold uppercase ${isV2 ? 'bg-[#4fdbc8]/10 text-[#4fdbc8] border border-[#4fdbc8]/20' : 'bg-white/[0.04] text-[#b0abb5] border border-white/[0.08]'}`}>
+            {isV2 ? 'V2' : 'V1 Legacy'}
           </span>
 
           {timeframe && (
@@ -163,12 +170,18 @@ export const MarketRow = React.memo(function MarketRow({ market, onFollow, onFad
               {confidence > 0 && <span className="text-[#b0abb5] tabular-nums">· {confidence}%</span>}
             </span>
           </div>
+          <Link href={`/market/${market.marketId}#signal-intelligence-title`} className="mt-2 flex items-center gap-1.5 border-t border-white/[0.06] pt-2 text-[13px] text-[#ddb7ff] hover:underline">
+            <Sparkles size={11} />
+            {signalCoverage?.signalCount
+              ? <>{signalCoverage.signalCount} AI signals{signalCoverage.medianProbability !== null ? ` · ${Math.round(signalCoverage.medianProbability * 100)}% median YES` : ''}</>
+              : signalCoverage?.generationStatus === 'retrying' ? 'AI signals retrying' : 'AI signals queued'}
+          </Link>
         </div>
       </div>
 
       {/* Right Column: Equal-Weight Trading Action Controls & Microcopy */}
       <div className="flex flex-col gap-1.5 shrink-0 xl:min-w-[260px]">
-        {isOpen ? (
+        {isOpen && !isV2 ? (
           <div className="flex items-center gap-2">
             {/* Follow Button (Teal) */}
             <button
@@ -226,6 +239,19 @@ export const MarketRow = React.memo(function MarketRow({ market, onFollow, onFad
                 </div>
               )}
             </div>
+          </div>
+        ) : isOpen && isV2 ? (
+          <div className="flex flex-col gap-1">
+            <Link
+              href={`/market/${market.marketId}`}
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-[#4fdbc8]/30 bg-[#4fdbc8]/10 hover:bg-[#4fdbc8]/15 text-[#4fdbc8] font-sans font-medium text-xs py-2 px-3 transition-colors text-center"
+            >
+              <span>View V2 AMM & Proof</span>
+              <ArrowUpRight size={13} />
+            </Link>
+            <p className="text-[13px] text-[#b0abb5] text-center line-clamp-1 font-sans">
+              V2 trading uses YES/NO position tokens and an AMM.
+            </p>
           </div>
         ) : (
           <div className="flex flex-col gap-1">

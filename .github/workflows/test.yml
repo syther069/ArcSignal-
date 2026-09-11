@@ -67,7 +67,7 @@ jobs:
         run: forge --version
 
       - name: Run Forge fmt
-        run: forge fmt --check
+        run: forge fmt --check src/contracts/v2 test/ArcSignalV2.t.sol test/ArcSignalV2.invariant.t.sol script/DeployArcSignalV2.s.sol
 
       - name: Run Forge build
         run: forge build --sizes

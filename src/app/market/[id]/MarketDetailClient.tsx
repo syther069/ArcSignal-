@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import SignalIntelligence from '@/components/signals/SignalIntelligence';
+import type { AISignal, SignalCoverageRecord } from '@/lib/signal-intelligence/types';
 import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import { MarketDetailStakeModal } from './MarketDetailStakeModal';
@@ -12,6 +14,7 @@ import { Market, StakeSide } from '@/types';
 import { useReadContract, useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { decodeEventLog } from 'viem';
 import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI, CANCELLATION_REFUNDS_ENABLED, arcTestnet } from '@/lib/contracts';
+import { OUTCOME_TOKEN_V2_ABI, PREDICTION_MARKET_AMM_V2_ABI } from '@/lib/contracts-v2';
 import { calculateParimutuelPayoutRaw } from '@/lib/parimutuel-math';
 import type { ResolutionEvidence } from '@/lib/oracle-evidence';
 import { tradingDesign } from '@/components/layout/TradingDesign';
@@ -54,20 +57,30 @@ type ChainMarket = {
 interface MarketDetailClientProps {
   market: Market;
   resolutionEvidence: ResolutionEvidence | null;
+  initialSignals?: AISignal[];
+  signalCoverage?: SignalCoverageRecord;
 }
 
 function getTimeframe(marketId: string) {
   return marketId.match(/-PRICE-(5m|15m|1h|4h|24h)-/)?.[1] ?? null;
 }
 
-export default function MarketDetailClient({ market, resolutionEvidence }: MarketDetailClientProps) {
+function safeAddress(value: string | undefined): `0x${string}` | undefined {
+  return value && /^0x[a-fA-F0-9]{40}$/.test(value) ? value as `0x${string}` : undefined;
+}
+
+export default function MarketDetailClient({ market, resolutionEvidence, initialSignals, signalCoverage }: MarketDetailClientProps) {
   const [stakeModalSide, setStakeModalSide] = useState<StakeSide | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
   const [activeTab, setActiveTab] = useState<'analysis' | 'rules'>('analysis');
+  const isV2 = market.protocolVersion === 2;
 
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient({ chainId: arcTestnet.id });
+  const v2AmmAddress = safeAddress(market.proof?.ammAddress);
+  const v2YesTokenAddress = safeAddress(market.proof?.yesTokenAddress);
+  const v2NoTokenAddress = safeAddress(market.proof?.noTokenAddress);
 
   // Read live on-chain pool data
   const { data: chainMarket, refetch: refetchMarket } = useReadContract({
@@ -76,7 +89,7 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
     functionName: 'getMarket',
     args: [market.marketId],
     chainId: arcTestnet.id,
-    query: { staleTime: 10_000, refetchInterval: 12_000 },
+    query: { enabled: !isV2, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
   const { data: followRaw, refetch: refetchFollow } = useReadContract({
@@ -85,7 +98,7 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
     functionName: 'followStakes',
     args: address ? [market.marketId, address] : undefined,
     chainId: arcTestnet.id,
-    query: { enabled: !!address, staleTime: 10_000, refetchInterval: 12_000 },
+    query: { enabled: !!address && !isV2, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
   const { data: fadeRaw, refetch: refetchFade } = useReadContract({
@@ -94,7 +107,7 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
     functionName: 'fadeStakes',
     args: address ? [market.marketId, address] : undefined,
     chainId: arcTestnet.id,
-    query: { enabled: !!address, staleTime: 10_000, refetchInterval: 12_000 },
+    query: { enabled: !!address && !isV2, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
   const { data: claimedRaw, refetch: refetchClaimed } = useReadContract({
@@ -103,21 +116,72 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
     functionName: 'claimed',
     args: address ? [market.marketId, address] : undefined,
     chainId: arcTestnet.id,
-    query: { enabled: !!address, staleTime: 10_000, refetchInterval: 12_000 },
+    query: { enabled: !!address && !isV2, staleTime: 10_000, refetchInterval: 12_000 },
+  });
+
+  const { data: v2ReservesRaw } = useReadContract({
+    address: v2AmmAddress,
+    abi: PREDICTION_MARKET_AMM_V2_ABI,
+    functionName: 'reserves',
+    chainId: arcTestnet.id,
+    query: { enabled: isV2 && !!v2AmmAddress, staleTime: 10_000, refetchInterval: 12_000 },
+  });
+
+  const { data: v2ProtocolFeeBpsRaw } = useReadContract({
+    address: v2AmmAddress,
+    abi: PREDICTION_MARKET_AMM_V2_ABI,
+    functionName: 'protocolFeeBps',
+    chainId: arcTestnet.id,
+    query: { enabled: isV2 && !!v2AmmAddress, staleTime: 60_000 },
+  });
+
+  const { data: v2LpFeeBpsRaw } = useReadContract({
+    address: v2AmmAddress,
+    abi: PREDICTION_MARKET_AMM_V2_ABI,
+    functionName: 'lpFeeBps',
+    chainId: arcTestnet.id,
+    query: { enabled: isV2 && !!v2AmmAddress, staleTime: 60_000 },
+  });
+
+  const { data: v2YesBalanceRaw } = useReadContract({
+    address: v2YesTokenAddress,
+    abi: OUTCOME_TOKEN_V2_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    chainId: arcTestnet.id,
+    query: { enabled: isV2 && !!address && !!v2YesTokenAddress, staleTime: 10_000, refetchInterval: 12_000 },
+  });
+
+  const { data: v2NoBalanceRaw } = useReadContract({
+    address: v2NoTokenAddress,
+    abi: OUTCOME_TOKEN_V2_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    chainId: arcTestnet.id,
+    query: { enabled: isV2 && !!address && !!v2NoTokenAddress, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
   const liveMarket = chainMarket as ChainMarket | undefined;
-  const followPoolRaw = liveMarket?.followPool ?? BigInt(market.followPoolRaw ?? 0);
-  const fadePoolRaw = liveMarket?.fadePool ?? BigInt(market.fadePoolRaw ?? 0);
+  const v2Reserves = v2ReservesRaw as readonly [bigint, bigint] | undefined;
+  const followPoolRaw = isV2
+    ? v2Reserves?.[0] ?? BigInt(market.followPoolRaw ?? 0)
+    : liveMarket?.followPool ?? BigInt(market.followPoolRaw ?? 0);
+  const fadePoolRaw = isV2
+    ? v2Reserves?.[1] ?? BigInt(market.fadePoolRaw ?? 0)
+    : liveMarket?.fadePool ?? BigInt(market.fadePoolRaw ?? 0);
 
   // Unit-aware pool conversion - never double scales
-  const followPool = liveMarket?.followPool !== undefined
+  const followPool = isV2
+    ? toHumanUsdcNumber(followPoolRaw)
+    : liveMarket?.followPool !== undefined
     ? toHumanUsdcNumber(liveMarket.followPool)
     : market.followPoolRaw
     ? toHumanUsdcNumber(BigInt(market.followPoolRaw))
     : toHumanUsdcNumber(market.followPool);
 
-  const fadePool = liveMarket?.fadePool !== undefined
+  const fadePool = isV2
+    ? toHumanUsdcNumber(fadePoolRaw)
+    : liveMarket?.fadePool !== undefined
     ? toHumanUsdcNumber(liveMarket.fadePool)
     : market.fadePoolRaw
     ? toHumanUsdcNumber(BigInt(market.fadePoolRaw))
@@ -136,6 +200,10 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
 
   const followStakeRaw = (followRaw as bigint) || 0n;
   const fadeStakeRaw = (fadeRaw as bigint) || 0n;
+  const v2YesBalance = (v2YesBalanceRaw as bigint) || 0n;
+  const v2NoBalance = (v2NoBalanceRaw as bigint) || 0n;
+  const v2ProtocolFeeBps = typeof v2ProtocolFeeBpsRaw === 'number' ? v2ProtocolFeeBpsRaw : Number(v2ProtocolFeeBpsRaw ?? 0);
+  const v2LpFeeBps = typeof v2LpFeeBpsRaw === 'number' ? v2LpFeeBpsRaw : Number(v2LpFeeBpsRaw ?? 0);
   const isClaimed = (claimedRaw as boolean) || false;
   const resolved = liveMarket?.resolved ?? market.resolved;
   const outcome = liveMarket?.outcome ?? (market.outcome === 'FOLLOW' ? 1 : market.outcome === 'FADE' ? 2 : 0);
@@ -310,6 +378,9 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
                 <span className="rounded px-2.5 py-1 font-bold uppercase tracking-wider text-[#DDB7FF] bg-[#DDB7FF]/10 border border-[#DDB7FF]/20">
                   {market.category}
                 </span>
+                <span className={`rounded px-2.5 py-1 font-bold uppercase tracking-wider ${isV2 ? 'text-[#4FDBC8] bg-[#4FDBC8]/10 border border-[#4FDBC8]/20' : 'text-[#B0ABB5] bg-[#252229] border border-[#403947]'}`}>
+                  {isV2 ? 'V2' : 'V1 Legacy'}
+                </span>
                 {timeframe && (
                   <span className="rounded px-2.5 py-1 font-medium uppercase tracking-wider text-[#B0ABB5] bg-[#252229] border border-[#403947]">
                     {timeframe} Timeframe
@@ -418,6 +489,7 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
               />
 
               {/* Research, Analysis & Settlement Section */}
+              <SignalIntelligence marketId={market.marketId} initialSignals={initialSignals} initialCoverage={signalCoverage} />
               <section className="rounded-2xl border border-[#403947] bg-[#1C1B1B] p-5 lg:p-6 space-y-5 shadow-sm">
 
                 {/* Navigation Tabs */}
@@ -546,7 +618,9 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
                       </h3>
                       <div className="bg-[#252229] p-4 rounded-xl border border-[#403947] text-xs sm:text-[13px] text-[#F1EEF4] leading-[1.7] space-y-2">
                         <p>
-                          {market.category === 'crypto'
+                          {isV2
+                            ? `This V2 market is governed by category policy ${market.proof?.categoryId}.${market.proof?.categoryVersion}, oracle policy ${market.proof?.oraclePolicyId}.${market.proof?.oraclePolicyVersion}, and the resolution-source commitment stored on-chain. YES/NO token settlement follows the final oracle result.`
+                            : market.category === 'crypto'
                             ? `The owner resolver verifies the configured market-data observation after the cutoff time. The question result is YES when the stated threshold condition is met and NO otherwise. FOLLOW wins only when that result matches the AI prediction (${aiPickUpper}); FADE wins when it differs.`
                             : `The owner resolver checks the exact API-Football fixture recorded when this market was created. The question result uses the final 90-minute plus stoppage-time score. FOLLOW wins only when that result matches the AI prediction (${aiPickUpper}); FADE wins when it differs.`}
                         </p>
@@ -555,6 +629,25 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
                         </p>
                       </div>
                     </div>
+
+                    {isV2 && market.proof && (
+                      <div className="space-y-2">
+                        <h3 className="font-display text-[16px] leading-[24px] font-bold text-[#DDB7FF] flex items-center gap-2">
+                          <ShieldCheck size={16} /> V2 Proof Commitments
+                        </h3>
+                        <dl className="grid sm:grid-cols-2 gap-3 rounded-xl border border-[#403947] bg-[#252229] p-4 text-xs font-mono">
+                          <div><dt className="text-[#B0ABB5] font-sans">Category Policy</dt><dd className="mt-1 text-[#F1EEF4]">{market.proof.categoryId}.{market.proof.categoryVersion}</dd></div>
+                          <div><dt className="text-[#B0ABB5] font-sans">Oracle Policy</dt><dd className="mt-1 text-[#F1EEF4]">{market.proof.oraclePolicyId}.{market.proof.oraclePolicyVersion}</dd></div>
+                          <div><dt className="text-[#B0ABB5] font-sans">State</dt><dd className="mt-1 text-[#F1EEF4]">{market.status} / {market.proof.oracleState}</dd></div>
+                          <div><dt className="text-[#B0ABB5] font-sans">Dispute Window</dt><dd className="mt-1 text-[#F1EEF4]">{market.proof.liveness ? `${Math.round(market.proof.liveness / 60)} min` : 'Not indexed'}</dd></div>
+                          <div><dt className="text-[#B0ABB5] font-sans">Final Result</dt><dd className="mt-1 text-[#F1EEF4]">{market.outcome ?? 'Pending'}</dd></div>
+                          <div><dt className="text-[#B0ABB5] font-sans">Indexed Through</dt><dd className="mt-1 text-[#F1EEF4]">{market.proof.indexedThroughBlock ?? 'Pending'}</dd></div>
+                          <div className="sm:col-span-2"><dt className="text-[#B0ABB5] font-sans">Resolution Source Commitment</dt><dd className="mt-1 text-[#F1EEF4] break-all">{market.proof.resolutionSourceHash}</dd></div>
+                          <div className="sm:col-span-2"><dt className="text-[#B0ABB5] font-sans">Terms Hash</dt><dd className="mt-1 text-[#F1EEF4] break-all">{market.proof.termsHash}</dd></div>
+                          <div className="sm:col-span-2"><dt className="text-[#B0ABB5] font-sans">Ancillary Data Hash</dt><dd className="mt-1 text-[#F1EEF4] break-all">{market.proof.ancillaryDataHash}</dd></div>
+                        </dl>
+                      </div>
+                    )}
 
                     {resolved && (
                       <div className="space-y-2">
@@ -598,7 +691,7 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
                           </span>
                           <div className="flex items-center justify-between">
                             <span className="font-mono text-[#F1EEF4] truncate max-w-[180px]">
-                              {ARCSIGNAL_ADDRESS}
+                              {isV2 ? market.proof?.marketAddress : ARCSIGNAL_ADDRESS}
                             </span>
                             <Link href="/docs" className="text-[#DDB7FF] hover:underline">
                               Docs
@@ -611,12 +704,35 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
                             Protocol Trading Fee
                           </span>
                           <span className="font-mono text-[#4FDBC8] font-bold">
-                            0.00 USDC (0%)
+                            {isV2 ? `${((v2ProtocolFeeBps + v2LpFeeBps) / 100).toFixed(2)}% total AMM fee` : '0.00 USDC (0%)'}
                           </span>
                           <p className="font-mono text-[11px] text-[#B0ABB5]">
-                            No protocol fee charged by the deployed contract.
+                            {isV2 ? `Fee version ${market.proof?.feeVersion ?? 'not indexed'}: ${v2ProtocolFeeBps} bps protocol + ${v2LpFeeBps} bps LP.` : 'No protocol fee charged by the deployed contract.'}
                           </p>
                         </div>
+                        {isV2 && market.proof && (
+                          <>
+                            <div className="p-3.5 rounded-xl bg-[#252229] border border-[#403947] space-y-1">
+                              <span className="font-mono text-[11px] text-[#B0ABB5] uppercase tracking-wider block">AMM</span>
+                              <span className="font-mono text-[#F1EEF4] break-all">{market.proof.ammAddress}</span>
+                            </div>
+                            <div className="p-3.5 rounded-xl bg-[#252229] border border-[#403947] space-y-1">
+                              <span className="font-mono text-[11px] text-[#B0ABB5] uppercase tracking-wider block">YES / NO Tokens</span>
+                              <span className="font-mono text-[#F1EEF4] break-all">{market.proof.yesTokenAddress}</span>
+                              <span className="font-mono text-[#F1EEF4] break-all block">{market.proof.noTokenAddress}</span>
+                            </div>
+                            <div className="p-3.5 rounded-xl bg-[#252229] border border-[#403947] space-y-1">
+                              <span className="font-mono text-[11px] text-[#B0ABB5] uppercase tracking-wider block">AMM Reserves</span>
+                              <span className="font-mono text-[#4FDBC8] block">YES {formatMarketDetailUSDC(toHumanUsdcNumber(v2Reserves?.[0] ?? 0n))}</span>
+                              <span className="font-mono text-[#F3A6C8] block">NO {formatMarketDetailUSDC(toHumanUsdcNumber(v2Reserves?.[1] ?? 0n))}</span>
+                            </div>
+                            <div className="p-3.5 rounded-xl bg-[#252229] border border-[#403947] space-y-1">
+                              <span className="font-mono text-[11px] text-[#B0ABB5] uppercase tracking-wider block">Your V2 Position</span>
+                              <span className="font-mono text-[#4FDBC8] block">YES {formatMarketDetailUSDC(toHumanUsdcNumber(v2YesBalance))}</span>
+                              <span className="font-mono text-[#F3A6C8] block">NO {formatMarketDetailUSDC(toHumanUsdcNumber(v2NoBalance))}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -647,7 +763,7 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
                 {/* Protocol Trading Fee Visible */}
                 <div className="flex items-center justify-between rounded-xl border border-[#4FDBC8]/30 bg-[#4FDBC8]/5 px-3 py-2 font-mono text-xs">
                   <span className="text-[#B0ABB5] uppercase tracking-wider font-sans">Protocol Trading Fee</span>
-                  <span className="font-bold text-[#4FDBC8]">0% (No Fee)</span>
+                  <span className="font-bold text-[#4FDBC8]">{isV2 ? `${v2ProtocolFeeBps + v2LpFeeBps} bps` : '0% (No Fee)'}</span>
                 </div>
 
                 {/* Current Pool Split Visualizer */}
@@ -701,7 +817,7 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
                 </div>
 
                 {/* Active Trading Controls or Claim Section */}
-                {isOpen ? (
+                {isOpen && !isV2 ? (
                   <div className="space-y-4 pt-1">
                     <div className="space-y-2.5">
                       {/* Follow Button */}
@@ -743,6 +859,30 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
                       <p>
                         <strong className="text-[#F1EEF4]">Fade</strong> opposes the AI prediction.
                       </p>
+                    </div>
+                  </div>
+                ) : isOpen && isV2 ? (
+                  <div className="space-y-4 pt-1">
+                    <div className="p-4 rounded-xl bg-[#252229] border border-[#403947] space-y-2">
+                      <h4 className="font-mono text-xs font-bold text-[#F1EEF4] uppercase tracking-wider">
+                        V2 AMM Trading
+                      </h4>
+                      <p className="text-xs text-[#B0ABB5] leading-relaxed">
+                        This market uses V2 YES/NO position tokens and an AMM. Live AMM reserves are read from the V2 AMM contract; the proof panel lists the market, collateral, and token contracts for direct verification.
+                      </p>
+                      <dl className="grid grid-cols-2 gap-2 text-xs font-mono">
+                        <div className="rounded-lg border border-[#403947] bg-[#131313] p-2">
+                          <dt className="text-[#B0ABB5] font-sans">YES reserve</dt>
+                          <dd className="mt-1 text-[#4FDBC8]">{formatMarketDetailUSDC(toHumanUsdcNumber(v2Reserves?.[0] ?? 0n))}</dd>
+                        </div>
+                        <div className="rounded-lg border border-[#403947] bg-[#131313] p-2">
+                          <dt className="text-[#B0ABB5] font-sans">NO reserve</dt>
+                          <dd className="mt-1 text-[#F3A6C8]">{formatMarketDetailUSDC(toHumanUsdcNumber(v2Reserves?.[1] ?? 0n))}</dd>
+                        </div>
+                      </dl>
+                      <Link href="#signal-intelligence-title" className="inline-flex min-h-[44px] items-center gap-2 text-[#DDB7FF] hover:underline text-xs font-bold">
+                        Review signals before trading
+                      </Link>
                     </div>
                   </div>
                 ) : (
@@ -823,7 +963,7 @@ export default function MarketDetailClient({ market, resolutionEvidence }: Marke
       </main>
 
       {/* Dedicated Market Detail Stake Modal */}
-      {stakeModalSide !== null && (
+      {stakeModalSide !== null && !isV2 && (
         <MarketDetailStakeModal
           market={market}
           side={stakeModalSide}

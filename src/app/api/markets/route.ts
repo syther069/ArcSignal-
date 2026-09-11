@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { serializeMarket } from '@/lib/markets';
 import { getMarketSnapshot } from '@/lib/market-source';
+import { getV2Markets, v2Availability } from '@/lib/v2-repository';
+import { toSerializableV2Markets } from '@/lib/v2-market-adapter';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,13 +18,24 @@ export async function GET(req: Request) {
   const offset = boundedInteger(url.searchParams.get('offset'), 0, 0, 10_000);
 
   try {
-    const snapshot = await getMarketSnapshot(limit, offset);
-    const markets = snapshot.markets.map(serializeMarket);
+    const [snapshot, v2Markets] = await Promise.all([
+      getMarketSnapshot(limit, offset),
+      v2Availability().enabled
+        ? getV2Markets(limit, offset).then(toSerializableV2Markets).catch((error) => {
+          console.warn('V2 markets unavailable in combined markets API:', error);
+          return [];
+        })
+        : Promise.resolve([]),
+    ]);
+    const markets = [
+      ...v2Markets,
+      ...snapshot.markets.map((market) => ({ ...serializeMarket(market), protocolVersion: market.protocolVersion ?? 1 as const })),
+    ];
 
     return NextResponse.json(
       {
         markets,
-        source: snapshot.source,
+        source: v2Markets.length > 0 ? `${snapshot.source}+v2` : snapshot.source,
         complete: snapshot.complete,
         fetchedAt: snapshot.fetchedAt,
       },
