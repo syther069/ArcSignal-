@@ -19,7 +19,10 @@
     "ops:check-v2": "npx tsx scripts/diagnostics/check-v2.ts",
     "contracts:build": "forge build --sizes",
     "contracts:test": "forge test",
-    "ops:scheduler": "npx tsx scripts/operations/scheduler.ts"
+    "ops:scheduler": "npx tsx scripts/operations/scheduler.ts",
+    "promote:live": "npx tsx scripts/run-promote-live.ts",
+    "settle:external": "npx tsx scripts/run-settle-external.ts",
+    "promote:external:all": "powershell -ExecutionPolicy Bypass -File scripts/promote-all-external.ps1"
   },
   "dependencies": {
     "@circle-fin/adapter-viem-v2": "^1.17.1",

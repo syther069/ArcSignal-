@@ -76,4 +76,36 @@ export const V2_INDEX_MIGRATION = [
     checked_at timestamptz not null default now(),
     primary key (chain_id, market_address, checked_block)
   )`,
+  `create table if not exists external_market_settlements (
+    chain_id numeric(78, 0) not null,
+    live_market_id text not null,
+    source text not null,
+    external_market_id text not null,
+    category text not null,
+    question text not null,
+    source_url text not null,
+    resolution_source text,
+    source_probability numeric,
+    signal_edge numeric,
+    arc_market_id text not null check (arc_market_id ~ '^0x[a-fA-F0-9]{64}$'),
+    arc_market_address text check (arc_market_address is null or arc_market_address ~ '^0x[a-fA-F0-9]{40}$'),
+    amm_address text check (amm_address is null or amm_address ~ '^0x[a-fA-F0-9]{40}$'),
+    create_tx_hash text check (create_tx_hash is null or create_tx_hash ~ '^0x[a-fA-F0-9]{64}$'),
+    status text not null check (status in ('SELECTED', 'PROMOTED', 'OPEN', 'CLOSED', 'SOURCE_PENDING', 'SOURCE_RESOLVED', 'SOURCE_AMBIGUOUS', 'RESOLVED', 'VOIDED', 'FAILED')),
+    source_outcome text check (source_outcome in ('YES', 'NO', 'UNDETERMINED')),
+    source_outcome_observed_at timestamptz,
+    source_outcome_evidence jsonb,
+    last_checked_at timestamptz,
+    resolution_tx_hash text check (resolution_tx_hash is null or resolution_tx_hash ~ '^0x[a-fA-F0-9]{64}$'),
+    void_tx_hash text check (void_tx_hash is null or void_tx_hash ~ '^0x[a-fA-F0-9]{64}$'),
+    error_message text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    primary key (chain_id, live_market_id),
+    unique (chain_id, arc_market_id)
+  )`,
+  `create index if not exists external_market_settlements_status_idx
+    on external_market_settlements (chain_id, status, last_checked_at)`,
+  `create index if not exists external_market_settlements_arc_market_idx
+    on external_market_settlements (chain_id, lower(arc_market_id))`,
 ] as const;

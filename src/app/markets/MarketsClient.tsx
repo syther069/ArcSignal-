@@ -3,10 +3,12 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Sidebar from '@/components/layout/Sidebar';
+import { ExternalLiveMarketCard } from '@/components/markets/ExternalLiveMarketCard';
 import { MarketRow } from '@/components/markets/MarketRow';
 import type { MarketView, MarketSort } from '@/components/markets/MarketFiltersDrawer';
 import { Market, StakeSide } from '@/types';
 import type { SerializableMarket } from '@/lib/markets';
+import type { ArcSignalLiveMarket, LiveMarketSourceStatus } from '@/lib/markets/liveMarketTypes';
 import type { SignalCoverageRecord } from '@/lib/signal-intelligence/types';
 import { toUiMarket } from '@/lib/ui-market';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -35,6 +37,8 @@ const MarketFiltersDrawer = dynamic(
 interface MarketsClientProps {
   markets: SerializableMarket[];
   signalCoverage: Record<string, SignalCoverageRecord>;
+  liveMarkets: ArcSignalLiveMarket[];
+  liveMarketStatuses: LiveMarketSourceStatus[];
 }
 
 const TIMEFRAMES = ['5m', '15m', '1h', '4h', '24h'];
@@ -47,6 +51,16 @@ const CATEGORY_LABEL_TO_CANONICAL: Record<string, string> = {
   Technology: 'TECHNOLOGY',
   Economics: 'ECONOMICS',
   Culture: 'CULTURE',
+};
+const CATEGORY_LABEL_TO_LIVE: Record<string, ArcSignalLiveMarket['category'] | 'all' | null> = {
+  'All Markets': 'all',
+  Crypto: 'crypto',
+  Politics: 'politics',
+  Technology: 'technology',
+  Economics: 'economics',
+  Football: null,
+  Sports: null,
+  Culture: null,
 };
 
 interface EnrichedMarket extends SerializableMarket {
@@ -101,7 +115,7 @@ function useMarketBoundaryTime(markets: SerializableMarket[]): number {
   return nowUnix;
 }
 
-export default function MarketsClient({ markets, signalCoverage }: MarketsClientProps) {
+export default function MarketsClient({ markets, signalCoverage, liveMarkets, liveMarketStatuses }: MarketsClientProps) {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState('All Markets');
   const [selectedTimeframe, setSelectedTimeframe] = useState<string | null>(null);
@@ -258,6 +272,27 @@ export default function MarketsClient({ markets, signalCoverage }: MarketsClient
     });
   }, [filteredMarkets, sortBy]);
 
+  const selectedLiveCategory = CATEGORY_LABEL_TO_LIVE[selectedCategory] ?? null;
+  const isExternalFocusedCategory =
+    selectedLiveCategory === 'politics' ||
+    selectedLiveCategory === 'technology' ||
+    selectedLiveCategory === 'economics';
+  const liveSourceUnavailable = liveMarketStatuses.length > 0 && liveMarketStatuses.every((status) => !status.ok);
+  const filteredLiveMarkets = useMemo(() => {
+    if (selectedView === 'resolved' || selectedView === 'closingSoon' || !selectedLiveCategory) return [];
+    const q = debouncedSearchQuery.trim().toLowerCase();
+    return liveMarkets.filter((market) => {
+      if (selectedLiveCategory !== 'all' && market.category !== selectedLiveCategory) return false;
+      if (!q) return true;
+      return `${market.question} ${market.title} ${market.category} ${market.source}`.toLowerCase().includes(q);
+    }).sort((a, b) => {
+      if (Boolean(a.arcSettlement) !== Boolean(b.arcSettlement)) return a.arcSettlement ? -1 : 1;
+      const scoreA = (a.volume ?? 0) * 1.5 + (a.liquidity ?? 0) + (a.signalEdge ?? 0) * 1_000;
+      const scoreB = (b.volume ?? 0) * 1.5 + (b.liquidity ?? 0) + (b.signalEdge ?? 0) * 1_000;
+      return scoreB - scoreA;
+    });
+  }, [debouncedSearchQuery, liveMarkets, selectedLiveCategory, selectedView]);
+
   // Featured / Trending markets (Top 2 high conviction or active markets)
   const trendingMarkets = useMemo(() => {
     let first: EnrichedMarket | undefined;
@@ -336,7 +371,7 @@ export default function MarketsClient({ markets, signalCoverage }: MarketsClient
                 Markets
               </h1>
               <p className="font-sans text-sm sm:text-base text-[#94a3b8] mt-1 max-w-2xl leading-relaxed">
-                Discover live AI prediction markets, compare market-implied conviction, and make your call.
+                Discover Arc-native markets and live prediction market intelligence aggregated from external markets.
               </p>
             </div>
 
@@ -594,6 +629,10 @@ export default function MarketsClient({ markets, signalCoverage }: MarketsClient
                   />
                 ))}
               </div>
+            ) : isExternalFocusedCategory ? (
+              <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-6 text-sm text-[#94a3b8]">
+                No Arc-native markets are deployed in this category yet. External market intelligence is shown below.
+              </div>
             ) : (
               /* Differentiated Contextual Empty States */
               <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-12 text-center flex flex-col items-center justify-center space-y-3">
@@ -620,6 +659,44 @@ export default function MarketsClient({ markets, signalCoverage }: MarketsClient
               </div>
             )}
           </section>
+
+          {(selectedLiveCategory === 'all' || selectedLiveCategory === 'politics' || selectedLiveCategory === 'technology' || selectedLiveCategory === 'economics') && selectedView !== 'resolved' && selectedView !== 'closingSoon' && (
+            <section className="space-y-3">
+              <div className="flex flex-col gap-2 rounded-2xl border border-[#ddb7ff]/15 bg-[#161616] p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-[#ddb7ff]">
+                    External Market Intelligence
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-[#94a3b8]">
+                    Live prediction market intelligence aggregated from external markets. These are read-only signals and are not Arc-native settlement yet.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1.5 font-mono text-[10px] uppercase tracking-wide">
+                  {liveMarketStatuses.map((status) => (
+                    <span key={status.source} className={`rounded-full border px-2 py-1 ${status.ok ? 'border-[#4fdbc8]/30 bg-[#4fdbc8]/10 text-[#4fdbc8]' : 'border-[#f3a6c8]/30 bg-[#f3a6c8]/10 text-[#f3a6c8]'}`}>
+                      {status.source} · {status.ok ? status.count : 'unavailable'}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {liveSourceUnavailable ? (
+                <div className="rounded-2xl border border-[#f3a6c8]/25 bg-[#f3a6c8]/10 p-6 text-sm text-[#f3a6c8]">
+                  Live market source temporarily unavailable.
+                </div>
+              ) : filteredLiveMarkets.length > 0 ? (
+                <div className="space-y-2.5">
+                  {filteredLiveMarkets.map((market) => (
+                    <ExternalLiveMarketCard key={market.id} market={market} />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-8 text-center text-sm text-[#94a3b8]">
+                  No live markets found for this category right now.
+                </div>
+              )}
+            </section>
+          )}
 
         </div>
       </main>

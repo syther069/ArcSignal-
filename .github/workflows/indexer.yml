@@ -89,6 +89,59 @@ jobs:
             --header "Authorization: Bearer $CRON_SECRET" \
             "$MAINTENANCE_URL"
 
+      - name: Promote selected external intelligence into V2 when enabled
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          PROMOTE_LIVE_URL: https://arc-signal.xyz/api/cron/promote-live-markets
+        run: |
+          test -n "$CRON_SECRET"
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --retry 2 \
+            --retry-all-errors \
+            --connect-timeout 10 \
+            --max-time 55 \
+            --request POST \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "$PROMOTE_LIVE_URL"
+
+      - name: Reconcile external settlement sources
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SETTLE_EXTERNAL_URL: https://arc-signal.xyz/api/cron/settle-external-markets
+        run: |
+          test -n "$CRON_SECRET"
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --retry 2 \
+            --retry-all-errors \
+            --connect-timeout 10 \
+            --max-time 55 \
+            --request POST \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "$SETTLE_EXTERNAL_URL"
+
+      - name: Maintain ArcSignal V2 lifecycle
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          MAINTAIN_V2_URL: https://arc-signal.xyz/api/cron/maintain-v2
+        run: |
+          test -n "$CRON_SECRET"
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --retry 2 \
+            --retry-all-errors \
+            --connect-timeout 10 \
+            --max-time 55 \
+            --request POST \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "$MAINTAIN_V2_URL"
       - name: Generate bounded Signal Intelligence coverage
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

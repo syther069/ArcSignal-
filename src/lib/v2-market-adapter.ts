@@ -1,6 +1,7 @@
 import type { Market, MarketCategory, MarketOutcome, MarketStatus, SerializableMarket } from './types';
 import type { V2MarketRecord } from './v2-repository';
 import { getSql } from './db';
+import { getExternalSettlementsByArcMarketIds } from './markets/externalSettlement';
 
 const CATEGORY_BY_ID: Record<number, MarketCategory> = {
   1: 'CRYPTO',
@@ -52,9 +53,14 @@ async function getV2DisplayRows(marketIds: string[]) {
 }
 
 export async function toSerializableV2Markets(records: V2MarketRecord[]): Promise<SerializableMarket[]> {
-  const displayRows = await getV2DisplayRows(records.map((record) => record.marketId));
+  const recordIds = records.map((record) => record.marketId);
+  const [displayRows, externalSettlements] = await Promise.all([
+    getV2DisplayRows(recordIds),
+    getExternalSettlementsByArcMarketIds(recordIds).catch(() => new Map()),
+  ]);
   return records.map((record) => {
     const display = displayRows.get(record.marketId);
+    const externalSettlement = externalSettlements.get(record.marketId.toLowerCase());
     const category = display?.category
       ? (display.category.toUpperCase() as MarketCategory)
       : CATEGORY_BY_ID[record.categoryId] ?? 'CRYPTO';
@@ -103,6 +109,18 @@ export async function toSerializableV2Markets(records: V2MarketRecord[]): Promis
         oracleRequestKey: record.oracleRequestKey,
         resolutionRequestedAt: record.resolutionRequestedAt,
         indexedThroughBlock: record.updatedBlock,
+        externalSettlement: externalSettlement ? {
+          liveMarketId: externalSettlement.liveMarketId,
+          source: externalSettlement.source,
+          externalMarketId: externalSettlement.externalMarketId,
+          sourceUrl: externalSettlement.sourceUrl,
+          resolutionSource: externalSettlement.resolutionSource,
+          status: externalSettlement.status,
+          sourceOutcome: externalSettlement.sourceOutcome,
+          sourceOutcomeObservedAt: externalSettlement.sourceOutcomeObservedAt,
+          createTxHash: externalSettlement.createTxHash,
+          errorMessage: externalSettlement.errorMessage,
+        } : undefined,
       },
     };
   });

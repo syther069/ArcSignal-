@@ -51,7 +51,18 @@ export interface Market {
     oracleRequestKey?: string | null;
     resolutionRequestedAt?: number | null;
     indexedThroughBlock?: string;
-  };
+    externalSettlement?: {
+      liveMarketId: string;
+      source: string;
+      externalMarketId: string;
+      sourceUrl: string;
+      resolutionSource?: string;
+      status: string;
+      sourceOutcome?: 'YES' | 'NO' | 'UNDETERMINED';
+      sourceOutcomeObservedAt?: string;
+      createTxHash?: string;
+      errorMessage?: string;
+    };  };
   category: MarketCategory;
   resolutionTime: number;
   followPool: bigint;

@@ -14,7 +14,7 @@ import { Market, StakeSide } from '@/types';
 import { useReadContract, useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { decodeEventLog } from 'viem';
 import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI, CANCELLATION_REFUNDS_ENABLED, arcTestnet } from '@/lib/contracts';
-import { OUTCOME_TOKEN_V2_ABI, PREDICTION_MARKET_AMM_V2_ABI } from '@/lib/contracts-v2';
+import { ARCSIGNAL_MARKET_V2_ABI, OUTCOME_TOKEN_V2_ABI, PREDICTION_MARKET_AMM_V2_ABI } from '@/lib/contracts-v2';
 import { calculateParimutuelPayoutRaw } from '@/lib/parimutuel-math';
 import type { ResolutionEvidence } from '@/lib/oracle-evidence';
 import { tradingDesign } from '@/components/layout/TradingDesign';
@@ -78,6 +78,7 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient({ chainId: arcTestnet.id });
+  const v2MarketAddress = safeAddress(market.proof?.marketAddress ?? market.contractAddress);
   const v2AmmAddress = safeAddress(market.proof?.ammAddress);
   const v2YesTokenAddress = safeAddress(market.proof?.yesTokenAddress);
   const v2NoTokenAddress = safeAddress(market.proof?.noTokenAddress);
@@ -119,7 +120,7 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
     query: { enabled: !!address && !isV2, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
-  const { data: v2ReservesRaw } = useReadContract({
+  const { data: v2ReservesRaw, refetch: refetchV2Reserves } = useReadContract({
     address: v2AmmAddress,
     abi: PREDICTION_MARKET_AMM_V2_ABI,
     functionName: 'reserves',
@@ -143,7 +144,7 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
     query: { enabled: isV2 && !!v2AmmAddress, staleTime: 60_000 },
   });
 
-  const { data: v2YesBalanceRaw } = useReadContract({
+  const { data: v2YesBalanceRaw, refetch: refetchV2YesBalance } = useReadContract({
     address: v2YesTokenAddress,
     abi: OUTCOME_TOKEN_V2_ABI,
     functionName: 'balanceOf',
@@ -152,7 +153,7 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
     query: { enabled: isV2 && !!address && !!v2YesTokenAddress, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
-  const { data: v2NoBalanceRaw } = useReadContract({
+  const { data: v2NoBalanceRaw, refetch: refetchV2NoBalance } = useReadContract({
     address: v2NoTokenAddress,
     abi: OUTCOME_TOKEN_V2_ABI,
     functionName: 'balanceOf',
@@ -217,7 +218,15 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
   let userWon = false;
   let payout = 0;
   if (resolved) {
-    if (outcome === 1 && followStakeRaw > 0n) {
+    if (isV2) {
+      if (outcome === 1 && v2YesBalance > 0n) {
+        userWon = true;
+        payout = toHumanUsdcNumber(v2YesBalance);
+      } else if (outcome === 2 && v2NoBalance > 0n) {
+        userWon = true;
+        payout = toHumanUsdcNumber(v2NoBalance);
+      }
+    } else if (outcome === 1 && followStakeRaw > 0n) {
       userWon = true;
       payout = toHumanUsdcNumber(calculateParimutuelPayoutRaw({
         stakeRaw: followStakeRaw,
@@ -233,17 +242,44 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
       }));
     }
   }
-  const refundable = CANCELLATION_REFUNDS_ENABLED
-    && resolved
+  const refundable = resolved
     && outcome === 0
-    && followStakeRaw + fadeStakeRaw > 0n;
-  if (refundable) payout = toHumanUsdcNumber(followStakeRaw + fadeStakeRaw);
+    && (isV2 ? v2YesBalance + v2NoBalance > 0n : CANCELLATION_REFUNDS_ENABLED && followStakeRaw + fadeStakeRaw > 0n);
+  if (refundable) {
+    payout = isV2
+      ? toHumanUsdcNumber((v2YesBalance + v2NoBalance) / 2n)
+      : toHumanUsdcNumber(followStakeRaw + fadeStakeRaw);
+  }
 
   const handleClaim = async () => {
     if (!walletClient || !publicClient || !address) return;
     const toastId = toast.loading('Waiting for wallet confirmation…');
     try {
       setIsClaiming(true);
+      if (isV2) {
+        if (!v2MarketAddress) throw new Error('V2 market contract address is not indexed yet.');
+        const functionName = refundable ? 'redeemVoided' : 'redeemWinning';
+        const args = refundable
+          ? [v2YesBalance, v2NoBalance, address] as const
+          : [outcome === 1 ? v2YesBalance : v2NoBalance, address] as const;
+        const { request } = await publicClient.simulateContract({
+          account: address,
+          address: v2MarketAddress,
+          abi: ARCSIGNAL_MARKET_V2_ABI,
+          functionName,
+          args,
+        });
+        const hash = await walletClient.writeContract(request);
+        toast.loading('Finalizing on Arc…', { id: toastId });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status !== 'success' || receipt.to?.toLowerCase() !== v2MarketAddress.toLowerCase()) {
+          throw new Error('V2 redemption transaction was not finalized successfully on ArcSignal.');
+        }
+        toast.success(refundable ? 'V2 refund claimed!' : 'V2 winnings claimed!', { id: toastId });
+        await Promise.all([refetchV2YesBalance(), refetchV2NoBalance(), refetchV2Reserves()]);
+        return;
+      }
+
       const { request } = await publicClient.simulateContract({
         account: address,
         address: ARCSIGNAL_ADDRESS,
@@ -619,7 +655,9 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
                       <div className="bg-[#252229] p-4 rounded-xl border border-[#403947] text-xs sm:text-[13px] text-[#F1EEF4] leading-[1.7] space-y-2">
                         <p>
                           {isV2
-                            ? `This V2 market is governed by category policy ${market.proof?.categoryId}.${market.proof?.categoryVersion}, oracle policy ${market.proof?.oraclePolicyId}.${market.proof?.oraclePolicyVersion}, and the resolution-source commitment stored on-chain. YES/NO token settlement follows the final oracle result.`
+                            ? market.proof?.externalSettlement
+                              ? `This V2 market mirrors ${market.proof.externalSettlement.source} market ${market.proof.externalSettlement.externalMarketId}. The source URL and resolution-source commitment are recorded for proof-first review; YES/NO payouts still follow the final V2 oracle result.`
+                              : `This V2 market is governed by category policy ${market.proof?.categoryId}.${market.proof?.categoryVersion}, oracle policy ${market.proof?.oraclePolicyId}.${market.proof?.oraclePolicyVersion}, and the resolution-source commitment stored on-chain. YES/NO token settlement follows the final oracle result.`
                             : market.category === 'crypto'
                             ? `The owner resolver verifies the configured market-data observation after the cutoff time. The question result is YES when the stated threshold condition is met and NO otherwise. FOLLOW wins only when that result matches the AI prediction (${aiPickUpper}); FADE wins when it differs.`
                             : `The owner resolver checks the exact API-Football fixture recorded when this market was created. The question result uses the final 90-minute plus stoppage-time score. FOLLOW wins only when that result matches the AI prediction (${aiPickUpper}); FADE wins when it differs.`}
@@ -645,6 +683,15 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
                           <div className="sm:col-span-2"><dt className="text-[#B0ABB5] font-sans">Resolution Source Commitment</dt><dd className="mt-1 text-[#F1EEF4] break-all">{market.proof.resolutionSourceHash}</dd></div>
                           <div className="sm:col-span-2"><dt className="text-[#B0ABB5] font-sans">Terms Hash</dt><dd className="mt-1 text-[#F1EEF4] break-all">{market.proof.termsHash}</dd></div>
                           <div className="sm:col-span-2"><dt className="text-[#B0ABB5] font-sans">Ancillary Data Hash</dt><dd className="mt-1 text-[#F1EEF4] break-all">{market.proof.ancillaryDataHash}</dd></div>
+                          {market.proof.externalSettlement && (
+                            <>
+                              <div><dt className="text-[#B0ABB5] font-sans">External Source</dt><dd className="mt-1 text-[#F1EEF4] uppercase">{market.proof.externalSettlement.source}</dd></div>
+                              <div><dt className="text-[#B0ABB5] font-sans">External Status</dt><dd className="mt-1 text-[#F1EEF4]">{market.proof.externalSettlement.status}</dd></div>
+                              <div className="sm:col-span-2"><dt className="text-[#B0ABB5] font-sans">Source URL</dt><dd className="mt-1 break-all"><a href={market.proof.externalSettlement.sourceUrl} target="_blank" rel="noreferrer" className="text-[#DDB7FF] underline">{market.proof.externalSettlement.sourceUrl}</a></dd></div>
+                              <div><dt className="text-[#B0ABB5] font-sans">Source Result</dt><dd className="mt-1 text-[#F1EEF4]">{market.proof.externalSettlement.sourceOutcome ?? 'Pending or not reported'}</dd></div>
+                              <div><dt className="text-[#B0ABB5] font-sans">Source Checked</dt><dd className="mt-1 text-[#F1EEF4]">{market.proof.externalSettlement.sourceOutcomeObservedAt ? new Date(market.proof.externalSettlement.sourceOutcomeObservedAt).toLocaleString() : 'Pending'}</dd></div>
+                            </>
+                          )}
                         </dl>
                       </div>
                     )}
