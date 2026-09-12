@@ -53,7 +53,7 @@ function parseCategory(value: string | null): LiveMarketCategory | 'all' {
 
 function parseInitialLiquidity() {
   const raw = process.env.ARCSIGNAL_V2_EXTERNAL_INITIAL_LIQUIDITY_USDC;
-  if (!raw) return 0n;
+  if (!raw) return 25_000_000n;
   const parsed = Number(raw);
   if (!Number.isFinite(parsed) || parsed < 0) throw new Error('Invalid ARCSIGNAL_V2_EXTERNAL_INITIAL_LIQUIDITY_USDC');
   return BigInt(Math.round(parsed * 1_000_000));

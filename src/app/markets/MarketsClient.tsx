@@ -33,6 +33,10 @@ const MarketFiltersDrawer = dynamic(
   () => import('@/components/markets/MarketFiltersDrawer').then((mod) => mod.MarketFiltersDrawer),
   { ssr: false }
 );
+const ExternalV2PositionModal = dynamic(
+  () => import('@/components/markets/ExternalV2PositionModal').then((mod) => mod.ExternalV2PositionModal),
+  { ssr: false }
+);
 
 interface MarketsClientProps {
   markets: SerializableMarket[];
@@ -128,6 +132,10 @@ export default function MarketsClient({ markets, signalCoverage, liveMarkets, li
   const [stakeModal, setStakeModal] = useState<{
     market: Market;
     side: StakeSide;
+  } | null>(null);
+  const [externalPositionModal, setExternalPositionModal] = useState<{
+    market: ArcSignalLiveMarket;
+    side: 'FOLLOW' | 'FADE';
   } | null>(null);
 
   const nowUnix = useMarketBoundaryTime(markets);
@@ -687,7 +695,11 @@ export default function MarketsClient({ markets, signalCoverage, liveMarkets, li
               ) : filteredLiveMarkets.length > 0 ? (
                 <div className="space-y-2.5">
                   {filteredLiveMarkets.map((market) => (
-                    <ExternalLiveMarketCard key={market.id} market={market} />
+                    <ExternalLiveMarketCard
+                      key={market.id}
+                      market={market}
+                      onTrade={(side) => setExternalPositionModal({ market, side })}
+                    />
                   ))}
                 </div>
               ) : (
@@ -716,6 +728,14 @@ export default function MarketsClient({ markets, signalCoverage, liveMarkets, li
         onReset={handleResetFilters}
         counts={counts}
       />
+
+      {externalPositionModal && (
+        <ExternalV2PositionModal
+          market={externalPositionModal.market}
+          initialSide={externalPositionModal.side}
+          onClose={() => setExternalPositionModal(null)}
+        />
+      )}
 
       {/* Stake Modal */}
       {stakeModal && (

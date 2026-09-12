@@ -22,7 +22,8 @@
     "ops:scheduler": "npx tsx scripts/operations/scheduler.ts",
     "promote:live": "npx tsx scripts/run-promote-live.ts",
     "settle:external": "npx tsx scripts/run-settle-external.ts",
-    "promote:external:all": "powershell -ExecutionPolicy Bypass -File scripts/promote-all-external.ps1"
+    "promote:external:all": "powershell -ExecutionPolicy Bypass -File scripts/promote-all-external.ps1",
+    "seed:external": "npx tsx scripts/run-seed-external-liquidity.ts"
   },
   "dependencies": {
     "@circle-fin/adapter-viem-v2": "^1.17.1",

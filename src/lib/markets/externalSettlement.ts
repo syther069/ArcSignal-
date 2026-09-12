@@ -276,6 +276,20 @@ export async function markExternalSettlementFailure(liveMarket: ArcSignalLiveMar
   return mapRow(rows[0] as SettlementRow);
 }
 
+export async function listPromotedExternalSettlements(limit = 60) {
+  await ensureExternalSettlementSchema();
+  const rows = await getSql()`
+    select * from external_market_settlements
+    where chain_id = ${BigInt(arcTestnet.id)}
+      and status in ('PROMOTED', 'OPEN', 'SOURCE_PENDING')
+      and arc_market_address is not null
+      and amm_address is not null
+    order by updated_at desc
+    limit ${limit}
+  `;
+  return rows.map((row) => mapRow(row as SettlementRow));
+}
+
 export async function listExternalSettlementsForReconciliation(limit = 60) {
   await ensureExternalSettlementSchema();
   const rows = await getSql()`
