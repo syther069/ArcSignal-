@@ -36,7 +36,7 @@ export default async function LandingPage() {
 
       {/* Hero Header */}
       <h1 className="text-4xl md:text-6xl font-extrabold text-center text-white max-w-4xl tracking-tight leading-[1.1] mb-6">
-        Bet against the machine. <span className="text-[#ddb7ff]">Or with it.</span>
+        Trade the signal, <span className="text-[#ddb7ff]">Challenge the AI</span>
       </h1>
       <p className="text-[#94a3b8] text-center max-w-2xl mb-10 text-lg leading-relaxed font-[family-name:var(--font-inter)]">
         Every market runs on an AI-generated prediction. Follow it and split the pool with everyone who agreed. Fade it and profit if the model is wrong.
