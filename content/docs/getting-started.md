@@ -1,17 +1,20 @@
 ## Before you start
 
-You need an EVM-compatible wallet and testnet USDC on ARC Testnet. USDC pays both Arc network fees and ERC-20 staking transfers. These are test assets and have no monetary value.
+You need an EVM-compatible wallet and USDC on the Arc network this app is configured for. USDC pays both Arc network fees and ERC-20 staking transfers.
 
 :::definitions
-Network | ARC Testnet
-Chain ID | 5042002
+Default network | ARC Testnet (until `NEXT_PUBLIC_ARC_NETWORK=mainnet`)
+Testnet chain ID | 5042002
+Mainnet chain ID | 5042
 Native currency | USDC
-RPC fallback | https://rpc.testnet.arc.io
-Block explorer | https://testnet.arcscan.app
+Testnet RPC | https://rpc.testnet.arc.io
+Mainnet RPC | https://rpc.mainnet.arc.io
+Testnet explorer | https://explorer.testnet.arc.io
+Mainnet explorer | https://explorer.arc.io
 :::
 
 :::testnet Faucet availability
-The application links to Circle's faucet for test USDC. Faucet network support and limits are controlled by the faucet provider and may change. Confirm that the selected network and token address match ARC Testnet before using any issued asset.
+On testnet, the application links to Circle's faucet. Faucet network support and limits are controlled by the faucet provider. Confirm chain ID `5042002` before using issued assets. Mainnet uses real USDC; there is no faucet.
 :::
 
 ## Connect a wallet

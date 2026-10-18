@@ -217,6 +217,7 @@ contract ArcSignalMarketV2 is ReentrancyGuard, IOracleConsumerV2 {
         yesToken.burnFromMarket(msg.sender, amount);
         noToken.burnFromMarket(msg.sender, amount);
         collateralLiability -= amount;
+        IExposureControllerV2(factory).decreaseExposure(address(this), amount);
         collateral.safeTransfer(recipient, amount);
         emit PairsRedeemed(marketId, msg.sender, amount);
     }
@@ -294,6 +295,7 @@ contract ArcSignalMarketV2 is ReentrancyGuard, IOracleConsumerV2 {
         else if (outcome == BinaryOutcome.NO) noToken.burnFromMarket(msg.sender, amount);
         else revert InvalidState();
         collateralLiability -= amount;
+        IExposureControllerV2(factory).decreaseExposure(address(this), amount);
         collateral.safeTransfer(recipient, amount);
         emit WinningsRedeemed(marketId, msg.sender, outcome, amount);
     }
@@ -307,6 +309,7 @@ contract ArcSignalMarketV2 is ReentrancyGuard, IOracleConsumerV2 {
         if (yesAmount > 0) yesToken.burnFromMarket(msg.sender, yesAmount);
         if (noAmount > 0) noToken.burnFromMarket(msg.sender, noAmount);
         collateralLiability -= payout;
+        IExposureControllerV2(factory).decreaseExposure(address(this), payout);
         collateral.safeTransfer(recipient, payout);
         emit VoidRedemption(marketId, msg.sender, yesAmount, noAmount, payout);
     }
@@ -315,6 +318,7 @@ contract ArcSignalMarketV2 is ReentrancyGuard, IOracleConsumerV2 {
         if (amount == 0 || payer == address(0) || recipient == address(0)) revert InvalidAmount();
         if (marketState() != MarketState.OPEN) revert InvalidState();
         if (exposurePaused()) revert ExposurePaused();
+        IExposureControllerV2(factory).increaseExposure(address(this), amount);
         collateral.safeTransferFrom(payer, address(this), amount);
         collateralLiability += amount;
         yesToken.mint(recipient, amount);

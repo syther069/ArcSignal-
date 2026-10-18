@@ -10,6 +10,7 @@ import {
 } from 'viem';
 import { authorizeCronRequest } from '@/lib/cron-auth';
 import { arcTestnet, USDC_ABI } from '@/lib/contracts';
+import { resolveArcRpcUrl } from '@/lib/arc-network';
 import {
   ARCSIGNAL_FACTORY_V2_ABI,
   ARCSIGNAL_MARKET_V2_ABI,
@@ -36,10 +37,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const RPC_URL = process.env.ARC_RPC_URL
-  ?? process.env.ARC_TESTNET_RPC_URL
-  ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL
-  ?? 'https://rpc.testnet.arc.io';
+const RPC_URL = resolveArcRpcUrl();
 const CHUNK_SIZE = 2_000n;
 const LEASE_SECONDS = 55;
 
@@ -237,6 +235,7 @@ async function syncV2(request: Request) {
   const sql = getSql();
   const leaseToken = randomUUID();
   const chainId = BigInt(arcTestnet.id);
+  const syncId = chainId === 5042002n ? 'arc-v2' : `arc-v2:${chainId}`;
   const confirmations = BigInt(readCount(process.env.V2_INDEX_CONFIRMATIONS, 1));
   const startBlock = ARCSIGNAL_V2_DEPLOYMENT_BLOCK;
   let leaseAcquired = false;
@@ -244,7 +243,7 @@ async function syncV2(request: Request) {
   try {
     const state = await sql`
       insert into sync_state (id, last_block, lease_token, lease_expires_at)
-      values ('arc-v2', ${startBlock - 1n}, ${leaseToken}, now() + (${LEASE_SECONDS} * interval '1 second'))
+      values (${syncId}, ${startBlock - 1n}, ${leaseToken}, now() + (${LEASE_SECONDS} * interval '1 second'))
       on conflict (id) do update set lease_token = excluded.lease_token, lease_expires_at = excluded.lease_expires_at
       where sync_state.lease_expires_at is null or sync_state.lease_expires_at <= now()
       returning last_block
@@ -268,7 +267,7 @@ async function syncV2(request: Request) {
             sql`delete from indexed_events_v2 where chain_id = ${chainId}`,
             sql`delete from v2_index_checkpoints where chain_id = ${chainId}`,
             sql`update sync_state set last_block = ${startBlock - 1n}, updated_at = now()
-                where id = 'arc-v2' and lease_token = ${leaseToken}`,
+                where id = ${syncId} and lease_token = ${leaseToken}`,
           ], { isolationLevel: 'Serializable' });
           return NextResponse.json({
             indexed: false,
@@ -443,7 +442,7 @@ async function syncV2(request: Request) {
     queries.push(sql`
       update sync_state set last_block = ${toBlock}, updated_at = now(),
         lease_expires_at = now() + (${LEASE_SECONDS} * interval '1 second')
-      where id = 'arc-v2' and lease_token = ${leaseToken} and lease_expires_at > now()
+      where id = ${syncId} and lease_token = ${leaseToken} and lease_expires_at > now()
       returning last_block
     `);
     const result = await sql.transaction(queries, { isolationLevel: 'Serializable' });
@@ -464,7 +463,7 @@ async function syncV2(request: Request) {
     if (leaseAcquired) {
       await sql`
         update sync_state set lease_token = null, lease_expires_at = null
-        where id = 'arc-v2' and lease_token = ${leaseToken}
+        where id = ${syncId} and lease_token = ${leaseToken}
       `.catch((error) => console.error('FailedV2 indexer lease release failed:', error));
     }
   }

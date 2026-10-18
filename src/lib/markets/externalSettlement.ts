@@ -1,5 +1,5 @@
 import { keccak256, stringToHex, toBytes, type Hash } from 'viem';
-import { arcTestnet } from '@/lib/contracts';
+import { arcChain } from '@/lib/contracts';
 import { getSql } from '@/lib/db';
 import type { ArcSignalLiveMarket, LiveMarketCategory, LiveMarketSource } from './liveMarketTypes';
 
@@ -182,9 +182,18 @@ export async function getExternalSettlementsByLiveIds(liveMarketIds: string[]) {
   try {
     const rows = await getSql()`
       select * from external_market_settlements
-      where chain_id = ${BigInt(arcTestnet.id)} and live_market_id = any(${liveMarketIds})
+      where (chain_id = ${BigInt(arcChain.id)} or chain_id = 5042002 or chain_id = 5042)
+        and live_market_id = any(${liveMarketIds})
+      order by case when chain_id = ${BigInt(arcChain.id)} then 0 else 1 end
     `;
-    return new Map(rows.map((row) => [String(row.live_market_id), mapRow(row as SettlementRow)]));
+    const map = new Map<string, ExternalSettlementRecord>();
+    for (const row of rows) {
+      const key = String(row.live_market_id);
+      if (!map.has(key)) {
+        map.set(key, mapRow(row as SettlementRow));
+      }
+    }
+    return map;
   } catch (error) {
     if (error instanceof Error && /external_market_settlements/i.test(error.message)) {
       return new Map<string, ExternalSettlementRecord>();
@@ -198,9 +207,18 @@ export async function getExternalSettlementsByArcMarketIds(arcMarketIds: string[
   try {
     const rows = await getSql()`
       select * from external_market_settlements
-      where chain_id = ${BigInt(arcTestnet.id)} and lower(arc_market_id) = any(${arcMarketIds.map((id) => id.toLowerCase())})
+      where (chain_id = ${BigInt(arcChain.id)} or chain_id = 5042002 or chain_id = 5042)
+        and lower(arc_market_id) = any(${arcMarketIds.map((id) => id.toLowerCase())})
+      order by case when chain_id = ${BigInt(arcChain.id)} then 0 else 1 end
     `;
-    return new Map(rows.map((row) => [String(row.arc_market_id).toLowerCase(), mapRow(row as SettlementRow)]));
+    const map = new Map<string, ExternalSettlementRecord>();
+    for (const row of rows) {
+      const key = String(row.arc_market_id).toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, mapRow(row as SettlementRow));
+      }
+    }
+    return map;
   } catch (error) {
     if (error instanceof Error && /external_market_settlements/i.test(error.message)) {
       return new Map<string, ExternalSettlementRecord>();
@@ -208,11 +226,15 @@ export async function getExternalSettlementsByArcMarketIds(arcMarketIds: string[
     throw error;
   }
 }
+
 export async function getExternalSettlementByArcMarketId(marketId: string) {
   try {
     const rows = await getSql()`
       select * from external_market_settlements
-      where chain_id = ${BigInt(arcTestnet.id)} and lower(arc_market_id) = lower(${marketId}) limit 1
+      where (chain_id = ${BigInt(arcChain.id)} or chain_id = 5042002 or chain_id = 5042)
+        and lower(arc_market_id) = lower(${marketId})
+      order by case when chain_id = ${BigInt(arcChain.id)} then 0 else 1 end
+      limit 1
     `;
     return rows[0] ? mapRow(rows[0] as SettlementRow) : null;
   } catch (error) {
@@ -237,7 +259,7 @@ export async function upsertExternalSettlementPromotion(input: {
       resolution_source, source_probability, signal_edge, arc_market_id, arc_market_address,
       amm_address, create_tx_hash, status, updated_at
     ) values (
-      ${BigInt(arcTestnet.id)}, ${liveMarket.id}, ${liveMarket.source}, ${liveMarket.externalMarketId ?? liveMarket.id},
+      ${BigInt(arcChain.id)}, ${liveMarket.id}, ${liveMarket.source}, ${liveMarket.externalMarketId ?? liveMarket.id},
       ${liveMarket.category}, ${liveMarket.question}, ${liveMarket.sourceUrl}, ${liveMarket.resolutionSource ?? null},
       ${liveMarket.marketProbability}, ${liveMarket.signalEdge ?? null}, ${arcMarketId}, ${input.arcMarketAddress ?? null},
       ${input.ammAddress ?? null}, ${input.createTxHash ?? null}, ${input.status}, now()
@@ -266,7 +288,7 @@ export async function markExternalSettlementFailure(liveMarket: ArcSignalLiveMar
       chain_id, live_market_id, source, external_market_id, category, question, source_url,
       resolution_source, source_probability, signal_edge, arc_market_id, status, error_message, updated_at
     ) values (
-      ${BigInt(arcTestnet.id)}, ${liveMarket.id}, ${liveMarket.source}, ${liveMarket.externalMarketId ?? liveMarket.id},
+      ${BigInt(arcChain.id)}, ${liveMarket.id}, ${liveMarket.source}, ${liveMarket.externalMarketId ?? liveMarket.id},
       ${liveMarket.category}, ${liveMarket.question}, ${liveMarket.sourceUrl}, ${liveMarket.resolutionSource ?? null},
       ${liveMarket.marketProbability}, ${liveMarket.signalEdge ?? null}, ${arcMarketId}, 'FAILED', ${message}, now()
     ) on conflict (chain_id, live_market_id) do update set
@@ -280,7 +302,7 @@ export async function listPromotedExternalSettlements(limit = 60) {
   await ensureExternalSettlementSchema();
   const rows = await getSql()`
     select * from external_market_settlements
-    where chain_id = ${BigInt(arcTestnet.id)}
+    where chain_id = ${BigInt(arcChain.id)}
       and status in ('PROMOTED', 'OPEN', 'SOURCE_PENDING')
       and arc_market_address is not null
       and amm_address is not null
@@ -295,7 +317,7 @@ export async function listExternalSettlementsForReconciliation(limit = 60) {
   const rows = await getSql()`
     select s.* from external_market_settlements s
     left join markets_v2 m on m.chain_id = s.chain_id and lower(m.market_id) = lower(s.arc_market_id)
-    where s.chain_id = ${BigInt(arcTestnet.id)}
+    where s.chain_id = ${BigInt(arcChain.id)}
       and s.status not in ('RESOLVED', 'VOIDED', 'FAILED')
       and (s.last_checked_at is null or s.last_checked_at < now() - interval '15 minutes')
       and (m.market_state is null or m.market_state in ('OPEN', 'CLOSED', 'RESOLVED', 'VOIDED'))
@@ -322,7 +344,7 @@ export async function updateExternalSettlementOutcome(input: {
       last_checked_at = now(),
       error_message = ${input.errorMessage ?? null},
       updated_at = now()
-    where chain_id = ${BigInt(arcTestnet.id)} and live_market_id = ${input.liveMarketId}
+    where chain_id = ${BigInt(arcChain.id)} and live_market_id = ${input.liveMarketId}
     returning *
   `;
   return rows[0] ? mapRow(rows[0] as SettlementRow) : null;

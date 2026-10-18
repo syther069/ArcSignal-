@@ -8,14 +8,26 @@ import {
   type ViemAdapter,
 } from '@circle-fin/adapter-viem-v2';
 import type { EIP1193Provider } from 'viem';
+import { activeArcNetwork } from './arc-network';
 
-export const ARC_CIRCLE_CHAIN = 'Arc_Testnet' as const;
+export const ARC_CIRCLE_CHAIN = activeArcNetwork.circleChain ?? 'Arc';
+export const isCircleBridgeToArcEnabled = activeArcNetwork.circleChain != null;
 
-export const supportedFundingSourceChains = [
+const TESTNET_FUNDING_SOURCES = [
   { id: 'Ethereum_Sepolia', name: 'Ethereum Sepolia', chainId: 11155111 },
   { id: 'Base_Sepolia', name: 'Base Sepolia', chainId: 84532 },
   { id: 'Arbitrum_Sepolia', name: 'Arbitrum Sepolia', chainId: 421614 },
 ] as const;
+
+const MAINNET_FUNDING_SOURCES = [
+  { id: 'Ethereum', name: 'Ethereum', chainId: 1 },
+  { id: 'Base', name: 'Base', chainId: 8453 },
+  { id: 'Arbitrum', name: 'Arbitrum', chainId: 42161 },
+] as const;
+
+export const supportedFundingSourceChains = activeArcNetwork.testnet
+  ? TESTNET_FUNDING_SOURCES
+  : MAINNET_FUNDING_SOURCES;
 
 export type FundingSourceChain =
   (typeof supportedFundingSourceChains)[number]['id'];

@@ -8,9 +8,14 @@ cache/
 
 .env*
 !.env.example
+!.env.mainnet.example
 
 .agents/
 skills-lock.json
 
-.vercel
-.env*
+.hermes/
+ArcSignal-/
+scripts/.tmp-*
+scratch/
+broadcast/
+artifacts/

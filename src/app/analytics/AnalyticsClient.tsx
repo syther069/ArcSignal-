@@ -9,6 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line
 } from 'recharts';
+import { arcChain } from '@/lib/contracts';
 
 interface AnalyticsClientProps {
   agentWinRates: { category: string; rate: number }[];
@@ -441,7 +442,7 @@ export default function AnalyticsClient({
         {/* Footer */}
         <footer className="mt-12 flex justify-between items-center py-6 border-t border-border-subtle text-xs font-label-caps text-text-muted">
           <div className="flex items-center gap-2">
-            NETWORK: ARC TESTNET
+            NETWORK: {arcChain.name.toUpperCase()} (CHAIN {arcChain.id})
             <div className="w-2 h-2 rounded-full bg-tertiary animate-pulse"></div>
             SYNCHRONIZED
           </div>

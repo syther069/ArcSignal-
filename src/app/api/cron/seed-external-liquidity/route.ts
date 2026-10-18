@@ -3,6 +3,7 @@ import { createPublicClient, createWalletClient, http, type Address, type Hash }
 import { privateKeyToAccount } from 'viem/accounts';
 import { authorizeCronRequest } from '@/lib/cron-auth';
 import { arcTestnet } from '@/lib/contracts';
+import { resolveArcRpcUrl } from '@/lib/arc-network';
 import { USDC_ABI, USDC_ADDRESS } from '@/lib/usdc';
 import { ARCSIGNAL_MARKET_V2_ABI, OUTCOME_TOKEN_V2_ABI, PREDICTION_MARKET_AMM_V2_ABI } from '@/lib/contracts-v2';
 import { listPromotedExternalSettlements } from '@/lib/markets/externalSettlement';
@@ -11,10 +12,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const RPC_URL = process.env.ARC_RPC_URL
-  ?? process.env.ARC_TESTNET_RPC_URL
-  ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL
-  ?? 'https://rpc.testnet.arc.io';
+const RPC_URL = resolveArcRpcUrl();
 
 function parseLimit(value: string | null) {
   const parsed = Number(value ?? 20);

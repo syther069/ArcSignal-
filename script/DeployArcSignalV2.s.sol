@@ -29,9 +29,14 @@ contract DeployArcSignalV2 is Script {
         DeploymentConfig memory config = _loadConfig();
         uint256 expectedChainId = vm.envUint("EXPECTED_CHAIN_ID");
         require(block.chainid == expectedChainId, "unexpected deployment chain");
+        if (expectedChainId == 5042) {
+            require(!vm.envOr("DEPLOY_TESTNET_ORACLE", false), "cannot deploy testnet oracle on mainnet");
+            require(config.oracle != address(0), "production oracle address required on mainnet");
+        }
 
         vm.startBroadcast(config.deployerKey);
         if (config.oracle == address(0)) {
+            require(block.chainid != 5042, "cannot instantiate testnet oracle shim on mainnet");
             TestnetOptimisticOracleV2 oracle = new TestnetOptimisticOracleV2();
             config.oracle = address(oracle);
             console2.log("TestnetOptimisticOracleV2", config.oracle);
@@ -49,7 +54,10 @@ contract DeployArcSignalV2 is Script {
             address(policies),
             address(fees),
             address(marketDeployer),
-            address(ammDeployer)
+            address(ammDeployer),
+            vm.envUint("MAX_MARKET_COLLATERAL"),
+            vm.envUint("MAX_PROTOCOL_COLLATERAL"),
+            vm.envUint("MAX_INITIAL_LIQUIDITY")
         );
         marketDeployer.bindFactory(address(factory));
         ammDeployer.bindFactory(address(factory));

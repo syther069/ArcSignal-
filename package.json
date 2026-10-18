@@ -26,8 +26,8 @@
     "seed:external": "npx tsx scripts/run-seed-external-liquidity.ts"
   },
   "dependencies": {
-    "@circle-fin/adapter-viem-v2": "^1.17.1",
-    "@circle-fin/bridge-kit": "^1.14.1",
+    "@circle-fin/adapter-viem-v2": "^1.19.1",
+    "@circle-fin/bridge-kit": "^1.15.3",
     "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/typography": "^0.5.20",
     "@tanstack/react-query": "^5.41.0",

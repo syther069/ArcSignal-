@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { decodeEventLog, http, createPublicClient } from 'viem';
 import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import { activeArcNetwork, resolveArcRpcUrl } from '@/lib/arc-network';
 import { authorizeCronRequest } from '@/lib/cron-auth';
 import { getSql } from '@/lib/db';
 import {
@@ -16,10 +17,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const RPC_URL = process.env.ARC_RPC_URL
-  ?? process.env.ARC_TESTNET_RPC_URL
-  ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL
-  ?? 'https://rpc.testnet.arc.io';
+const RPC_URL = resolveArcRpcUrl();
 const RUN_BUDGET_MS = 45_000;
 const LEASE_SECONDS = 55;
 
@@ -140,6 +138,14 @@ async function reconcileDueMarkets(
 async function sync(req: Request) {
   const authorization = authorizeCronRequest(req);
   if (!authorization.ok) return authorization.response;
+
+  if (!activeArcNetwork.testnet) {
+    return NextResponse.json({
+      indexed: false,
+      skipped: true,
+      reason: 'V1 indexing is disabled on Arc Mainnet. Mainnet uses ArcSignal V2 only.',
+    });
+  }
 
   const token = randomUUID();
   let sql: ReturnType<typeof getSql> | undefined;

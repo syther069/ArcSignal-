@@ -141,6 +141,15 @@ export const docsArticles: DocsArticle[] = [
     status: 'reference',
     keywords: ['definitions', 'terms', 'follow pool', 'fade pool', 'resolution time'],
   },
+  {
+    slug: 'mainnet-resources',
+    title: 'Arc Mainnet Resources',
+    description: 'Official Arc Mainnet links, verified parameters, contract registries, and bridge guides.',
+    section: 'trust',
+    order: 13,
+    status: 'reference',
+    keywords: ['mainnet', 'resources', 'explorer', 'portal', 'USDC', 'CCTP', 'chain 5042'],
+  },
 ];
 
 export const docsArticleMap = new Map(docsArticles.map((article) => [article.slug, article]));

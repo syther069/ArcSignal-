@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { createPublicClient, http, isAddress, parseAbi, type Address } from 'viem';
 import { arcTestnet, USDC_ADDRESS } from '../../src/lib/contracts';
 
+dotenv.config({ path: resolve(process.cwd(), '.env.mainnet.local') });
 dotenv.config({ path: resolve(process.cwd(), '.env.local') });
 dotenv.config({ path: resolve(process.cwd(), '.env') });
 

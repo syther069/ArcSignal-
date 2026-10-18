@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Market, StakeSide } from '@/types';
 import { USDC_ADDRESS, USDC_ABI } from '@/lib/usdc';
-import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import { arcChain, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { clearMarketCache } from '@/lib/markets';
 import { calculateParimutuelPayoutRaw } from '@/lib/parimutuel-math';
 import {
@@ -39,11 +39,14 @@ import {
 } from 'lucide-react';
 
 function friendlyError(err: unknown): string {
+  console.error('[MarketDetailStakeModal Error]:', err);
   const raw = err instanceof Error ? err.message : String(err);
   const lower = raw.toLowerCase();
 
   if (lower.includes('user rejected') || lower.includes('user denied') || lower.includes('rejected the request'))
     return 'Transaction cancelled — you rejected the request in your wallet.';
+  if (lower.includes('chain mismatch') || lower.includes('wrong network') || lower.includes('switch to'))
+    return `Wrong network — please switch to ${arcChain.name} (${arcChain.id}) in your wallet.`;
   if (lower.includes('insufficient native usdc') || (lower.includes('gas') && lower.includes('insufficient')))
     return 'Insufficient native USDC for Arc gas. Add native USDC or reduce activity and try again.';
   if (lower.includes('insufficient funds') || lower.includes('exceeds the balance'))
@@ -62,12 +65,10 @@ function friendlyError(err: unknown): string {
     return 'Transaction conflict — please wait a moment and try again.';
   if (lower.includes('timeout') || lower.includes('timed out'))
     return 'Network request timed out. Please check your connection and retry.';
-  if (lower.includes('network') || lower.includes('disconnected') || lower.includes('failed to fetch'))
-    return 'Network error — please check your connection and try again.';
   if (lower.includes('429') || lower.includes('rate limit'))
     return 'Too many requests. Please wait a few seconds and retry.';
-  if (lower.includes('chain mismatch') || lower.includes('wrong network'))
-    return 'Wrong network — please switch to ARC Testnet in your wallet.';
+  if (lower.includes('disconnected') || lower.includes('failed to fetch'))
+    return 'Network connection error — unable to reach Arc RPC. Please try again.';
 
   const firstSentence = raw.split(/(?:Details:|Docs:|Contract Call:|Request Arguments:|Version:)/i)[0].trim();
   if (firstSentence.length > 120) return firstSentence.slice(0, 117) + '…';
@@ -118,7 +119,7 @@ export function MarketDetailStakeModal({
   const nowSeconds = useGlobalTime();
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
-  const publicClient = usePublicClient({ chainId: arcTestnet.id });
+  const publicClient = usePublicClient({ chainId: arcChain.id });
   const { isWrongNetwork, switchChain } = useWallet();
   const {
     nativeWei,
@@ -282,7 +283,7 @@ export function MarketDetailStakeModal({
     try {
       const [latest, gasPrice] = await Promise.all([
         refetchWalletUsdc(),
-        publicClient.getGasPrice(),
+        publicClient.getGasPrice().catch(() => 21_500_000_000n),
       ]);
       const balance = latest.data ? BigInt(latest.data.erc20Raw) : 0n;
       const allowance = latest.data ? BigInt(latest.data.allowanceRaw) : 0n;
@@ -301,7 +302,7 @@ export function MarketDetailStakeModal({
 
   const handleApprove = async () => {
     if (isWrongNetwork) {
-      toast.error('Switch to Arc Testnet before approving USDC.');
+      toast.error(`Switch to ${arcChain.name} (${arcChain.id}) before approving USDC.`);
       return;
     }
     if (validationMessage || !hasAmount) {
@@ -330,7 +331,7 @@ export function MarketDetailStakeModal({
       }
       const approveHash = await walletClient.writeContract({
         account: address,
-        chain: arcTestnet,
+        chain: arcChain,
         address: USDC_ADDRESS,
         abi: USDC_ABI,
         functionName: 'approve',
@@ -362,7 +363,7 @@ export function MarketDetailStakeModal({
 
   const handleStake = async () => {
     if (isWrongNetwork) {
-      toast.error('Switch to Arc Testnet before placing a position.');
+      toast.error(`Switch to ${arcChain.name} (${arcChain.id}) before placing a position.`);
       return;
     }
     if (validationMessage || !hasAmount) {
@@ -431,7 +432,7 @@ export function MarketDetailStakeModal({
 
       const stakeHash = await walletClient.writeContract({
         account: address,
-        chain: arcTestnet,
+        chain: arcChain,
         address: ARCSIGNAL_ADDRESS,
         abi: ARCSIGNAL_ABI,
         functionName: 'stake',
@@ -721,10 +722,10 @@ export function MarketDetailStakeModal({
 
                 {isWrongNetwork && (
                   <button
-                    onClick={() => switchChain({ chainId: arcTestnet.id })}
+                    onClick={() => switchChain({ chainId: arcChain.id })}
                     className="w-full min-h-[44px] rounded-xl border border-[#F2C66D]/50 bg-[#F2C66D]/10 text-[#F2C66D] text-xs font-semibold font-sans flex items-center justify-center"
                   >
-                    Switch to Arc Testnet
+                    Switch to {arcChain.name} ({arcChain.id})
                   </button>
                 )}
 

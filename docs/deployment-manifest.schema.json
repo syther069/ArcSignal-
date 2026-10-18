@@ -13,6 +13,7 @@
     "deploymentTransactionHash",
     "contracts",
     "roles",
+    "limits",
     "policyVersions",
     "bytecodeHashes"
   ],
@@ -42,6 +43,16 @@
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/address" },
       "required": ["protocolAdmin", "marketCreator", "resolutionOperator", "pauseGuardian", "treasury"]
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxMarketCollateral", "maxProtocolCollateral", "maxInitialLiquidity"],
+      "properties": {
+        "maxMarketCollateral": { "type": "string", "pattern": "^[0-9]+$" },
+        "maxProtocolCollateral": { "type": "string", "pattern": "^[0-9]+$" },
+        "maxInitialLiquidity": { "type": "string", "pattern": "^[0-9]+$" }
+      }
     },
     "policyVersions": {
       "type": "object",

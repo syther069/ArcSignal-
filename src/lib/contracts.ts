@@ -1,33 +1,59 @@
 import { createPublicClient, http, parseAbi } from 'viem';
+import { activeArcNetwork } from './arc-network';
 
-const fallbackArcChainId = 5042002;
-const browserRpcUrl =
-  process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ??
-  'https://rpc.testnet.arc.io';
-const serverRpcUrl =
-  process.env.ARC_RPC_URL ??
-  process.env.ARC_TESTNET_RPC_URL ??
-  browserRpcUrl;
+const parsedChainId = Number(activeArcNetwork.testnet
+  ? (process.env.NEXT_PUBLIC_ARC_CHAIN_ID
+    ?? process.env.NEXT_PUBLIC_ARC_TESTNET_CHAIN_ID
+    ?? activeArcNetwork.chainId)
+  : (process.env.NEXT_PUBLIC_ARC_CHAIN_ID ?? activeArcNetwork.chainId));
+const arcChainId = Number.isFinite(parsedChainId) && parsedChainId > 0
+  ? parsedChainId
+  : activeArcNetwork.chainId;
 
-export const arcTestnet = {
-  id: Number(process.env.NEXT_PUBLIC_ARC_TESTNET_CHAIN_ID ?? fallbackArcChainId),
-  name: 'ARC Testnet',
-  network: 'arc-testnet',
+const browserRpcUrl = activeArcNetwork.testnet
+  ? (process.env.NEXT_PUBLIC_ARC_RPC_URL
+    ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL
+    ?? activeArcNetwork.rpcUrl)
+  : (process.env.NEXT_PUBLIC_ARC_RPC_URL ?? activeArcNetwork.rpcUrl);
+const serverRpcUrl = activeArcNetwork.testnet
+  ? (process.env.ARC_RPC_URL ?? process.env.ARC_TESTNET_RPC_URL ?? browserRpcUrl)
+  : (process.env.ARC_RPC_URL ?? browserRpcUrl);
+
+export const arcChain = {
+  id: arcChainId,
+  name: activeArcNetwork.name,
+  network: activeArcNetwork.network,
   nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
   rpcUrls: {
     default: { http: [browserRpcUrl] },
     public: { http: [browserRpcUrl] },
+  },
+  blockExplorers: {
+    default: { name: 'Arc Explorer', url: activeArcNetwork.explorer },
   },
   contracts: {
     multicall3: {
       address: '0xca11bde05977b3631167028862be2a173976ca11',
     },
   },
-  testnet: true,
+  testnet: activeArcNetwork.testnet,
 } as const;
 
+export const arcTestnet = arcChain;
+export const activeArcChain = arcChain;
+
+export async function assertArcChainReady(client: { getChainId: () => Promise<number> }) {
+  const currentChainId = await client.getChainId();
+  if (currentChainId !== arcChainId) {
+    throw new Error(
+      `Chain ID mismatch: connected to ${currentChainId}, expected ${arcChainId} (${activeArcNetwork.name})`,
+    );
+  }
+  return true;
+}
+
 export const publicClient = createPublicClient({
-  chain: arcTestnet,
+  chain: arcChain,
   transport: http(serverRpcUrl, {
     retryCount: 2,
     retryDelay: 200,
@@ -37,12 +63,12 @@ export const publicClient = createPublicClient({
   }),
 });
 
-// The UI, resolver, indexer, and wallet writes must share this ARC Testnet
-// contract. Do not read NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDRESS — a stale Vercel
-// value (0xcb4428…) silently pointed the app at an older 12-market deployment
-// while live markets are created here. Change this constant only after a new
-// deployment is verified on-chain.
-export const ARCSIGNAL_ADDRESS = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as `0x${string}`;
+// Do not read NEXT_PUBLIC_ARCSIGNAL_CONTRACT_ADDRESS. Testnet stays on the
+// verified 0x4f33115… deployment. Mainnet stays unset until a new deploy is
+// written into src/lib/arc-network.ts after on-chain verification.
+export const ARCSIGNAL_ADDRESS = (
+  activeArcNetwork.arcsignal ?? '0x0000000000000000000000000000000000000000'
+) as `0x${string}`;
 
 // The checked-in contract revision supports cancelled-market refunds. The
 // currently deployed legacy address does not. Enable this only after deploying
@@ -50,7 +76,7 @@ export const ARCSIGNAL_ADDRESS = '0x4f33115a18fe6a181be98610ddde3fab71efabed' as
 export const CANCELLATION_REFUNDS_ENABLED =
   process.env.NEXT_PUBLIC_ARCSIGNAL_CANCEL_REFUNDS === 'true';
 
-export const USDC_ADDRESS = '0x3600000000000000000000000000000000000000' as `0x${string}`;
+export const USDC_ADDRESS = activeArcNetwork.usdc;
 
 export const ARCSIGNAL_ABI = parseAbi([
   'function createMarket(string marketId, string category, string question, string analysisJson, uint256 resolutionTime) external',

@@ -6,6 +6,7 @@ import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { arcChain } from '@/lib/contracts';
 import {
   LineChart,
   Wallet,
@@ -44,7 +45,7 @@ export default function Sidebar() {
               ArcSignal
             </p>
             <p className="text-[13px] text-[#b0abb5] mt-0.5 leading-none">
-              AI-guided Testnet Markets
+              AI-guided {arcChain.testnet ? 'Testnet' : 'Prediction'} Markets
             </p>
           </div>
         </div>
@@ -100,8 +101,8 @@ export default function Sidebar() {
             </span>
           </Link>
           <div className="flex items-center justify-between text-[#b0abb5]/60 pt-2 border-t border-[#403947]">
-            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px]">
-              ARC TESTNET
+            <span className="font-[family-name:var(--font-jetbrains-mono)] text-[13px] uppercase">
+              {arcChain.name}
             </span>
             <div className="flex items-center gap-3">
               <a href="https://github.com/syther069/ArcSignal-" target="_blank" rel="noreferrer" aria-label="ArcSignal source code" className="hover:text-[#ddb7ff] transition-colors text-[#b0abb5]/60">

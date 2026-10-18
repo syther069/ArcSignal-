@@ -32,7 +32,9 @@ import {
   type CircleBridgeResult,
   type CircleBridgeProgress,
   type FundingSourceChain,
+  isCircleBridgeToArcEnabled,
 } from '@/lib/circle-app-kit';
+import { arcChain } from '@/lib/contracts';
 
 type FlowState =
   | 'idle'
@@ -119,7 +121,9 @@ export default function FundUSDCModal({
   suggestedAmount = '',
 }: FundUSDCModalProps) {
   const { address, connector, isConnected } = useAccount();
-  const [sourceChain, setSourceChain] = useState<FundingSourceChain>('Ethereum_Sepolia');
+  const [sourceChain, setSourceChain] = useState<FundingSourceChain>(
+    () => supportedFundingSourceChains[0]?.id ?? 'Ethereum',
+  );
   const [amount, setAmount] = useState(suggestedAmount);
   const [flow, setFlow] = useState<FlowState>('idle');
   const [fees, setFees] = useState<FeeSummary | null>(null);
@@ -140,6 +144,12 @@ export default function FundUSDCModal({
     () => supportedFundingSourceChains.find((chain) => chain.id === sourceChain),
     [sourceChain],
   );
+
+  useEffect(() => {
+    if (!supportedFundingSourceChains.some((chain) => chain.id === sourceChain)) {
+      setSourceChain(supportedFundingSourceChains[0]?.id ?? 'Ethereum');
+    }
+  }, [sourceChain]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -170,6 +180,11 @@ export default function FundUSDCModal({
 
   const handleEstimate = async () => {
     if (!validAmount) return;
+    if (!isCircleBridgeToArcEnabled) {
+      setError('Circle Bridge Kit does not support Arc mainnet in this app version.');
+      setFlow('error');
+      return;
+    }
     try {
       setError(null);
       setFlow('estimating');
@@ -189,6 +204,11 @@ export default function FundUSDCModal({
 
   const handleBridge = async () => {
     if (!validAmount) return;
+    if (!isCircleBridgeToArcEnabled) {
+      setError('Circle Bridge Kit does not support Arc mainnet in this app version.');
+      setFlow('error');
+      return;
+    }
     try {
       setError(null);
       setSteps([]);
@@ -326,7 +346,7 @@ export default function FundUSDCModal({
           <div>
             <div className="flex items-center gap-2.5">
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#ddb7ff]">Arc settlement route</p>
-              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-[#94a3b8]">Testnet</span>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-[#94a3b8]">{arcChain.testnet ? 'Testnet' : 'Mainnet'}</span>
             </div>
             <h2 id="fund-usdc-title" className="mt-2 text-xl font-semibold tracking-[-0.02em] text-white">Fund your Arc wallet</h2>
             <p id="fund-usdc-description" className="mt-1 text-sm text-[#94a3b8]">Move USDC to Arc through Circle&apos;s native infrastructure.</p>
@@ -337,7 +357,39 @@ export default function FundUSDCModal({
         </div>
 
         <div className="overflow-y-auto p-5">
-          {!isConnected || !address ? (
+          {!isCircleBridgeToArcEnabled ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-[#4FDBC8]/30 bg-[#4FDBC8]/10 p-4 text-sm text-[#f1eef4] space-y-2">
+                <div className="flex items-center gap-2 text-[#4FDBC8] font-bold">
+                  <ShieldCheck size={18} />
+                  <span>Arc Mainnet Bridge & Onramp</span>
+                </div>
+                <p className="text-xs text-[#b0abb5] leading-relaxed">
+                  Arc Mainnet is live with native Circle CCTP bridging and direct Apple Pay / Card onramping via Arc Portal.
+                </p>
+              </div>
+
+              <a
+                href="https://portal.arc.io"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#ddb7ff] text-[#240B35] font-bold text-xs uppercase tracking-wider font-mono hover:bg-[#ddb7ff]/90 transition-all shadow-lg"
+              >
+                <span>Open Arc Portal (Bridge & Onramp)</span>
+                <ExternalLink size={14} />
+              </a>
+
+              <a
+                href="https://faucet.circle.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-white/10 bg-white/[0.04] text-[#b0abb5] hover:text-white text-xs font-mono transition-all"
+              >
+                <span>Circle Developer Faucet</span>
+                <ExternalLink size={12} />
+              </a>
+            </div>
+          ) : !isConnected || !address ? (
             <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-200">
               Connect a wallet before choosing a funding route.
             </div>
@@ -354,9 +406,9 @@ export default function FundUSDCModal({
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-mono text-[10px] uppercase tracking-wider text-[#94a3b8]">To</p>
-                    <p className="mt-1 font-semibold text-white">Arc Testnet</p>
+                    <p className="mt-1 font-semibold text-white">{arcChain.name}</p>
                   </div>
-                  <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 font-mono text-[10px] text-emerald-300">5042002</span>
+                  <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-1 font-mono text-[10px] text-emerald-300">{arcChain.id}</span>
                 </div>
                 <p className="mt-3 truncate font-mono text-xs text-[#94a3b8]">{address}</p>
               </div>
@@ -429,7 +481,11 @@ export default function FundUSDCModal({
           )}
           <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[11px] text-[#64748b]">
             <span className="inline-flex items-center gap-1.5"><ShieldCheck size={12} /> Circle CCTP settlement</span>
-            <a href="https://faucet.circle.com/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 transition hover:text-[#ddb7ff]">Get testnet USDC <ExternalLink size={11} /></a>
+            {arcChain.testnet ? (
+              <a href="https://faucet.circle.com/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 transition hover:text-[#ddb7ff]">Get testnet USDC <ExternalLink size={11} /></a>
+            ) : (
+              <span>Real USDC on Arc Mainnet via Circle CCTP v2.</span>
+            )}
           </div>
         </div>
       </form>

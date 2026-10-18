@@ -1,21 +1,28 @@
 import { QueryClient } from '@tanstack/react-query';
 import { createConfig, http } from 'wagmi';
-import { mainnet, sepolia } from 'wagmi/chains';
+import { arbitrum, base, mainnet, sepolia } from 'wagmi/chains';
 import { injected } from 'wagmi/connectors/injected';
-import { arcTestnet } from './contracts';
+import { arcChain, arcTestnet } from './contracts';
+import { activeArcNetwork } from './arc-network';
 
-export { arcTestnet };
+export { arcChain, arcTestnet };
 
-const rpcUrl =
-  process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ??
-  'https://rpc.testnet.arc.io';
+const rpcUrl = activeArcNetwork.testnet
+  ? (process.env.NEXT_PUBLIC_ARC_RPC_URL ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? arcChain.rpcUrls.default.http[0])
+  : (process.env.NEXT_PUBLIC_ARC_RPC_URL ?? arcChain.rpcUrls.default.http[0]);
 
-export const arcTestnetConfig = {
-  chainId: arcTestnet.id,
-  name: arcTestnet.name,
+export const arcChainConfig = {
+  chainId: arcChain.id,
+  name: arcChain.name,
+  network: arcChain.network,
+  nativeCurrency: arcChain.nativeCurrency,
   rpcUrl,
-  nativeCurrency: arcTestnet.nativeCurrency,
+  blockExplorerUrl: arcChain.blockExplorers.default.url,
+  cctpTokenMessenger: activeArcNetwork.cctpTokenMessenger,
+  usdcAddress: activeArcNetwork.usdc,
+  decimals: 6,
 };
+export const arcTestnetConfig = arcChainConfig;
 
 function getConnectors() {
   try {
@@ -26,18 +33,21 @@ function getConnectors() {
 }
 
 export const wagmiConfig = createConfig({
-  chains: [arcTestnet, mainnet, sepolia],
+  chains: [arcChain, mainnet, base, arbitrum, sepolia],
   ssr: true,
   connectors: getConnectors(),
+  multiInjectedProviderDiscovery: true,
   // Arc's public RPC rate-limits Multicall3 aggregate3 (`Request exceeds defined
   // limit`). Wagmi then leaves useReadContract data undefined and the UI showed 0 USDC.
   batch: { multicall: false },
   transports: {
-    [arcTestnet.id]: http(arcTestnetConfig.rpcUrl, {
+    [arcChain.id]: http(arcChainConfig.rpcUrl, {
       retryCount: 2,
       retryDelay: 400,
     }),
     [mainnet.id]: http(),
+    [base.id]: http(),
+    [arbitrum.id]: http(),
     [sepolia.id]: http(),
   },
 });

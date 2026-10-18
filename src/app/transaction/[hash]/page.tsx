@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ARCSIGNAL_ADDRESS, publicClient } from '@/lib/contracts';
+import { ARCSIGNAL_ADDRESS, publicClient, arcChain } from '@/lib/contracts';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +37,7 @@ export default async function TransactionPage({
                   : 'Transaction reverted on-chain'}
             </div>
             <dl className="grid gap-4 text-sm sm:grid-cols-2">
-              <div><dt className="text-slate-400">Network</dt><dd className="mt-1 font-mono">ARC Testnet · 5042002</dd></div>
+              <div><dt className="text-slate-400">Network</dt><dd className="mt-1 font-mono">{arcChain.name} · {arcChain.id}</dd></div>
               <div><dt className="text-slate-400">Block</dt><dd className="mt-1 font-mono">{receipt.blockNumber.toString()}</dd></div>
               <div><dt className="text-slate-400">Status</dt><dd className="mt-1 font-mono uppercase">{receipt.status}</dd></div>
               <div><dt className="text-slate-400">Contract</dt><dd className="mt-1 font-mono">{isArcSignal ? 'ArcSignal verified' : 'Other address'}</dd></div>
