@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createWalletClient, decodeEventLog, http, keccak256, stringToHex, toBytes, type Address } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, publicClient, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import { activeArcNetwork, resolveArcRpcUrl } from '@/lib/arc-network';
 import {
   ARCSIGNAL_FACTORY_V2_ABI,
   ARCSIGNAL_V2_ENABLED,
@@ -115,6 +116,12 @@ export async function POST(req: Request) {
       && ARCSIGNAL_V2_FACTORY_ADDRESS,
   );
 
+  if (!activeArcNetwork.testnet && !createOnV2 && (!CONTRACT_ADDRESS || CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000')) {
+    return NextResponse.json({
+      error: 'ArcSignal contract address is missing on Arc Mainnet.',
+    }, { status: 400 });
+  }
+
   if (!createOnV2 && !/^0x[a-fA-F0-9]{40}$/.test(CONTRACT_ADDRESS)) {
     return NextResponse.json({ error: 'Contract address missing or invalid' }, { status: 500 });
   }
@@ -148,12 +155,7 @@ export async function POST(req: Request) {
   const walletClient = createWalletClient({
     account,
     chain: arcTestnet,
-    transport: http(
-      process.env.ARC_RPC_URL
-      ?? process.env.ARC_TESTNET_RPC_URL
-      ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL
-      ?? 'https://rpc.testnet.arc.io',
-    ),
+    transport: http(resolveArcRpcUrl()),
   });
 
   const created: string[] = [];
