@@ -1,5 +1,5 @@
 import { parseUnits, type Address, type WalletClient } from 'viem';
-import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS, publicClient, USDC_ABI, USDC_ADDRESS } from './contracts';
+import { arcChain, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS, publicClient, USDC_ABI, USDC_ADDRESS } from './contracts';
 import { approveUSDC } from './usdc';
 
 export async function stakeOnMarket(
@@ -43,6 +43,6 @@ export async function stakeOnMarket(
     functionName: 'stake',
     args: [marketId, side, amount],
     account: userAddress,
-    chain: arcTestnet,
+    chain: arcChain,
   });
 }

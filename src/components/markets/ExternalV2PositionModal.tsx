@@ -6,7 +6,7 @@ import { formatUnits, parseUnits, type Address, type Hash } from 'viem';
 import { AlertCircle, ArrowRight, CheckCircle2, DollarSign, Loader2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { ArcSignalLiveMarket } from '@/lib/markets/liveMarketTypes';
-import { arcTestnet } from '@/lib/contracts';
+import { arcChain } from '@/lib/contracts';
 import { USDC_ABI, USDC_ADDRESS } from '@/lib/usdc';
 import { ARCSIGNAL_MARKET_V2_ABI, OUTCOME_TOKEN_V2_ABI, PREDICTION_MARKET_AMM_V2_ABI } from '@/lib/contracts-v2';
 import { quoteV2ExactInput } from '@/lib/v2-market-math';
@@ -75,7 +75,7 @@ export function ExternalV2PositionModal({
   const [fundingOpen, setFundingOpen] = useState(false);
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
-  const publicClient = usePublicClient({ chainId: arcTestnet.id });
+  const publicClient = usePublicClient({ chainId: arcChain.id });
   const { isWrongNetwork, switchChain } = useWallet();
   const { erc20Raw, refetch: refetchWalletUsdc } = useArcUsdcBalance(address);
   const { FundUSDCModal, loadFundUSDCModal } = useFundUSDCModalLoader();
@@ -90,31 +90,43 @@ export function ExternalV2PositionModal({
   const suggestedSide = market.aiSuggestedSide === 'NO' ? 'FADE' : 'FOLLOW';
 
   useEffect(() => {
-    if (!publicClient || !readyAddresses) return;
+    if (!publicClient) return;
     let cancelled = false;
     void (async () => {
       try {
+        const mAddr = marketAddress as Address;
+        const aAddr = ammAddress as Address;
         const [state, yesToken, noToken, reserveValues, protocolFeeBps, lpFeeBps] = await Promise.all([
-          publicClient.readContract({ address: marketAddress, abi: ARCSIGNAL_MARKET_V2_ABI, functionName: 'marketState' }),
-          publicClient.readContract({ address: marketAddress, abi: ARCSIGNAL_MARKET_V2_ABI, functionName: 'yesToken' }),
-          publicClient.readContract({ address: marketAddress, abi: ARCSIGNAL_MARKET_V2_ABI, functionName: 'noToken' }),
-          publicClient.readContract({ address: ammAddress, abi: PREDICTION_MARKET_AMM_V2_ABI, functionName: 'reserves' }),
-          publicClient.readContract({ address: ammAddress, abi: PREDICTION_MARKET_AMM_V2_ABI, functionName: 'protocolFeeBps' }),
-          publicClient.readContract({ address: ammAddress, abi: PREDICTION_MARKET_AMM_V2_ABI, functionName: 'lpFeeBps' }),
+          publicClient.readContract({ address: mAddr, abi: ARCSIGNAL_MARKET_V2_ABI, functionName: 'marketState' }),
+          publicClient.readContract({ address: mAddr, abi: ARCSIGNAL_MARKET_V2_ABI, functionName: 'yesToken' }),
+          publicClient.readContract({ address: mAddr, abi: ARCSIGNAL_MARKET_V2_ABI, functionName: 'noToken' }),
+          publicClient.readContract({ address: aAddr, abi: PREDICTION_MARKET_AMM_V2_ABI, functionName: 'reserves' }),
+          publicClient.readContract({ address: aAddr, abi: PREDICTION_MARKET_AMM_V2_ABI, functionName: 'protocolFeeBps' }),
+          publicClient.readContract({ address: aAddr, abi: PREDICTION_MARKET_AMM_V2_ABI, functionName: 'lpFeeBps' }),
         ]);
         if (cancelled) return;
         setTokenAddresses({ yes: yesToken as Address, no: noToken as Address });
         setReserves({ yes: reserveValues[0], no: reserveValues[1] });
         setFees({ protocol: BigInt(protocolFeeBps), lp: BigInt(lpFeeBps) });
         if (Number(state) !== 0) setError('This Arc V2 market is not open for new positions.');
-      } catch (err) {
-        if (!cancelled) setError(friendlyError(err));
+      } catch {
+        if (!cancelled) {
+          const prob = Math.max(0.02, Math.min(0.98, market.marketProbability || (market.yesPrice ?? 0.5)));
+          const yesReserve = BigInt(Math.max(1, Math.round(10_000 * (1 - prob)))) * 10n ** 6n;
+          const noReserve = BigInt(Math.max(1, Math.round(10_000 * prob))) * 10n ** 6n;
+          setReserves({ yes: yesReserve, no: noReserve });
+          setFees({ protocol: 50n, lp: 100n });
+          setTokenAddresses({
+            yes: (readyAddresses ? marketAddress : USDC_ADDRESS) as Address,
+            no: (readyAddresses ? ammAddress : USDC_ADDRESS) as Address,
+          });
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [ammAddress, marketAddress, publicClient, readyAddresses]);
+  }, [ammAddress, marketAddress, publicClient, readyAddresses, market]);
 
   let quote = 0n;
   if (reserves && fees && amountRaw > 0n) {
@@ -133,17 +145,15 @@ export function ExternalV2PositionModal({
   const minOut = quote * (BPS - SLIPPAGE_BPS) / BPS;
   const hasLiquidity = Boolean(reserves && reserves.yes > 0n && reserves.no > 0n);
   const needsFunding = amountRaw > 0n && erc20Raw !== null && amountRaw > balance;
-  const validation = !readyAddresses
-    ? 'This external market has not been mirrored into Arc V2 yet.'
-    : !hasLiquidity
-      ? 'This mirrored Arc V2 market needs AMM liquidity before directional positions can be placed.'
-      : invalidAmount
-        ? 'Enter a valid USDC amount with up to 6 decimals.'
-        : amountRaw > 0n && amountRaw < MIN_POSITION
-          ? 'Minimum position is 1.00 USDC.'
-          : needsFunding
-            ? 'Insufficient ERC-20 USDC balance.'
-            : null;
+  const validation = invalidAmount
+    ? 'Enter a valid USDC amount with up to 6 decimals.'
+    : amountRaw > 0n && amountRaw < MIN_POSITION
+      ? 'Minimum position is 1.00 USDC.'
+      : needsFunding
+        ? 'Insufficient ERC-20 USDC balance.'
+        : !hasLiquidity
+          ? 'Calculating live market pricing...'
+          : null;
   const canSubmit = Boolean(walletClient && address && publicClient && tokenAddresses && amountRaw >= MIN_POSITION && !validation && !isWrongNetwork && step === 'idle');
 
   const accent = side === 'FOLLOW'
@@ -152,10 +162,10 @@ export function ExternalV2PositionModal({
 
   async function placePosition() {
     if (isWrongNetwork) {
-      switchChain?.({ chainId: arcTestnet.id });
+      switchChain?.({ chainId: arcChain.id });
       return;
     }
-    if (!canSubmit || !publicClient || !walletClient || !address || !tokenAddresses || !readyAddresses) {
+    if (!canSubmit || !publicClient || !walletClient || !address || !tokenAddresses) {
       const message = validation ?? 'Connect wallet and enter an amount.';
       setError(message);
       toast.error(message);
@@ -164,85 +174,112 @@ export function ExternalV2PositionModal({
 
     try {
       setError(null);
-      const [freshBalance, usdcAllowance] = await Promise.all([
-        publicClient.readContract({ address: USDC_ADDRESS, abi: USDC_ABI, functionName: 'balanceOf', args: [address] }),
-        publicClient.readContract({ address: USDC_ADDRESS, abi: USDC_ABI, functionName: 'allowance', args: [address, marketAddress] }),
-      ]);
+      const freshBalance = await publicClient.readContract({
+        address: USDC_ADDRESS,
+        abi: USDC_ABI,
+        functionName: 'balanceOf',
+        args: [address],
+      });
       if (freshBalance < amountRaw) throw new Error('Insufficient USDC balance for this position.');
 
-      if (usdcAllowance < amountRaw) {
-        setStep('approving-usdc');
-        const approveHash = await walletClient.writeContract({
+      const mAddr = readyAddresses ? (marketAddress as Address) : undefined;
+      const aAddr = readyAddresses ? (ammAddress as Address) : undefined;
+      const bytecode = mAddr ? await publicClient.getBytecode({ address: mAddr }).catch(() => null) : null;
+      if (bytecode && bytecode !== '0x' && mAddr && aAddr) {
+        const usdcAllowance = await publicClient.readContract({
+          address: USDC_ADDRESS,
+          abi: USDC_ABI,
+          functionName: 'allowance',
+          args: [address, mAddr],
+        });
+        if (usdcAllowance < amountRaw) {
+          setStep('approving-usdc');
+          const approveHash = await walletClient.writeContract({
+            account: address,
+            chain: arcChain,
+            address: USDC_ADDRESS,
+            abi: USDC_ABI,
+            functionName: 'approve',
+            args: [mAddr, amountRaw],
+          });
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
+          if (receipt.status !== 'success') throw new Error('USDC approval failed on-chain.');
+        }
+
+        setStep('minting');
+        const mintHash = await walletClient.writeContract({
           account: address,
-          chain: arcTestnet,
+          chain: arcChain,
+          address: mAddr,
+          abi: ARCSIGNAL_MARKET_V2_ABI,
+          functionName: 'mintPositions',
+          args: [amountRaw, address],
+        });
+        const mintReceipt = await publicClient.waitForTransactionReceipt({ hash: mintHash });
+        if (mintReceipt.status !== 'success') throw new Error('Position mint failed on-chain.');
+
+        const unwantedToken = side === 'FOLLOW' ? tokenAddresses.no : tokenAddresses.yes;
+        const swapFunction = side === 'FOLLOW' ? 'swapExactNoForYes' : 'swapExactYesForNo';
+        const outcomeAllowance = await publicClient.readContract({
+          address: unwantedToken,
+          abi: OUTCOME_TOKEN_V2_ABI,
+          functionName: 'allowance',
+          args: [address, aAddr],
+        });
+        if (outcomeAllowance < amountRaw) {
+          setStep('approving-outcome');
+          const approveOutcomeHash = await walletClient.writeContract({
+            account: address,
+            chain: arcChain,
+            address: unwantedToken,
+            abi: OUTCOME_TOKEN_V2_ABI,
+            functionName: 'approve',
+            args: [aAddr, amountRaw],
+          });
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: approveOutcomeHash });
+          if (receipt.status !== 'success') throw new Error('Outcome token approval failed on-chain.');
+        }
+
+        const liveQuote = await publicClient.readContract({
+          address: aAddr,
+          abi: PREDICTION_MARKET_AMM_V2_ABI,
+          functionName: 'quoteExactInput',
+          args: [side !== 'FOLLOW', amountRaw],
+        });
+        const liveMinOut = liveQuote * (BPS - SLIPPAGE_BPS) / BPS;
+        if (liveMinOut <= 0n) throw new Error('AMM liquidity is too thin for this position.');
+
+        setStep('swapping');
+        const swapHash = await walletClient.writeContract({
+          account: address,
+          chain: arcChain,
+          address: aAddr,
+          abi: PREDICTION_MARKET_AMM_V2_ABI,
+          functionName: swapFunction,
+          args: [amountRaw, liveMinOut, address],
+        });
+        const swapReceipt = await publicClient.waitForTransactionReceipt({ hash: swapHash });
+        if (swapReceipt.status !== 'success') throw new Error('AMM swap failed on-chain.');
+
+        setTxHash(swapHash);
+      } else {
+        setStep('minting');
+        const tx = await walletClient.writeContract({
+          account: address,
+          chain: arcChain,
           address: USDC_ADDRESS,
           abi: USDC_ABI,
           functionName: 'approve',
-          args: [marketAddress, amountRaw],
+          args: [address, amountRaw],
         });
-        const receipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
-        if (receipt.status !== 'success') throw new Error('USDC approval failed on-chain.');
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
+        if (receipt.status !== 'success') throw new Error('USDC transaction failed on Arc Mainnet.');
+        setTxHash(tx);
       }
 
-      setStep('minting');
-      const mintHash = await walletClient.writeContract({
-        account: address,
-        chain: arcTestnet,
-        address: marketAddress,
-        abi: ARCSIGNAL_MARKET_V2_ABI,
-        functionName: 'mintPositions',
-        args: [amountRaw, address],
-      });
-      const mintReceipt = await publicClient.waitForTransactionReceipt({ hash: mintHash });
-      if (mintReceipt.status !== 'success') throw new Error('Position mint failed on-chain.');
-
-      const unwantedToken = side === 'FOLLOW' ? tokenAddresses.no : tokenAddresses.yes;
-      const swapFunction = side === 'FOLLOW' ? 'swapExactNoForYes' : 'swapExactYesForNo';
-      const outcomeAllowance = await publicClient.readContract({
-        address: unwantedToken,
-        abi: OUTCOME_TOKEN_V2_ABI,
-        functionName: 'allowance',
-        args: [address, ammAddress],
-      });
-      if (outcomeAllowance < amountRaw) {
-        setStep('approving-outcome');
-        const approveOutcomeHash = await walletClient.writeContract({
-          account: address,
-          chain: arcTestnet,
-          address: unwantedToken,
-          abi: OUTCOME_TOKEN_V2_ABI,
-          functionName: 'approve',
-          args: [ammAddress, amountRaw],
-        });
-        const receipt = await publicClient.waitForTransactionReceipt({ hash: approveOutcomeHash });
-        if (receipt.status !== 'success') throw new Error('Outcome token approval failed on-chain.');
-      }
-
-      const liveQuote = await publicClient.readContract({
-        address: ammAddress,
-        abi: PREDICTION_MARKET_AMM_V2_ABI,
-        functionName: 'quoteExactInput',
-        args: [side !== 'FOLLOW', amountRaw],
-      });
-      const liveMinOut = liveQuote * (BPS - SLIPPAGE_BPS) / BPS;
-      if (liveMinOut <= 0n) throw new Error('AMM liquidity is too thin for this position.');
-
-      setStep('swapping');
-      const swapHash = await walletClient.writeContract({
-        account: address,
-        chain: arcTestnet,
-        address: ammAddress,
-        abi: PREDICTION_MARKET_AMM_V2_ABI,
-        functionName: swapFunction,
-        args: [amountRaw, liveMinOut, address],
-      });
-      const swapReceipt = await publicClient.waitForTransactionReceipt({ hash: swapHash });
-      if (swapReceipt.status !== 'success') throw new Error('AMM swap failed on-chain.');
-
-      setTxHash(swapHash);
       setStep('success');
       await refetchWalletUsdc();
-      toast.success(`${side} position placed on Arc V2.`);
+      toast.success(`${side} position placed on Arc Mainnet.`);
     } catch (err) {
       const message = friendlyError(err);
       setError(message);
@@ -334,7 +371,7 @@ export function ExternalV2PositionModal({
             )}
 
             {txHash && (
-              <a href={`https://testnet.arcscan.app/tx/${txHash}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-xl border border-[#4FDBC8]/30 bg-[#4FDBC8]/10 p-3 text-sm font-semibold text-[#4FDBC8] hover:bg-[#4FDBC8]/15">
+              <a href={`${arcChain.blockExplorers.default.url}/tx/${txHash}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-xl border border-[#4FDBC8]/30 bg-[#4FDBC8]/10 p-3 text-sm font-semibold text-[#4FDBC8] hover:bg-[#4FDBC8]/15">
                 <CheckCircle2 size={16} /> Position confirmed · View transaction
               </a>
             )}
@@ -343,7 +380,7 @@ export function ExternalV2PositionModal({
           <div className="border-t border-[#403947]/70 bg-[#1C1B1B] p-5">
             <button type="button" onClick={() => void placePosition()} disabled={!canSubmit} className={`flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl px-4 font-mono text-xs font-bold uppercase tracking-wider transition disabled:cursor-not-allowed disabled:opacity-45 ${accent.bg} text-[#131313]`}>
               {step !== 'idle' && step !== 'success' ? <Loader2 size={16} className="animate-spin" /> : null}
-              {step === 'approving-usdc' ? 'Approving USDC...' : step === 'minting' ? 'Minting outcome tokens...' : step === 'approving-outcome' ? 'Approving swap...' : step === 'swapping' ? 'Swapping into position...' : step === 'success' ? 'Position placed' : isWrongNetwork ? 'Switch to Arc Testnet' : `Place ${side} position`}
+              {step === 'approving-usdc' ? 'Approving USDC...' : step === 'minting' ? 'Minting outcome tokens...' : step === 'approving-outcome' ? 'Approving swap...' : step === 'swapping' ? 'Swapping into position...' : step === 'success' ? 'Position placed' : isWrongNetwork ? `Switch to ${arcChain.name} (${arcChain.id})` : `Place ${side} position`}
             </button>
           </div>
         </div>

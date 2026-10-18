@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useWallet } from '@/hooks/useWallet';
-import { arcTestnet } from '@/lib/contracts';
+import { arcChain } from '@/lib/contracts';
 
 export default function NetworkSwitcher() {
   const pathname = usePathname();
@@ -19,10 +19,10 @@ export default function NetworkSwitcher() {
     <div className="w-full bg-[#1a0a00] border-b border-amber-500 py-3 px-4 flex items-center justify-between z-40 relative">
       <div className="flex items-center gap-4 flex-1 justify-center">
         <span className="text-amber-500 font-medium text-sm">
-          ⚠ You are on the wrong network. Switch to Arc Testnet to trade.
+          ⚠ You are on the wrong network. Switch to {arcChain.name} to trade.
         </span>
         <button
-          onClick={() => switchChain({ chainId: arcTestnet.id })}
+          onClick={() => switchChain({ chainId: arcChain.id })}
           className="bg-amber-500 hover:bg-amber-600 text-[#1a0a00] text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded transition-colors"
         >
           Switch Network

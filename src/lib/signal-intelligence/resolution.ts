@@ -1,5 +1,6 @@
 import { createPublicClient, decodeEventLog, http } from 'viem';
-import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS, arcTestnet } from '@/lib/contracts';
+import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS, arcChain } from '@/lib/contracts';
+import { resolveArcRpcUrl } from '@/lib/arc-network';
 import { getSql } from '@/lib/db';
 import { parseMarketPrediction } from '@/lib/oracle-policy';
 import { getSignals, storeResolution } from './repository';
@@ -15,8 +16,8 @@ export function questionResult(prediction: BinaryResult, outcome: number): Binar
 // Read-only chain verification. This function never submits a wallet transaction.
 // Retryable reconciliation handles a DB outage after settlement without re-settling markets.
 export async function reconcileSignals(deadline = Date.now() + 45_000, confirmed?: { marketId: string; transactionHash: `0x${string}` }) {
-  const publicClient = createPublicClient({ chain: arcTestnet, transport: http(
-    process.env.ARC_RPC_URL ?? process.env.ARC_TESTNET_RPC_URL ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL ?? 'https://rpc.testnet.arc.io',
+  const publicClient = createPublicClient({ chain: arcChain, transport: http(
+    resolveArcRpcUrl(),
     { timeout: 2_000, retryCount: 0 },
   ) });
   const candidates = confirmed ? [{ market_id: confirmed.marketId }] : await getSql()`select distinct s.market_id from ai_signals s

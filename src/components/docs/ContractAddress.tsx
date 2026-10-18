@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { Check, Copy, ExternalLink } from 'lucide-react';
+import { activeArcNetwork } from '@/lib/arc-network';
 
 export default function ContractAddress({ label, address }: { label: string; address: string }) {
   const [copied, setCopied] = useState(false);
-  const explorerUrl = `https://testnet.arcscan.app/address/${address}`;
+  const explorerUrl = `${activeArcNetwork.explorer}/address/${address}`;
 
   async function copyAddress() {
     try {
@@ -23,7 +24,7 @@ export default function ContractAddress({ label, address }: { label: string; add
         <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] font-semibold uppercase tracking-[0.14em] text-[#94a3b8]">
           {label}
         </span>
-        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] uppercase text-[#ddb7ff]">ARC Testnet</span>
+        <span className="font-[family-name:var(--font-jetbrains-mono)] text-[10px] uppercase text-[#ddb7ff]">{activeArcNetwork.name}</span>
       </div>
 
       <div className="flex items-center gap-2">

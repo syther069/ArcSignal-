@@ -69,6 +69,9 @@ contract MockOptimisticOracleV2 {
 }
 
 contract ArcSignalV2Test is Test {
+    uint256 private constant MAX_MARKET_COLLATERAL = 100_000e6;
+    uint256 private constant MAX_PROTOCOL_COLLATERAL = 150_000e6;
+    uint256 private constant MAX_INITIAL_LIQUIDITY = 10_000e6;
     MockUSDCV2 private usdc;
     MockOptimisticOracleV2 private oracle;
     UMAOracleAdapterV2 private adapter;
@@ -115,7 +118,10 @@ contract ArcSignalV2Test is Test {
             address(policies),
             address(fees),
             address(marketDeployer),
-            address(ammDeployer)
+            address(ammDeployer),
+            MAX_MARKET_COLLATERAL,
+            MAX_PROTOCOL_COLLATERAL,
+            MAX_INITIAL_LIQUIDITY
         );
         marketDeployer.bindFactory(address(factory));
         ammDeployer.bindFactory(address(factory));

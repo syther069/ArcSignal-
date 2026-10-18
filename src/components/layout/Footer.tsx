@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowUpRight, Activity } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
+import { arcChain } from '@/lib/contracts';
 
 const footerLinks = [
   {
@@ -46,11 +47,11 @@ export default function Footer() {
                 <span className="text-xl font-bold tracking-tight font-[family-name:var(--font-hanken)]">ArcSignal</span>
               </Link>
               <span className="text-[10px] font-semibold uppercase tracking-widest bg-[#ddb7ff]/10 border border-[#ddb7ff]/20 text-[#ddb7ff] px-2 py-1 rounded-md">
-                TESTNET
+                {arcChain.testnet ? 'TESTNET' : 'MAINNET'}
               </span>
             </div>
             <p className="max-w-sm text-sm leading-6 text-[#b0abb5]">
-              Experimental AI-generated prediction markets on Arc Testnet. Follow or fade each recorded prediction with testnet USDC.
+              AI-guided prediction markets on {arcChain.name}. Follow or fade each recorded prediction with USDC.
             </p>
             <div>
               <Link href="/status" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#403947] bg-[#ddb7ff]/5 px-3 text-xs font-medium text-[#ddb7ff] transition-colors duration-150 hover:border-[#ddb7ff]/50 hover:bg-[#ddb7ff]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ddb7ff] motion-reduce:transition-none">
@@ -88,10 +89,10 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="mt-9 flex flex-col items-start justify-between gap-3 border-t border-[#403947]/70 pt-5 text-xs text-[#b0abb5] sm:mt-10 sm:flex-row sm:items-center">
-          <span>Experimental Arc Testnet software</span>
+          <span>{arcChain.name} {arcChain.testnet ? 'Testnet' : 'Mainnet'}</span>
           <div className="flex items-center gap-6">
             <span className="font-[family-name:var(--font-jetbrains-mono)] tabular-nums">
-              Chain ID: 5042002
+              Chain ID: {arcChain.id}
             </span>
           </div>
         </div>

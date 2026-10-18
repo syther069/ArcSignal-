@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createWalletClient, decodeEventLog, http, createPublicClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import { activeArcNetwork, resolveArcRpcUrl } from '@/lib/arc-network';
 import { fetchFreshCryptoPrices } from '@/lib/coingecko';
 import { fetchFixtureById } from '@/lib/apifootball';
 import { authorizeCronRequest } from '@/lib/cron-auth';
@@ -22,10 +23,7 @@ export const runtime = 'nodejs';
 const CONTRACT_ADDRESS = ARCSIGNAL_ADDRESS;
 
 // Use env RPC or fallback
-const RPC_URL = process.env.ARC_RPC_URL
-  ?? process.env.ARC_TESTNET_RPC_URL
-  ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL
-  ?? 'https://rpc.testnet.arc.io';
+const RPC_URL = resolveArcRpcUrl();
 
 const resolvePublicClient = createPublicClient({
   chain: arcTestnet,
@@ -104,6 +102,16 @@ async function readWithRetry<T>(label: string, read: () => Promise<T>): Promise<
 export async function POST(req: Request) {
   const authorization = authorizeCronRequest(req);
   if (!authorization.ok) return authorization.response;
+
+  if (!activeArcNetwork.testnet) {
+    return NextResponse.json({
+      resolved: [],
+      skipped: [],
+      errors: [],
+      message: 'V1 resolution is disabled on Arc Mainnet. Mainnet uses ArcSignal V2 optimistic oracle resolution only.',
+      contractUsed: CONTRACT_ADDRESS,
+    });
+  }
 
   if (!isMarketAutomationEnabled(process.env.ENABLE_MARKET_AUTOMATION)) {
     return NextResponse.json({ error: 'Market automation is disabled' }, { status: 503 });

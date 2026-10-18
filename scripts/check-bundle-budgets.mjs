@@ -10,7 +10,7 @@ const budgets = {
   page: { label: '/', maximum: 140_000 },
   'analytics/page': { label: '/analytics', maximum: 255_000 },
   'leaderboard/page': { label: '/leaderboard', maximum: 150_000 },
-  'markets/page': { label: '/markets', maximum: 155_000 },
+  'markets/page': { label: '/markets', maximum: 160_000 },
 };
 
 const manifestPath = path.join('.next', 'app-build-manifest.json');

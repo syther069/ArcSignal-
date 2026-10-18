@@ -5,6 +5,7 @@ import { useAccount } from 'wagmi';
 import Sidebar from '@/components/layout/Sidebar';
 import { Trophy } from 'lucide-react';
 import Link from 'next/link';
+import { arcChain } from '@/lib/contracts';
 
 interface LeaderboardEntry {
   address: string;
@@ -275,14 +276,14 @@ export default function LeaderboardClient({
             </div>
           </div>
 
-          {/* ARC Testnet Info */}
+          {/* ARC Network Info */}
           <div className="bg-surface-container-lowest border border-outline-variant p-5 rounded-xl relative overflow-hidden group border-[#4fdbc8]/30">
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-2 h-2 rounded-full bg-tertiary animate-pulse"></div>
-                <h3 className="font-headline-md text-sm text-tertiary">ARC Testnet</h3>
+                <h3 className="font-headline-md text-sm text-tertiary">{arcChain.name}</h3>
               </div>
-              <p className="text-text-muted font-code-sm text-xs mb-4">Chain ID: 5042002</p>
+              <p className="text-text-muted font-code-sm text-xs mb-4">Chain ID: {arcChain.id}</p>
               <span className="inline-flex items-center gap-2 bg-[#1e293b] px-3 py-1.5 rounded font-label-caps text-[10px] text-text-muted">
                 RPC VERIFIED
               </span>

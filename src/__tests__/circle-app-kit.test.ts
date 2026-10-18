@@ -42,7 +42,7 @@ describe('Circle Arc bridge requests', () => {
 
     expect(sdk.estimate).toHaveBeenCalledWith(expect.objectContaining({
       from: { adapter, chain: 'Base_Sepolia' },
-      to: { adapter, chain: 'Arc_Testnet', useForwarder: true },
+      to: { adapter, chain: 'Arc', useForwarder: true },
       amount: '2',
       token: 'USDC',
     }));
@@ -52,7 +52,7 @@ describe('Circle Arc bridge requests', () => {
     await bridgeUsdcToArc(input);
 
     expect(sdk.bridge).toHaveBeenCalledWith(expect.objectContaining({
-      to: { adapter, chain: 'Arc_Testnet', useForwarder: true },
+      to: { adapter, chain: 'Arc', useForwarder: true },
     }));
   });
 });

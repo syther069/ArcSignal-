@@ -1,11 +1,42 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import SignalIntelligence from '@/components/signals/SignalIntelligence';
 import type { AISignal, SignalCoverageRecord } from '@/lib/signal-intelligence/types';
+import type { ArcSignalLiveMarket } from '@/lib/markets/liveMarketTypes';
 import Link from 'next/link';
 import Sidebar from '@/components/layout/Sidebar';
 import { MarketDetailStakeModal } from './MarketDetailStakeModal';
+
+const ExternalV2PositionModal = dynamic(
+  () => import('@/components/markets/ExternalV2PositionModal').then((mod) => mod.ExternalV2PositionModal),
+  { ssr: false }
+);
+
+type PositionSide = 'FOLLOW' | 'FADE';
+
+function toLiveMarketFromV2(m: Market): ArcSignalLiveMarket {
+  const isYes = String(m.agentPick ?? '').toUpperCase() === 'YES';
+  return {
+    id: m.marketId,
+    source: 'internal',
+    category: (m.category.toLowerCase() as any) || 'crypto',
+    title: m.title,
+    question: m.title,
+    description: m.description || m.summary,
+    outcomes: ['YES', 'NO'],
+    marketProbability: m.probability ?? 50,
+    sourceUrl: `/market/${m.marketId}`,
+    aiSuggestedSide: isYes ? 'YES' : 'NO',
+    arcSettlement: {
+      marketId: m.marketId,
+      marketAddress: m.proof?.marketAddress ?? m.contractAddress,
+      ammAddress: m.proof?.ammAddress,
+      status: m.status ?? 'OPEN',
+    },
+  };
+}
 import { MarketProbabilityChart } from '@/components/markets/MarketProbabilityChart';
 import { MarketTimeline } from '@/components/markets/MarketTimeline';
 import { CountdownTimer } from '@/components/markets/CountdownTimer';
@@ -13,7 +44,7 @@ import { useGlobalTime } from '@/hooks/useGlobalTime';
 import { Market, StakeSide } from '@/types';
 import { useReadContract, useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { decodeEventLog } from 'viem';
-import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI, CANCELLATION_REFUNDS_ENABLED, arcTestnet } from '@/lib/contracts';
+import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI, CANCELLATION_REFUNDS_ENABLED, arcChain } from '@/lib/contracts';
 import { ARCSIGNAL_MARKET_V2_ABI, OUTCOME_TOKEN_V2_ABI, PREDICTION_MARKET_AMM_V2_ABI } from '@/lib/contracts-v2';
 import { calculateParimutuelPayoutRaw } from '@/lib/parimutuel-math';
 import type { ResolutionEvidence } from '@/lib/oracle-evidence';
@@ -71,13 +102,14 @@ function safeAddress(value: string | undefined): `0x${string}` | undefined {
 
 export default function MarketDetailClient({ market, resolutionEvidence, initialSignals, signalCoverage }: MarketDetailClientProps) {
   const [stakeModalSide, setStakeModalSide] = useState<StakeSide | null>(null);
+  const [v2TradeSide, setV2TradeSide] = useState<PositionSide | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
   const [activeTab, setActiveTab] = useState<'analysis' | 'rules'>('analysis');
   const isV2 = market.protocolVersion === 2;
 
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
-  const publicClient = usePublicClient({ chainId: arcTestnet.id });
+  const publicClient = usePublicClient({ chainId: arcChain.id });
   const v2MarketAddress = safeAddress(market.proof?.marketAddress ?? market.contractAddress);
   const v2AmmAddress = safeAddress(market.proof?.ammAddress);
   const v2YesTokenAddress = safeAddress(market.proof?.yesTokenAddress);
@@ -89,7 +121,7 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
     abi: ARCSIGNAL_ABI,
     functionName: 'getMarket',
     args: [market.marketId],
-    chainId: arcTestnet.id,
+    chainId: arcChain.id,
     query: { enabled: !isV2, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
@@ -98,7 +130,7 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
     abi: ARCSIGNAL_ABI,
     functionName: 'followStakes',
     args: address ? [market.marketId, address] : undefined,
-    chainId: arcTestnet.id,
+    chainId: arcChain.id,
     query: { enabled: !!address && !isV2, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
@@ -107,7 +139,7 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
     abi: ARCSIGNAL_ABI,
     functionName: 'fadeStakes',
     args: address ? [market.marketId, address] : undefined,
-    chainId: arcTestnet.id,
+    chainId: arcChain.id,
     query: { enabled: !!address && !isV2, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
@@ -116,7 +148,7 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
     abi: ARCSIGNAL_ABI,
     functionName: 'claimed',
     args: address ? [market.marketId, address] : undefined,
-    chainId: arcTestnet.id,
+    chainId: arcChain.id,
     query: { enabled: !!address && !isV2, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
@@ -124,7 +156,7 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
     address: v2AmmAddress,
     abi: PREDICTION_MARKET_AMM_V2_ABI,
     functionName: 'reserves',
-    chainId: arcTestnet.id,
+    chainId: arcChain.id,
     query: { enabled: isV2 && !!v2AmmAddress, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
@@ -132,7 +164,7 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
     address: v2AmmAddress,
     abi: PREDICTION_MARKET_AMM_V2_ABI,
     functionName: 'protocolFeeBps',
-    chainId: arcTestnet.id,
+    chainId: arcChain.id,
     query: { enabled: isV2 && !!v2AmmAddress, staleTime: 60_000 },
   });
 
@@ -140,7 +172,7 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
     address: v2AmmAddress,
     abi: PREDICTION_MARKET_AMM_V2_ABI,
     functionName: 'lpFeeBps',
-    chainId: arcTestnet.id,
+    chainId: arcChain.id,
     query: { enabled: isV2 && !!v2AmmAddress, staleTime: 60_000 },
   });
 
@@ -149,7 +181,7 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
     abi: OUTCOME_TOKEN_V2_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    chainId: arcTestnet.id,
+    chainId: arcChain.id,
     query: { enabled: isV2 && !!address && !!v2YesTokenAddress, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
@@ -158,7 +190,7 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
     abi: OUTCOME_TOKEN_V2_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    chainId: arcTestnet.id,
+    chainId: arcChain.id,
     query: { enabled: isV2 && !!address && !!v2NoTokenAddress, staleTime: 10_000, refetchInterval: 12_000 },
   });
 
@@ -910,14 +942,43 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
                   </div>
                 ) : isOpen && isV2 ? (
                   <div className="space-y-4 pt-1">
-                    <div className="p-4 rounded-xl bg-[#252229] border border-[#403947] space-y-2">
-                      <h4 className="font-mono text-xs font-bold text-[#F1EEF4] uppercase tracking-wider">
-                        V2 AMM Trading
-                      </h4>
-                      <p className="text-xs text-[#B0ABB5] leading-relaxed">
-                        This market uses V2 YES/NO position tokens and an AMM. Live AMM reserves are read from the V2 AMM contract; the proof panel lists the market, collateral, and token contracts for direct verification.
+                    <div className="space-y-2.5">
+                      {/* V2 Follow Button */}
+                      <button
+                        type="button"
+                        onClick={() => setV2TradeSide('FOLLOW')}
+                        className="w-full min-h-[48px] flex items-center justify-between py-3 px-4 rounded-xl border border-[#4FDBC8]/40 bg-[#4FDBC8]/10 hover:bg-[#4FDBC8] text-[#4FDBC8] hover:text-[#131313] font-sans font-bold text-xs transition-all duration-140 active:scale-[0.98] shadow-md group"
+                      >
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 size={18} />
+                          <span>Trade Follow (Buy YES)</span>
+                        </div>
+                        <span className="font-mono text-xs tabular-nums font-bold">
+                          {formatPercentage(followPercent)}
+                        </span>
+                      </button>
+
+                      {/* V2 Fade Button */}
+                      <button
+                        type="button"
+                        onClick={() => setV2TradeSide('FADE')}
+                        className="w-full min-h-[48px] flex items-center justify-between py-3 px-4 rounded-xl border border-[#F3A6C8]/40 bg-[#F3A6C8]/10 hover:bg-[#F3A6C8] text-[#F3A6C8] hover:text-[#240B35] font-sans font-bold text-xs transition-all duration-140 active:scale-[0.98] shadow-md group"
+                      >
+                        <div className="flex items-center gap-2">
+                          <XCircle size={18} />
+                          <span>Trade Fade (Buy NO)</span>
+                        </div>
+                        <span className="font-mono text-xs tabular-nums font-bold">
+                          {formatPercentage(fadePercent)}
+                        </span>
+                      </button>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-[#252229] border border-[#403947] text-xs text-[#B0ABB5] leading-relaxed space-y-1">
+                      <p>
+                        <strong className="text-[#F1EEF4]">AMM Liquidity:</strong> Instant swaps with continuous AMM pricing and early exit support.
                       </p>
-                      <dl className="grid grid-cols-2 gap-2 text-xs font-mono">
+                      <dl className="grid grid-cols-2 gap-2 text-xs font-mono mt-2">
                         <div className="rounded-lg border border-[#403947] bg-[#131313] p-2">
                           <dt className="text-[#B0ABB5] font-sans">YES reserve</dt>
                           <dd className="mt-1 text-[#4FDBC8]">{formatMarketDetailUSDC(toHumanUsdcNumber(v2Reserves?.[0] ?? 0n))}</dd>
@@ -927,9 +988,6 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
                           <dd className="mt-1 text-[#F3A6C8]">{formatMarketDetailUSDC(toHumanUsdcNumber(v2Reserves?.[1] ?? 0n))}</dd>
                         </div>
                       </dl>
-                      <Link href="#signal-intelligence-title" className="inline-flex min-h-[44px] items-center gap-2 text-[#DDB7FF] hover:underline text-xs font-bold">
-                        Review signals before trading
-                      </Link>
                     </div>
                   </div>
                 ) : (
@@ -980,23 +1038,46 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
                 )}
 
                 {/* User's Current Position */}
-                {address && (followStakeRaw > 0n || fadeStakeRaw > 0n) && (
+                {address && (isV2 ? (v2YesBalance > 0n || v2NoBalance > 0n) : (followStakeRaw > 0n || fadeStakeRaw > 0n)) && (
                   <div className="p-3.5 rounded-xl bg-[#252229] border border-[#DDB7FF]/30 space-y-2 font-sans">
                     <span className="font-mono text-[11px] font-bold text-[#DDB7FF] uppercase tracking-wider block">
                       Your Position
                     </span>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-[#B0ABB5]">Staked Side:</span>
-                      <strong className={`font-mono font-bold ${followStakeRaw > 0n ? 'text-[#4FDBC8]' : 'text-[#F3A6C8]'}`}>
-                        {followStakeRaw > 0n ? 'FOLLOW' : 'FADE'}
-                      </strong>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-[#B0ABB5]">Amount:</span>
-                      <span className="font-mono text-[#F1EEF4] font-bold tabular-nums">
-                        {formatMarketDetailUSDC(followStakeRaw > 0n ? followStakeRaw : fadeStakeRaw)}
-                      </span>
-                    </div>
+                    {isV2 ? (
+                      <>
+                        {v2YesBalance > 0n && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-[#B0ABB5]">YES Position:</span>
+                            <strong className="font-mono font-bold text-[#4FDBC8]">
+                              {formatMarketDetailUSDC(v2YesBalance)}
+                            </strong>
+                          </div>
+                        )}
+                        {v2NoBalance > 0n && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-[#B0ABB5]">NO Position:</span>
+                            <strong className="font-mono font-bold text-[#F3A6C8]">
+                              {formatMarketDetailUSDC(v2NoBalance)}
+                            </strong>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#B0ABB5]">Staked Side:</span>
+                          <strong className={`font-mono font-bold ${followStakeRaw > 0n ? 'text-[#4FDBC8]' : 'text-[#F3A6C8]'}`}>
+                            {followStakeRaw > 0n ? 'FOLLOW' : 'FADE'}
+                          </strong>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[#B0ABB5]">Amount:</span>
+                          <span className="font-mono text-[#F1EEF4] font-bold tabular-nums">
+                            {formatMarketDetailUSDC(followStakeRaw > 0n ? followStakeRaw : fadeStakeRaw)}
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -1016,6 +1097,18 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
           side={stakeModalSide}
           isOpen={true}
           onClose={() => setStakeModalSide(null)}
+        />
+      )}
+
+      {/* V2 AMM Position Modal */}
+      {isV2 && v2TradeSide !== null && (
+        <ExternalV2PositionModal
+          market={toLiveMarketFromV2(market)}
+          initialSide={v2TradeSide}
+          onClose={() => {
+            setV2TradeSide(null);
+            void Promise.all([refetchV2YesBalance(), refetchV2NoBalance(), refetchV2Reserves()]);
+          }}
         />
       )}
     </div>

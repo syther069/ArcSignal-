@@ -5,7 +5,7 @@ import { tradingDesign } from '@/components/layout/TradingDesign';
 import React, { useState, useRef, useEffect } from 'react';
 import { Wallet, ChevronDown, LogOut, AlertTriangle, Loader2, Copy, Check, ShieldCheck } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
-import { arcTestnet } from '@/lib/contracts';
+import { arcChain } from '@/lib/contracts';
 import WalletModal from './WalletModal';
 import { useFundUSDCModalLoader } from '@/hooks/useFundUSDCModalLoader';
 import { formatUnits } from 'viem';
@@ -72,7 +72,7 @@ export default function ConnectWalletButton() {
   if (isWrongNetwork) {
     return (
       <button 
-        onClick={() => switchChain({ chainId: arcTestnet.id })}
+        onClick={() => switchChain({ chainId: arcChain.id })}
         className={`${tradingDesign} flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-[#f2c66d]/40 bg-[#f2c66d]/10 px-4 py-1.5 text-sm font-semibold text-[#f2c66d] transition-all duration-[140ms] hover:bg-[#f2c66d]/20 hover:border-[#f2c66d]/60 shadow-[0_0_15px_rgba(245,158,11,0.1)]`}
       >
         <AlertTriangle size={16} className="text-[#f2c66d]" />
@@ -124,10 +124,10 @@ export default function ConnectWalletButton() {
                 <span className="mb-1 block font-mono text-[13px] uppercase tracking-wider text-[#b0abb5]">Network</span>
                 <div className="flex items-center gap-2">
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-[#b0abb5]"></span>
-                  <span className="text-sm font-semibold text-[#f1eef4]">Arc Testnet</span>
+                  <span className="text-sm font-semibold text-[#f1eef4]">{arcChain.name}</span>
                 </div>
               </div>
-              <span className="rounded-full bg-white/[0.05] border border-white/[0.08] px-2 py-0.5 font-mono text-[13px] text-[#b0abb5]">5042002</span>
+              <span className="rounded-full bg-white/[0.05] border border-white/[0.08] px-2 py-0.5 font-mono text-[13px] text-[#b0abb5]">{arcChain.id}</span>
             </div>
 
             {/* Balance */}

@@ -30,6 +30,13 @@ contract ArcSignalFactoryV2 is AccessControl, ReentrancyGuard, IExposureControll
     uint256 public constant MAX_MAINTENANCE_BATCH = 48;
     uint256 public constant MIN_INITIAL_LIQUIDITY = 1_000;
 
+    // All values use Arc USDC's 6 decimal places.
+    uint256 public immutable maxMarketCollateral;
+    uint256 public immutable maxProtocolCollateral;
+    uint256 public immutable maxInitialLiquidity;
+    uint256 public totalOutstandingCollateral;
+    mapping(address market => uint256 collateral) public marketOutstandingCollateral;
+
     IERC20 public immutable collateral;
     CategoryRegistryV2 public immutable categoryRegistry;
     OraclePolicyRegistryV2 public immutable oraclePolicyRegistry;
@@ -49,6 +56,7 @@ contract ArcSignalFactoryV2 is AccessControl, ReentrancyGuard, IExposureControll
     error UnsupportedPolicy();
     error FundingMismatch();
     error ExposurePaused();
+    error ExposureLimitExceeded();
 
     event MarketCreatedV2(
         bytes32 indexed marketId,
@@ -80,12 +88,19 @@ contract ArcSignalFactoryV2 is AccessControl, ReentrancyGuard, IExposureControll
         address oraclePolicyRegistry_,
         address feeController_,
         address marketDeployer_,
-        address ammDeployer_
+        address ammDeployer_,
+        uint256 maxMarketCollateral_,
+        uint256 maxProtocolCollateral_,
+        uint256 maxInitialLiquidity_
     ) {
         if (
             admin == address(0) || collateral_ == address(0) || categoryRegistry_ == address(0)
                 || oraclePolicyRegistry_ == address(0) || feeController_ == address(0) || marketDeployer_ == address(0)
                 || ammDeployer_ == address(0)
+        ) revert InvalidConfiguration();
+        if (
+            maxMarketCollateral_ == 0 || maxProtocolCollateral_ < maxMarketCollateral_
+                || maxInitialLiquidity_ > maxMarketCollateral_
         ) revert InvalidConfiguration();
         if (
             collateral_.code.length == 0 || categoryRegistry_.code.length == 0 || oraclePolicyRegistry_.code.length == 0
@@ -97,6 +112,9 @@ contract ArcSignalFactoryV2 is AccessControl, ReentrancyGuard, IExposureControll
         feeController = ProtocolFeeControllerV2(feeController_);
         marketDeployer = ArcSignalMarketDeployerV2(marketDeployer_);
         ammDeployer = PredictionMarketAMMDeployerV2(ammDeployer_);
+        maxMarketCollateral = maxMarketCollateral_;
+        maxProtocolCollateral = maxProtocolCollateral_;
+        maxInitialLiquidity = maxInitialLiquidity_;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(MARKET_CREATOR_ROLE, admin);
         _grantRole(RESOLUTION_OPERATOR_ROLE, admin);
@@ -144,6 +162,28 @@ contract ArcSignalFactoryV2 is AccessControl, ReentrancyGuard, IExposureControll
         return globalExposurePaused || marketExposurePaused[market];
     }
 
+    function increaseExposure(address market, uint256 amount) external {
+        if (msg.sender != market || !isRegisteredMarket[market]) revert InvalidConfiguration();
+        uint256 marketTotal = marketOutstandingCollateral[market] + amount;
+        uint256 protocolTotal = totalOutstandingCollateral + amount;
+        if (marketTotal > maxMarketCollateral || protocolTotal > maxProtocolCollateral) {
+            revert ExposureLimitExceeded();
+        }
+        marketOutstandingCollateral[market] = marketTotal;
+        totalOutstandingCollateral = protocolTotal;
+    }
+
+    function decreaseExposure(address market, uint256 amount) external {
+        if (msg.sender != market || !isRegisteredMarket[market]) revert InvalidConfiguration();
+        uint256 marketTotal = marketOutstandingCollateral[market];
+        uint256 protocolTotal = totalOutstandingCollateral;
+        if (amount > marketTotal || amount > protocolTotal) revert InvalidConfiguration();
+        unchecked {
+            marketOutstandingCollateral[market] = marketTotal - amount;
+            totalOutstandingCollateral = protocolTotal - amount;
+        }
+    }
+
     function batchRequestResolution(address[] calldata markets) external onlyRole(RESOLUTION_OPERATOR_ROLE) {
         _runBatch(markets, ArcSignalMarketV2.requestResolution.selector);
     }
@@ -180,6 +220,7 @@ contract ArcSignalFactoryV2 is AccessControl, ReentrancyGuard, IExposureControll
         if (params.initialLiquidity > 0 && params.initialLiquidity <= MIN_INITIAL_LIQUIDITY) {
             revert InvalidConfiguration();
         }
+        if (params.initialLiquidity > maxInitialLiquidity) revert ExposureLimitExceeded();
         if (!categoryRegistry.isActive(params.categoryId, params.categoryVersion)) revert InvalidConfiguration();
         if (!oraclePolicyRegistry.isActive(params.oraclePolicyId, params.oraclePolicyVersion)) {
             revert InvalidConfiguration();

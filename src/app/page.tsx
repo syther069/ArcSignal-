@@ -88,7 +88,7 @@ export default async function LandingPage() {
             </div>
             <h3 className="text-xl font-bold text-on-surface mb-3">3. Transparent Resolution</h3>
             <p className="text-on-surface-variant leading-relaxed">
-              When the event concludes, a server-side resolver checks the recorded external-data rule and the owner account submits the result on Arc Testnet. The owner remains a trusted settlement authority.
+              When the event concludes, a server-side resolver checks the recorded external-data rule and the owner account submits the result on Arc. The owner remains a trusted settlement authority.
             </p>
           </div>
 
@@ -210,7 +210,7 @@ export default async function LandingPage() {
       <div className="w-full max-w-5xl bg-gradient-to-b from-surface-container to-background border border-white/5 rounded-2xl p-16 text-center shadow-2xl top-lit-border mb-16">
         <h2 className="text-4xl font-bold text-on-surface mb-6">Ready to command the future?</h2>
         <p className="text-on-surface-variant max-w-lg mx-auto mb-10">
-          Explore experimental AI-generated markets on Arc Testnet. Contracts are unaudited and settlement is owner-controlled.
+          Explore AI-guided prediction markets on Arc. Follow or fade each prediction with real USDC.
         </p>
         <Link 
           href="/markets"

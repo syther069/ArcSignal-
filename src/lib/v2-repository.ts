@@ -1,4 +1,4 @@
-import { arcTestnet } from './contracts';
+import { arcChain } from './contracts';
 import { ARCSIGNAL_V2_ENABLED, ARCSIGNAL_V2_FACTORY_ADDRESS } from './contracts-v2';
 import { getSql } from './db';
 
@@ -85,7 +85,7 @@ function mapMarket(row: MarketRow): V2MarketRecord {
 export function v2Availability() {
   return {
     enabled: ARCSIGNAL_V2_ENABLED,
-    chainId: arcTestnet.id,
+    chainId: arcChain.id,
     factoryAddress: ARCSIGNAL_V2_FACTORY_ADDRESS,
   };
 }
@@ -93,17 +93,31 @@ export function v2Availability() {
 export async function getV2Markets(limit: number, offset: number) {
   const sql = getSql();
   const rows = await sql`
-    select * from markets_v2 where chain_id = ${BigInt(arcTestnet.id)}
-    order by created_block desc, market_id asc limit ${limit} offset ${offset}
+    select * from markets_v2
+    where (chain_id = ${BigInt(arcChain.id)} or chain_id = 5042002 or chain_id = 5042)
+    order by case when chain_id = ${BigInt(arcChain.id)} then 0 else 1 end, created_block desc, market_id asc
+    limit ${limit} offset ${offset}
   `;
-  return rows.map((row) => mapMarket(row as MarketRow));
+  const seen = new Set<string>();
+  const uniqueRows: MarketRow[] = [];
+  for (const row of rows as MarketRow[]) {
+    const id = String(row.market_id).toLowerCase();
+    if (!seen.has(id)) {
+      seen.add(id);
+      uniqueRows.push(row);
+    }
+  }
+  return uniqueRows.map(mapMarket);
 }
 
 export async function getV2Market(marketId: string) {
   const sql = getSql();
   const rows = await sql`
     select * from markets_v2
-    where chain_id = ${BigInt(arcTestnet.id)} and lower(market_id) = lower(${marketId}) limit 1
+    where (chain_id = ${BigInt(arcChain.id)} or chain_id = 5042002 or chain_id = 5042)
+      and lower(market_id) = lower(${marketId})
+    order by case when chain_id = ${BigInt(arcChain.id)} then 0 else 1 end
+    limit 1
   `;
   return rows[0] ? mapMarket(rows[0] as MarketRow) : null;
 }
@@ -115,13 +129,13 @@ export async function getV2MarketEvents(market: V2MarketRecord, eventNames?: str
   const rows = eventNames?.length
     ? await sql`
         select contract_address, transaction_hash, log_index, block_number, block_hash, event_name, payload
-        from indexed_events_v2 where chain_id = ${BigInt(arcTestnet.id)}
+        from indexed_events_v2 where chain_id = ${BigInt(arcChain.id)}
           and lower(contract_address) = any(${addresses}) and event_name = any(${eventNames})
         order by block_number asc, log_index asc
       `
     : await sql`
         select contract_address, transaction_hash, log_index, block_number, block_hash, event_name, payload
-        from indexed_events_v2 where chain_id = ${BigInt(arcTestnet.id)}
+        from indexed_events_v2 where chain_id = ${BigInt(arcChain.id)}
           and lower(contract_address) = any(${addresses})
         order by block_number asc, log_index asc
       `;
@@ -140,7 +154,7 @@ export async function getV2ProtocolEvents(eventNames: string[]) {
   const sql = getSql();
   const rows = await sql`
     select contract_address, transaction_hash, log_index, block_number, event_name, payload
-    from indexed_events_v2 where chain_id = ${BigInt(arcTestnet.id)} and event_name = any(${eventNames})
+    from indexed_events_v2 where chain_id = ${BigInt(arcChain.id)} and event_name = any(${eventNames})
     order by block_number asc, log_index asc
   `;
   return rows.map((row) => ({
@@ -158,7 +172,7 @@ export async function getV2Deployments() {
   const rows = await sql`
     select chain_id, protocol_version, factory_address, deployment_block, deployment_tx_hash,
       bytecode_manifest, active_for_creation, created_at
-    from protocol_deployments where chain_id = ${BigInt(arcTestnet.id)} order by protocol_version desc
+    from protocol_deployments where chain_id = ${BigInt(arcChain.id)} order by protocol_version desc
   `;
   return rows.map((row) => ({
     chainId: String(row.chain_id),
@@ -176,12 +190,12 @@ export async function getV2Health() {
   const sql = getSql();
   const [checkpoint, marketCounts, reconciliation] = await Promise.all([
     sql`select block_number, block_hash, created_at from v2_index_checkpoints
-        where chain_id = ${BigInt(arcTestnet.id)} order by block_number desc limit 1`,
+        where chain_id = ${BigInt(arcChain.id)} order by block_number desc limit 1`,
     sql`select market_state, count(*)::int as count from markets_v2
-        where chain_id = ${BigInt(arcTestnet.id)} group by market_state`,
+        where chain_id = ${BigInt(arcChain.id)} group by market_state`,
     sql`select count(*) filter (where not is_solvent)::int as insolvent_count,
         max(checked_block) as checked_block, max(checked_at) as checked_at
-        from market_reconciliation_v2 where chain_id = ${BigInt(arcTestnet.id)}`,
+        from market_reconciliation_v2 where chain_id = ${BigInt(arcChain.id)}`,
   ]);
   return {
     ...v2Availability(),

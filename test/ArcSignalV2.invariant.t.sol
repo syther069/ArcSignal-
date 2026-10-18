@@ -68,6 +68,9 @@ contract PositionHandler {
 }
 
 contract ArcSignalV2InvariantTest is StdInvariant, Test {
+    uint256 private constant MAX_MARKET_COLLATERAL = 100_000e6;
+    uint256 private constant MAX_PROTOCOL_COLLATERAL = 1_000_000e6;
+    uint256 private constant MAX_INITIAL_LIQUIDITY = 10_000e6;
     InvariantUSDC private usdc;
     ArcSignalMarketV2 private market;
     PositionHandler private handler;
@@ -106,7 +109,10 @@ contract ArcSignalV2InvariantTest is StdInvariant, Test {
             address(policies),
             address(fees),
             address(marketDeployer),
-            address(ammDeployer)
+            address(ammDeployer),
+            MAX_MARKET_COLLATERAL,
+            MAX_PROTOCOL_COLLATERAL,
+            MAX_INITIAL_LIQUIDITY
         );
         marketDeployer.bindFactory(address(factory));
         ammDeployer.bindFactory(address(factory));

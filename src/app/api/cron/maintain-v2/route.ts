@@ -3,6 +3,7 @@ import { createPublicClient, createWalletClient, http, type Address, type Hash }
 import { privateKeyToAccount } from 'viem/accounts';
 import { authorizeCronRequest } from '@/lib/cron-auth';
 import { arcTestnet } from '@/lib/contracts';
+import { resolveArcRpcUrl } from '@/lib/arc-network';
 import {
   ARCSIGNAL_FACTORY_V2_ABI,
   ARCSIGNAL_V2_ENABLED,
@@ -14,10 +15,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const RPC_URL = process.env.ARC_RPC_URL
-  ?? process.env.ARC_TESTNET_RPC_URL
-  ?? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL
-  ?? 'https://rpc.testnet.arc.io';
+const RPC_URL = resolveArcRpcUrl();
 
 type MaintenanceMarket = {
   market_address: string;

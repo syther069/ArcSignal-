@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import Sidebar from '@/components/layout/Sidebar';
 import ConnectWalletButton from '@/components/wallet/ConnectWalletButton';
-import { arcTestnet, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
+import { arcChain, ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS } from '@/lib/contracts';
 import { Stake as BaseStake } from '@/types';
 import toast from 'react-hot-toast';
 import { profileUploadMessage, sha256Hex } from '@/lib/profile-upload-auth';
@@ -73,7 +73,7 @@ interface ProfileClientProps {
 
 export default function ProfileClient({ walletAddress, isPublic = false }: ProfileClientProps) {
   const { address: connectedAddress, isConnected, chainId } = useAccount();
-  const publicClient = usePublicClient({ chainId: arcTestnet.id });
+  const publicClient = usePublicClient({ chainId: arcChain.id });
   
   // The address we are viewing
   const targetAddress = (isPublic ? walletAddress : connectedAddress) as Address | undefined;
@@ -87,7 +87,7 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
     abi: ARCSIGNAL_ABI,
     functionName: 'getProfile',
     args: targetAddress ? [targetAddress] : undefined,
-    chainId: arcTestnet.id,
+    chainId: arcChain.id,
     query: { enabled: !!targetAddress },
   });
 
@@ -290,8 +290,8 @@ export default function ProfileClient({ walletAddress, isPublic = false }: Profi
       toast.error('ARC RPC is unavailable. Please try again.');
       return;
     }
-    if (chainId !== arcTestnet.id) {
-      toast.error('Switch to ARC Testnet before updating your profile.');
+    if (chainId !== arcChain.id) {
+      toast.error(`Switch to ${arcChain.name} (${arcChain.id}) before updating your profile.`);
       return;
     }
 

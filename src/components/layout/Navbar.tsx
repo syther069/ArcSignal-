@@ -92,19 +92,20 @@ export default function Navbar() {
 
 
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => { void openFunding(); }}
+              className="flex min-h-[38px] items-center gap-1.5 rounded-full border border-[#ddb7ff]/30 bg-[#ddb7ff]/10 hover:bg-[#ddb7ff]/20 px-3.5 py-1.5 text-xs font-semibold text-[#ddb7ff] transition-all hover:scale-105 active:scale-95 shadow-[0_0_12px_rgba(221,183,255,0.15)]"
+              title="Bridge USDC via Circle CCTP"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Bridge USDC</span>
+            </button>
             {isConnected && (
               <div className="flex items-center gap-2 bg-[#1c1b1b] px-3 py-1.5 rounded-lg border border-[#403947]">
                 <span className="text-sm font-[family-name:var(--font-jetbrains-mono)] text-[#f1eef4]">
                   {usdcBalance ?? '…'} USDC
                 </span>
-                <button
-                  onClick={() => { void openFunding(); }}
-                  className="w-11 h-11 rounded-md bg-[#ddb7ff]/10 hover:bg-[#ddb7ff]/20 text-[#ddb7ff] flex items-center justify-center transition-colors border border-[#ddb7ff]/20"
-                  title="Bridge testnet USDC to Arc"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
               </div>
             )}
             <div className="opacity-90 hover:opacity-100 transition-opacity">

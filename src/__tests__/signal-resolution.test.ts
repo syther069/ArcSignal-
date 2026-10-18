@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const m = vi.hoisted(() => ({ query: vi.fn(), signals: vi.fn(), store: vi.fn(), read: vi.fn(), receipt: vi.fn(), block: vi.fn(), decode: vi.fn() }));
 vi.mock('viem', () => ({ createPublicClient: () => ({ readContract: m.read, getTransactionReceipt: m.receipt, getBlock: m.block }), http: vi.fn(), decodeEventLog: m.decode }));
-vi.mock('@/lib/contracts', () => ({ ARCSIGNAL_ABI: [], ARCSIGNAL_ADDRESS: '0xTestContract', arcTestnet: {} }));
+vi.mock('@/lib/contracts', () => ({ ARCSIGNAL_ABI: [], ARCSIGNAL_ADDRESS: '0xTestContract', arcTestnet: {}, arcChain: {} }));
 vi.mock('@/lib/db', () => ({ getSql: () => m.query }));
 vi.mock('@/lib/signal-intelligence/repository', () => ({ getSignals: m.signals, storeResolution: m.store }));
 import { reconcileSignals } from '@/lib/signal-intelligence/resolution';
