@@ -25,7 +25,7 @@ import {
 import { upsertGeneratedMarketIndex } from '@/lib/indexed-markets';
 import { clearChainMarketSnapshotCache } from '@/lib/market-source';
 import { clearMarketCache } from '@/lib/markets';
-import { checkV2SettlementReady, v2OraclePolicyVersion } from '@/lib/v2-settlement-readiness';
+import { checkV2SettlementReady, v2DisputeBond, v2OraclePolicyVersion } from '@/lib/v2-settlement-readiness';
 import { approvedDraftsToPublish, livePriceMap, markDraftFailed, markDraftPublished } from '@/lib/trend-drafts';
 import { draftCriteria, draftQuestion, validateDraftIdea } from '@/lib/trend-drafts-shared';
 import { generatePulse, storePulse } from '@/lib/x-pulse';
@@ -39,7 +39,9 @@ const V2_ORACLE_POLICY_ID = 1;
 const V2_ORACLE_POLICY_VERSION = v2OraclePolicyVersion();
 const V2_LIVENESS_SECONDS = 3_600n;
 const V2_VOID_GRACE_SECONDS = 7_200n;
-const V2_PROPOSER_BOND = 1_000_000n;
+// The bond a disputer must post to challenge a proposed result (USDC, 6 decimals). Must be >= the
+// oracle policy's minBond. Too low lets anyone freeze a market cheaply.
+const V2_PROPOSER_BOND = v2DisputeBond();
 const V2_ORACLE_REWARD = 0n;
 const V2_INITIAL_LIQUIDITY = 0n;
 
@@ -132,6 +134,10 @@ export async function POST(req: Request) {
       console.warn(v2Fallback);
     }
   }
+
+  // V2 results are observed by the settle-v2 job, which runs on a ~5 minute schedule: allow the
+  // policy maximum (300s) after close. V1 keeps its original 120s window.
+  const observationDelaySeconds = createOnV2 ? 300 : 120;
 
   if (!activeArcNetwork.testnet && !createOnV2 && (!CONTRACT_ADDRESS || CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000')) {
     return NextResponse.json({
@@ -480,7 +486,7 @@ export async function POST(req: Request) {
               targetPrice: job.threshold,
               comparator: 'gte',
               resolutionTimestamp: Number(job.resolutionTime),
-              maxObservationDelaySeconds: 120,
+              maxObservationDelaySeconds: observationDelaySeconds,
             },
           };
           const symbolUpper = job.coin.symbol.toUpperCase();
@@ -647,7 +653,7 @@ export async function POST(req: Request) {
               trendPosts: draft.citations.filter((c) => c.kind === 'x').map((c) => c.url).slice(0, 3),
               oracle: {
                 version: ORACLE_POLICY_VERSION, settlementModel: 'ai-agreement-v1', provider: 'coingecko', symbol: draft.symbol,
-                targetPrice: draft.threshold, comparator: 'gte', resolutionTimestamp: Number(resolutionTime), maxObservationDelaySeconds: 120,
+                targetPrice: draft.threshold, comparator: 'gte', resolutionTimestamp: Number(resolutionTime), maxObservationDelaySeconds: observationDelaySeconds,
               },
             };
             const creation = await createConfiguredMarket({

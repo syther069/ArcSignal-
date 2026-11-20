@@ -109,4 +109,10 @@ export const SIGNAL_OPERATIONS_MIGRATION = [
     summary text not null, citations jsonb not null default '[]'::jsonb, model text not null,
     evidence_hash text not null check (evidence_hash ~ '^[a-f0-9]{64}$'), created_at timestamptz not null default now()
   )`,
+  // Mirrors db/migrations/009_close_observations.sql.
+  `create table if not exists close_observations (
+    market_id text primary key, symbol text not null, price double precision not null check (price > 0),
+    observed_at bigint not null, provider text not null, close_time bigint not null,
+    created_at timestamptz not null default now()
+  )`,
 ] as const;

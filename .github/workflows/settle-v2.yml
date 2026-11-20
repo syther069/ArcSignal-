@@ -1,0 +1,38 @@
+name: V2 settlement
+
+# Observes CoinGecko prices right at each V2 market's close and proposes results to the
+# settlement oracle. Separate from the indexer because each run may wait up to ~5 minutes
+# for closes that are due. The job itself does nothing unless ENABLE_V2_SETTLEMENT=true.
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-settlement
+  cancel-in-progress: false
+
+jobs:
+  settle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Observe close prices and propose V2 results
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SETTLE_V2_URL: https://arc-signal.xyz/api/cron/settle-v2
+        run: |
+          test -n "$CRON_SECRET"
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --retry 1 \
+            --connect-timeout 10 \
+            --max-time 295 \
+            --request POST \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "$SETTLE_V2_URL"

@@ -16,6 +16,7 @@ const migrationFiles = [
   'db/migrations/006_grok_phase2.sql',
   'db/migrations/007_grok_phase3.sql',
   'db/migrations/008_draft_sentiment.sql',
+  'db/migrations/009_close_observations.sql',
 ];
 const statements = migrationFiles.flatMap(file => readFileSync(file, 'utf8').split('-- statement').map(s => s.trim()).filter(Boolean));
 // Isolated schema test, in one transaction. No test records survive a success or failure.

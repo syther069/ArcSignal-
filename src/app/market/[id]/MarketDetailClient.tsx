@@ -47,6 +47,7 @@ import PriceMoveNote from '@/components/markets/PriceMoveNote';
 import AskGrok from '@/components/markets/AskGrok';
 import EvidencePack from '@/components/markets/EvidencePack';
 import TrendingBadge from '@/components/markets/TrendingBadge';
+import SettlementStatus from '@/components/markets/SettlementStatus';
 import ShareOnX from '@/components/markets/ShareOnX';
 import { MarketTimeline } from '@/components/markets/MarketTimeline';
 import { CountdownTimer } from '@/components/markets/CountdownTimer';
@@ -603,6 +604,13 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
               </div>
 
               {!isOpen ? <EvidencePack marketId={market.marketId} /> : null}
+
+              {isV2 && !isOpen && v2MarketAddress && process.env.NEXT_PUBLIC_V2_SETTLEMENT_LIVE === 'true' ? (
+                <SettlementStatus
+                  marketAddress={v2MarketAddress}
+                  onChange={() => void Promise.all([refetchV2YesBalance(), refetchV2NoBalance(), refetchV2Reserves()])}
+                />
+              ) : null}
 
               {/* Research, Analysis & Settlement Section */}
               <ResolutionCard

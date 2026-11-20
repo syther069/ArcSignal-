@@ -42,3 +42,10 @@ export function chainMismatch(rpcChainId: number | null, configuredChainId: numb
   return rpcChainId === configuredChainId ? null
     : `RPC is chain ${rpcChainId} but ArcSignal is configured for chain ${configuredChainId}; refusing to index.`;
 }
+
+/** Dispute bond for new V2 markets, from ARCSIGNAL_V2_DISPUTE_BOND_USDC (default 25 USDC), in 6-decimal units. */
+export function v2DisputeBond(env: Record<string, string | undefined> = process.env): bigint {
+  const usdc = Number(env.ARCSIGNAL_V2_DISPUTE_BOND_USDC ?? 25);
+  if (!Number.isFinite(usdc) || usdc < 1 || usdc > 10_000) return 25_000_000n;
+  return BigInt(Math.round(usdc * 1_000_000));
+}

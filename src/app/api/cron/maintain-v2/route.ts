@@ -87,7 +87,9 @@ async function maintainV2(request: Request) {
       } else if (row.oracle_state === 'NONE' && closeTime <= now && now + liveness <= voidAfter) {
         requestCandidates.push(address);
       } else if (
-        row.oracle_state !== 'NONE' && row.oracle_state !== 'SETTLED'
+        // Only proposed results can settle (disputes wait for the arbiter). The oracle counts the
+        // dispute window from the proposal, so a too-early call simply no-ops in the batch.
+        row.oracle_state === 'PROPOSED'
           && row.resolution_requested_at !== null
           && now >= BigInt(row.resolution_requested_at) + liveness
       ) {

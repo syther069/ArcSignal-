@@ -162,6 +162,19 @@ export function summarizeResolution(input: {
       trustNote: 'Until settlement is live, this market cannot pay out a winning side. Trade with that in mind.',
     };
   }
+  if (input.settlementLive === true) {
+    return {
+      who: 'The ArcSignal operator proposes the result from the stated source, checked right at close.',
+      source,
+      disputeWindow: input.livenessSeconds
+        ? `${formatDuration(input.livenessSeconds)} after the result is proposed. Anyone can dispute it in that time by posting a bond.`
+        : 'Set per market; not indexed yet.',
+      ifUnclear: input.voidAfterSeconds && input.voidAfterSeconds > 0
+        ? `If no result is settled within ${formatDuration(input.voidAfterSeconds)} of closing, the market is voided and you can redeem your collateral.`
+        : 'If no result is settled in time, the market can be voided and collateral returned.',
+      trustNote: 'Disputed results are decided by a multisig arbiter, not by the operator alone. If the arbiter sides with the disputer, their bond is returned.',
+    };
+  }
   return {
     who: 'The ArcSignal operator proposes the result after the market closes.',
     source,

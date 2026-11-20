@@ -21,7 +21,8 @@ import {ArcSignalSettlementOracleV2} from "../src/contracts/v2/ArcSignalSettleme
 ///   SETTLEMENT_PROPOSER       resolver key that proposes results (not the admin)
 ///   SETTLEMENT_ARBITER        multisig that arbitrates disputes
 ///   SETTLEMENT_TREASURY       receives rewards and forfeited dispute bonds
-///   SETTLEMENT_MIN_BOND       optional, default 1 USDC (1e6). Must be <= the bond markets are created with.
+///   SETTLEMENT_MIN_BOND       optional, default 25 USDC (25e6). Must be <= ARCSIGNAL_V2_DISPUTE_BOND_USDC,
+///                             the bond the market job creates markets with, or market creation reverts.
 ///   SETTLEMENT_RULES_URI      optional, default "ipfs://arcsignal/oracle/settlement-v1"
 ///   ALLOW_EOA_ARBITER         optional, "true" only for testnet: allows a plain wallet as arbiter/owner
 contract RegisterSettlementOracle is Script {
@@ -49,7 +50,7 @@ contract RegisterSettlementOracle is Script {
             proposer: vm.envAddress("SETTLEMENT_PROPOSER"),
             arbiter: vm.envAddress("SETTLEMENT_ARBITER"),
             treasury: vm.envAddress("SETTLEMENT_TREASURY"),
-            minBond: uint128(vm.envOr("SETTLEMENT_MIN_BOND", uint256(1e6))),
+            minBond: uint128(vm.envOr("SETTLEMENT_MIN_BOND", uint256(25e6))),
             rulesURI: vm.envOr("SETTLEMENT_RULES_URI", string("ipfs://arcsignal/oracle/settlement-v1")),
             allowEoaArbiter: vm.envOr("ALLOW_EOA_ARBITER", false)
         }));
