@@ -18,7 +18,10 @@ process.loadEnvFile('.env.local');
 const broadcast = process.argv.includes('--broadcast');
 const RPC = 'https://rpc.mainnet.arc.io';
 const COMPROMISED = ['0x93c55fdc841835fb61b944c6970f334ad4a2a5d6', '0xa53ad24909d9e5f4ee015b90eaa0fba5c0b9a9a5'];
-const MIN_GAS_USDC = 1.2; // dry run measured ~0.97 USDC at 45-50 gwei
+const GAS_UNITS = 21_283_870; // measured by the mainnet dry run
+// Fee cap per gas unit. Arc's base fee was a steady 20 gwei on 2026-11-21; the cap bounds the worst case.
+const MAX_GAS_GWEI = Number(process.env.DEPLOY_MAX_GAS_GWEI ?? 30);
+const MIN_GAS_USDC = (GAS_UNITS * MAX_GAS_GWEI) / 1e9 * 1.05;
 
 function fail(message) {
   console.error(`STOP: ${message}`);
@@ -48,7 +51,8 @@ const chainId = await client.getChainId();
 if (chainId !== 5042) fail(`RPC is chain ${chainId}, expected Arc mainnet 5042`);
 const gasUsdc = Number(await client.getBalance({ address: deployer })) / 1e18;
 console.log(`Deployer ${deployer}: ${gasUsdc} USDC for gas`);
-if (broadcast && gasUsdc < MIN_GAS_USDC) fail(`deployer needs at least ${MIN_GAS_USDC} USDC for gas; it has ${gasUsdc}`);
+console.log(`Worst case at the ${MAX_GAS_GWEI} gwei cap: ${MIN_GAS_USDC.toFixed(4)} USDC`);
+if (broadcast && gasUsdc < MIN_GAS_USDC) fail(`deployer needs at least ${MIN_GAS_USDC.toFixed(4)} USDC for gas; it has ${gasUsdc}`);
 
 const rulesURI = 'ipfs://arcsignal/oracle/settlement-v1';
 const env = {
@@ -71,7 +75,8 @@ const env = {
   ORACLE_RULES_HASH: keccak256(toBytes(rulesURI)),
 };
 const forge = process.platform === 'win32' ? 'forge.exe' : 'forge';
-const args = ['script', 'script/DeployArcSignalV2.s.sol', '--rpc-url', RPC, '--slow', ...(broadcast ? ['--broadcast'] : [])];
+const args = ['script', 'script/DeployArcSignalV2.s.sol', '--rpc-url', RPC, '--slow',
+  '--with-gas-price', `${MAX_GAS_GWEI}gwei`, '--priority-gas-price', '2gwei', ...(broadcast ? ['--broadcast'] : [])];
 console.log(broadcast ? 'Broadcasting the real deployment...' : 'Dry run (nothing is sent)...');
 const run = spawnSync(forge, args, { env, encoding: 'utf8' });
 const output = `${run.stdout ?? ''}${run.stderr ?? ''}`;

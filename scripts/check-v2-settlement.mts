@@ -56,7 +56,17 @@ if (readiness.ready) {
 
 const singleOperator = process.env.ALLOW_SINGLE_OPERATOR === 'true' || process.env.NEXT_PUBLIC_V2_SINGLE_OPERATOR === 'true';
 out.singleOperatorMode = singleOperator;
-const rolesOk = singleOperator || (out.arbiterIsMultisigContract && out.ownerIsMultisigContract);
-const ok = readiness.ready && rolesOk && out.resolverIsProposer && out.bondOk !== false;
-out.verdict = ok ? (singleOperator ? 'READY (single-operator mode: one wallet proposes and decides disputes)' : 'READY: safe to set ENABLE_V2_SETTLEMENT=true') : 'NOT READY: see fields above';
+const blockers: string[] = [];
+const warnings: string[] = [];
+if (!readiness.ready) blockers.push(readiness.reason);
+if (readiness.ready && out.resolverIsProposer !== true) blockers.push('the configured proposer key is not the oracle proposer');
+if (out.bondOk === false) blockers.push('dispute bond is below the policy minimum');
+const gas = out.resolverGasBalanceUsdc as number | null | undefined;
+if (readiness.ready && (gas === null || gas === undefined || gas < 0.05)) blockers.push('operator wallet needs USDC for gas (at least 0.05)');
+if (readiness.ready && !out.arbiterIsMultisigContract) warnings.push('arbiter is a single wallet, not a multisig: move it with setArbiter when you can');
+if (readiness.ready && !out.ownerIsMultisigContract) warnings.push('owner is a single wallet, not a multisig: move it with setOwner when you can');
+if (singleOperator) warnings.push('single-operator mode: one wallet proposes results and decides disputes');
+out.blockers = blockers;
+out.warnings = warnings;
+out.verdict = blockers.length ? 'NOT READY: fix the blockers' : warnings.length ? 'READY, with warnings' : 'READY';
 console.log(JSON.stringify(out, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 2));
