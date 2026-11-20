@@ -23,3 +23,37 @@ describe('analysis provider transport metadata', () => {
     expect((await generateAnalysis('test prompt')).provenance).toBeUndefined();
   });
 });
+describe('xAI (Grok) provider', () => {
+  it('records xAI provenance and the live X/web sources Grok cited', async () => {
+    vi.stubEnv('XAI_API_KEY', 'test-only'); vi.stubEnv('XAI_MODEL', '');
+    const body = { id: 'xai-response', model: 'grok-test', output: [
+      { type: 'x_search_call' },
+      { type: 'message', content: [{ type: 'output_text', text: `Evidence [[1]](https://x.com/i/status/1). ${analysis}`,
+        annotations: [{ type: 'url_citation', url: 'https://x.com/i/status/1', title: '1' }, { type: 'url_citation', url: 'https://www.coindesk.com/a', title: 'CoinDesk story' }] }] },
+    ] };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(body)));
+    vi.stubGlobal('fetch', fetchMock);
+    const result = await generateAnalysis('test prompt', true, 'xai');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api.x.ai/v1/responses');
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sent.tools.map((t: { type: string }) => t.type)).toEqual(['x_search', 'web_search']);
+    expect(sent.tools[0].from_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(result.provenance).toMatchObject({ provider: 'xAI', model: 'grok-test', responseId: 'xai-response' });
+    expect(result.citations).toEqual([
+      { url: 'https://x.com/i/status/1', title: null, kind: 'x' },
+      { url: 'https://www.coindesk.com/a', title: 'CoinDesk story', kind: 'web' },
+    ]);
+    expect(result.probability).toBe(60);
+  });
+  it('never falls back to another provider under the Grok name', async () => {
+    vi.useFakeTimers();
+    vi.stubEnv('XAI_API_KEY', 'test-only'); vi.stubEnv('GROQ_API_KEY', 'test-only');
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => new Response('down', { status: 503 })));
+    const pending = generateAnalysis('test prompt', true, 'xai');
+    const assertion = expect(pending).rejects.toThrow(/xAI/);
+    await vi.runAllTimersAsync();
+    await assertion;
+    expect(create).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+});

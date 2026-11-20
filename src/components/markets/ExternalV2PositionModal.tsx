@@ -10,6 +10,8 @@ import { arcChain } from '@/lib/contracts';
 import { USDC_ABI, USDC_ADDRESS } from '@/lib/usdc';
 import { ARCSIGNAL_MARKET_V2_ABI, OUTCOME_TOKEN_V2_ABI, PREDICTION_MARKET_AMM_V2_ABI } from '@/lib/contracts-v2';
 import { quoteV2ExactInput } from '@/lib/v2-market-math';
+import { positionPreview, sideBuysYes } from '@/lib/market-insight';
+import { SLIPPAGE_BPS, formatUsdc, friendlyError, parseUsdc } from '@/lib/v2-trade-ui';
 import { useWallet } from '@/hooks/useWallet';
 import { useArcUsdcBalance } from '@/hooks/useArcUsdcBalance';
 import { useFundUSDCModalLoader } from '@/hooks/useFundUSDCModalLoader';
@@ -18,53 +20,29 @@ import { useTradingDialog } from '@/components/layout/TradingDesign';
 type PositionSide = 'FOLLOW' | 'FADE';
 type Step = 'idle' | 'approving-usdc' | 'minting' | 'approving-outcome' | 'swapping' | 'success';
 
-const SLIPPAGE_BPS = 250n;
 const BPS = 10_000n;
 const MIN_POSITION = parseUnits('1', 6);
+const APPROVAL_BUDGET_MULTIPLE = 5n;
 
 function isAddress(value: string | undefined): value is Address {
   return Boolean(value && /^0x[a-fA-F0-9]{40}$/.test(value));
 }
 
-function parseUsdc(value: string) {
-  if (!/^\d*(?:\.\d{0,6})?$/.test(value)) return null;
-  try {
-    return value && Number(value) > 0 ? parseUnits(value, 6) : 0n;
-  } catch {
-    return null;
-  }
-}
-
-function formatUsdc(value: bigint | number | undefined) {
-  if (value === undefined) return '—';
-  if (typeof value === 'bigint') return `${Number(formatUnits(value, 6)).toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC`;
-  return `${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} USDC`;
-}
-
-function friendlyError(error: unknown) {
-  const raw = error instanceof Error ? error.message : String(error);
-  const lower = raw.toLowerCase();
-  if (lower.includes('user rejected') || lower.includes('user denied')) return 'Transaction cancelled in wallet.';
-  if (lower.includes('slippage')) return 'The AMM price moved or liquidity is too thin. Try a smaller amount.';
-  if (lower.includes('insufficient') || lower.includes('exceeds the balance')) return 'Insufficient USDC balance for this position.';
-  if (lower.includes('allowance')) return 'Allowance is too low. Please approve again.';
-  if (lower.includes('marketunavailable') || lower.includes('invalidstate')) return 'This Arc V2 market is not open for trading.';
-  if (lower.includes('failed to fetch') || lower.includes('network')) return 'Network error — please check your connection and try again.';
-  const first = raw.split(/(?:Details:|Docs:|Contract Call:|Version:)/i)[0].trim();
-  return first.length > 140 ? `${first.slice(0, 137)}…` : first || 'Something went wrong. Please try again.';
-}
-
 export function ExternalV2PositionModal({
   market,
   initialSide,
+  quickBetLimit,
   onClose,
 }: {
   market: ArcSignalLiveMarket;
   initialSide: PositionSide;
+  /** Quick-bet limit in USDC: pre-fills the amount and is also a hard ceiling. */
+  quickBetLimit?: number;
   onClose: () => void;
 }) {
+  const amountCap = quickBetLimit;
   const dialogRef = useTradingDialog(true);
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState(quickBetLimit ? String(quickBetLimit) : '');
   const [side, setSide] = useState<PositionSide>(initialSide);
   const [step, setStep] = useState<Step>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +51,9 @@ export function ExternalV2PositionModal({
   const [tokenAddresses, setTokenAddresses] = useState<{ yes: Address; no: Address } | null>(null);
   const [txHash, setTxHash] = useState<Hash | null>(null);
   const [fundingOpen, setFundingOpen] = useState(false);
+  // Approving a small budget once (5x this trade) lets repeat trades skip two of the four
+  // wallet confirmations. Never unlimited; users can opt into exact-amount approvals.
+  const [exactApproval, setExactApproval] = useState(false);
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
   const publicClient = usePublicClient({ chainId: arcChain.id });
@@ -87,7 +68,9 @@ export function ExternalV2PositionModal({
   const amountRaw = parsedAmount ?? 0n;
   const invalidAmount = amount.length > 0 && parsedAmount === null;
   const balance = erc20Raw ?? 0n;
-  const suggestedSide = market.aiSuggestedSide === 'NO' ? 'FADE' : 'FOLLOW';
+  // FOLLOW always backs the AI's pick; the token it buys depends on that pick.
+  const buysYes = sideBuysYes(side, market.aiSuggestedSide);
+  const tokenLabel = buysYes ? 'YES' : 'NO';
 
   useEffect(() => {
     if (!publicClient) return;
@@ -110,17 +93,8 @@ export function ExternalV2PositionModal({
         setFees({ protocol: BigInt(protocolFeeBps), lp: BigInt(lpFeeBps) });
         if (Number(state) !== 0) setError('This Arc V2 market is not open for new positions.');
       } catch {
-        if (!cancelled) {
-          const prob = Math.max(0.02, Math.min(0.98, market.marketProbability || (market.yesPrice ?? 0.5)));
-          const yesReserve = BigInt(Math.max(1, Math.round(10_000 * (1 - prob)))) * 10n ** 6n;
-          const noReserve = BigInt(Math.max(1, Math.round(10_000 * prob))) * 10n ** 6n;
-          setReserves({ yes: yesReserve, no: noReserve });
-          setFees({ protocol: 50n, lp: 100n });
-          setTokenAddresses({
-            yes: (readyAddresses ? marketAddress : USDC_ADDRESS) as Address,
-            no: (readyAddresses ? ammAddress : USDC_ADDRESS) as Address,
-          });
-        }
+        // No made-up prices or token addresses: without live data the trade stays disabled.
+        if (!cancelled) setError('Could not read live market data from Arc. Please try again in a moment.');
       }
     })();
     return () => {
@@ -130,8 +104,8 @@ export function ExternalV2PositionModal({
 
   let quote = 0n;
   if (reserves && fees && amountRaw > 0n) {
-    const inputTokenReserve = side === 'FOLLOW' ? reserves.no : reserves.yes;
-    const outputTokenReserve = side === 'FOLLOW' ? reserves.yes : reserves.no;
+    const inputTokenReserve = buysYes ? reserves.no : reserves.yes;
+    const outputTokenReserve = buysYes ? reserves.yes : reserves.no;
     quote = quoteV2ExactInput({
       amountIn: amountRaw,
       reserveIn: inputTokenReserve,
@@ -142,11 +116,17 @@ export function ExternalV2PositionModal({
   }
 
   const finalExposure = amountRaw + quote;
+  const preview = amountRaw > 0n && quote > 0n
+    ? positionPreview(Number(formatUnits(amountRaw, 6)), Number(formatUnits(finalExposure, 6)))
+    : null;
   const minOut = quote * (BPS - SLIPPAGE_BPS) / BPS;
   const hasLiquidity = Boolean(reserves && reserves.yes > 0n && reserves.no > 0n);
   const needsFunding = amountRaw > 0n && erc20Raw !== null && amountRaw > balance;
+  const overCap = amountCap !== undefined && amountRaw > parseUnits(String(amountCap), 6);
   const validation = invalidAmount
     ? 'Enter a valid USDC amount with up to 6 decimals.'
+    : overCap
+      ? `This is above your ${amountCap} USDC quick-bet limit. Lower the amount, or open the regular trade box to bet more.`
     : amountRaw > 0n && amountRaw < MIN_POSITION
       ? 'Minimum position is 1.00 USDC.'
       : needsFunding
@@ -182,6 +162,7 @@ export function ExternalV2PositionModal({
       });
       if (freshBalance < amountRaw) throw new Error('Insufficient USDC balance for this position.');
 
+      const approvalAmount = exactApproval ? amountRaw : amountRaw * APPROVAL_BUDGET_MULTIPLE;
       const mAddr = readyAddresses ? (marketAddress as Address) : undefined;
       const aAddr = readyAddresses ? (ammAddress as Address) : undefined;
       const bytecode = mAddr ? await publicClient.getBytecode({ address: mAddr }).catch(() => null) : null;
@@ -200,7 +181,7 @@ export function ExternalV2PositionModal({
             address: USDC_ADDRESS,
             abi: USDC_ABI,
             functionName: 'approve',
-            args: [mAddr, amountRaw],
+            args: [mAddr, approvalAmount],
           });
           const receipt = await publicClient.waitForTransactionReceipt({ hash: approveHash });
           if (receipt.status !== 'success') throw new Error('USDC approval failed on-chain.');
@@ -218,8 +199,8 @@ export function ExternalV2PositionModal({
         const mintReceipt = await publicClient.waitForTransactionReceipt({ hash: mintHash });
         if (mintReceipt.status !== 'success') throw new Error('Position mint failed on-chain.');
 
-        const unwantedToken = side === 'FOLLOW' ? tokenAddresses.no : tokenAddresses.yes;
-        const swapFunction = side === 'FOLLOW' ? 'swapExactNoForYes' : 'swapExactYesForNo';
+        const unwantedToken = buysYes ? tokenAddresses.no : tokenAddresses.yes;
+        const swapFunction = buysYes ? 'swapExactNoForYes' : 'swapExactYesForNo';
         const outcomeAllowance = await publicClient.readContract({
           address: unwantedToken,
           abi: OUTCOME_TOKEN_V2_ABI,
@@ -234,7 +215,7 @@ export function ExternalV2PositionModal({
             address: unwantedToken,
             abi: OUTCOME_TOKEN_V2_ABI,
             functionName: 'approve',
-            args: [aAddr, amountRaw],
+            args: [aAddr, approvalAmount],
           });
           const receipt = await publicClient.waitForTransactionReceipt({ hash: approveOutcomeHash });
           if (receipt.status !== 'success') throw new Error('Outcome token approval failed on-chain.');
@@ -244,7 +225,7 @@ export function ExternalV2PositionModal({
           address: aAddr,
           abi: PREDICTION_MARKET_AMM_V2_ABI,
           functionName: 'quoteExactInput',
-          args: [side !== 'FOLLOW', amountRaw],
+          args: [!buysYes, amountRaw],
         });
         const liveMinOut = liveQuote * (BPS - SLIPPAGE_BPS) / BPS;
         if (liveMinOut <= 0n) throw new Error('AMM liquidity is too thin for this position.');
@@ -263,18 +244,8 @@ export function ExternalV2PositionModal({
 
         setTxHash(swapHash);
       } else {
-        setStep('minting');
-        const tx = await walletClient.writeContract({
-          account: address,
-          chain: arcChain,
-          address: USDC_ADDRESS,
-          abi: USDC_ABI,
-          functionName: 'approve',
-          args: [address, amountRaw],
-        });
-        const receipt = await publicClient.waitForTransactionReceipt({ hash: tx });
-        if (receipt.status !== 'success') throw new Error('USDC transaction failed on Arc Mainnet.');
-        setTxHash(tx);
+        // Never send a placeholder transaction and call it a position.
+        throw new Error('This market contract could not be found on Arc, so no position was placed.');
       }
 
       setStep('success');
@@ -314,7 +285,7 @@ export function ExternalV2PositionModal({
             <div className="grid grid-cols-2 gap-2">
               {(['FOLLOW', 'FADE'] as const).map((value) => (
                 <button key={value} type="button" onClick={() => { setSide(value); setError(null); }} className={`min-h-[48px] rounded-xl border px-4 text-sm font-bold transition ${side === value ? `${value === 'FOLLOW' ? 'border-[#4FDBC8] bg-[#4FDBC8] text-[#131313]' : 'border-[#F3A6C8] bg-[#F3A6C8] text-[#240B35]'}` : 'border-[#403947] bg-[#252229] text-[#B0ABB5] hover:text-white'}`}>
-                  {value}{value === suggestedSide ? ' · AI' : ''}
+                  {value === 'FOLLOW' ? 'Follow AI' : 'Fade AI'} · {sideBuysYes(value, market.aiSuggestedSide) ? 'YES' : 'NO'}
                 </button>
               ))}
             </div>
@@ -347,15 +318,33 @@ export function ExternalV2PositionModal({
                 <span>Wallet: <strong className="text-[#F1EEF4]">{erc20Raw === null ? '…' : formatUsdc(balance)}</strong></span>
                 <span>Slippage limit: 2.5%</span>
               </div>
+              <label className="flex items-start gap-2 text-xs text-[#B0ABB5]">
+                <input type="checkbox" checked={exactApproval} onChange={(e) => setExactApproval(e.target.checked)} className="mt-0.5" />
+                <span>Approve this exact amount only. By default the app asks once for up to 5× this trade, so your next trades need fewer wallet confirmations.</span>
+              </label>
             </div>
 
             <div className="rounded-xl border border-[#403947] bg-[#252229] p-4 font-mono text-xs space-y-2">
               <div className="font-sans text-xs font-bold uppercase tracking-wider text-[#B0ABB5]">Position preview</div>
               <div className="flex justify-between gap-3"><span className="text-[#B0ABB5]">Collateral used</span><strong className="text-[#F1EEF4]">{formatUsdc(amountRaw)}</strong></div>
-              <div className="flex justify-between gap-3"><span className="text-[#B0ABB5]">Estimated extra {side === 'FOLLOW' ? 'YES' : 'NO'} from swap</span><strong className={accent.text}>{formatUsdc(quote)}</strong></div>
-              <div className="flex justify-between gap-3 border-t border-[#403947]/70 pt-2"><span className="text-[#F1EEF4]">Estimated final {side === 'FOLLOW' ? 'YES' : 'NO'} exposure</span><strong className={accent.text}>{formatUsdc(finalExposure)}</strong></div>
+              <div className="flex justify-between gap-3"><span className="text-[#B0ABB5]">Estimated extra {tokenLabel} from swap</span><strong className={accent.text}>{formatUsdc(quote)}</strong></div>
+              <div className="flex justify-between gap-3 border-t border-[#403947]/70 pt-2"><span className="text-[#F1EEF4]">Estimated final {tokenLabel} exposure</span><strong className={accent.text}>{formatUsdc(finalExposure)}</strong></div>
               {minOut > 0n && <div className="flex justify-between gap-3"><span className="text-[#B0ABB5]">Minimum swap output</span><strong className="text-[#F1EEF4]">{formatUsdc(minOut)}</strong></div>}
             </div>
+
+            {preview && (
+              <div className="grid grid-cols-2 gap-2 font-sans text-sm" aria-live="polite">
+                <div className="rounded-xl border border-[#4FDBC8]/30 bg-[#4FDBC8]/10 p-3">
+                  <span className="block text-xs text-[#B0ABB5]">If {side} is right</span>
+                  <strong className="text-[#4FDBC8]">You get ≈ {formatUsdc(preview.ifRight)}</strong>
+                  <span className="block text-xs text-[#B0ABB5]">profit ≈ {formatUsdc(preview.profitIfRight)}</span>
+                </div>
+                <div className="rounded-xl border border-[#FFB4AB]/30 bg-[#FFB4AB]/10 p-3">
+                  <span className="block text-xs text-[#B0ABB5]">If {side} is wrong</span>
+                  <strong className="text-[#FFB4AB]">You lose {formatUsdc(preview.ifWrong)}</strong>
+                </div>
+              </div>
+            )}
 
             {(validation || error) && (
               <div className="flex gap-2 rounded-xl border border-[#FFB4AB]/30 bg-[#FFB4AB]/10 p-3 text-sm text-[#FFB4AB]">

@@ -27,7 +27,7 @@ export default async function SignalCoveragePage() {
       || record.pendingReconciliation > 0,
   ).slice(0, 100);
   const counts = {
-    complete: values.filter(record => record.signalCount >= 3).length,
+    complete: values.filter(record => record.generationStatus === 'complete').length,
     queued: values.filter(record => ['scheduled', 'running'].includes(record.generationStatus)).length,
     retrying: values.filter(record => record.generationStatus === 'retrying').length,
     historical: values.filter(record => record.generationStatus === 'predates').length,

@@ -21,10 +21,10 @@ describe('Arc network profile', () => {
     expect(mainnet.rpcUrl).toBe('https://rpc.mainnet.arc.io');
     expect(mainnet.explorer).toBe('https://explorer.arc.io');
     expect(mainnet.usdc).toBe('0x3600000000000000000000000000000000000000');
-    expect(mainnet.arcsignal).toBeNull();
+    expect(mainnet.arcsignal).toMatch(/^0x[0-9a-fA-F]{40}$/);
     expect(mainnet.circleChain).toBe('Arc');
     expect(mainnet.testnet).toBe(false);
-    expect(mainnet.arcsignal).not.toBe(ARC_NETWORKS.testnet.arcsignal);
+    expect(mainnet.arcsignal?.toLowerCase()).not.toBe(ARC_NETWORKS.testnet.arcsignal?.toLowerCase());
   });
 
   it('validates chain readiness and rejects chain mismatch', async () => {

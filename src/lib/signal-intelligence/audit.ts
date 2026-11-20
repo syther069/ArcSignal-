@@ -11,6 +11,10 @@ export function hashAnalysis(signal: Omit<SignalAnalysis, 'analysisHash'>): stri
   // Hash the complete immutable record, including raw provider response and actual input snapshot.
   return createHash('sha256').update(canonical(signal), 'utf8').digest('hex');
 }
+/** SHA-256 of any JSON-like record, using the same canonical form as signals. */
+export function hashRecord(value: unknown): string {
+  return createHash('sha256').update(canonical(value), 'utf8').digest('hex');
+}
 export function verifyAnalysis(signal: SignalAnalysis): boolean {
   const { analysisHash, ...original } = signal;
   return analysisHash === hashAnalysis(original);

@@ -31,16 +31,16 @@ export default function GuidePage() {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-[#e5e2e1] mb-2 font-[family-name:var(--font-hanken)]">
-                    1. Get Testnet USDC
+                    1. Get USDC on Arc
                   </h2>
                   <p className="text-[#94a3b8] text-sm leading-relaxed mb-4">
-                    ArcSignal operates on the Arc Testnet using testnet USDC. Before you can place a position, you need to fund your wallet.
+                    ArcSignal runs on Arc mainnet with real USDC. USDC also pays the network fee, which is a fraction of a cent, so you don&apos;t need any other token.
                   </p>
                   <ul className="list-disc list-inside text-sm text-[#94a3b8] space-y-2 ml-1">
-                    <li>Click the <strong>Connect Wallet</strong> button in the top right.</li>
-                    <li>Once connected, click your address to open the wallet dropdown.</li>
-                    <li>Click the <strong>Get USDC</strong> button, or the <strong>+</strong> icon in the header.</li>
-                    <li>You will be redirected to the Circle Faucet to claim your testnet tokens.</li>
+                    <li>Click <strong>Connect Wallet</strong> in the top right. Use a browser wallet, or scan a QR code with a phone wallet.</li>
+                    <li>Click the <strong>+</strong> icon in the header, or <strong>Get USDC</strong> in the wallet menu.</li>
+                    <li>Pick where your USDC is now (Ethereum, Base or Arbitrum). Circle moves it to Arc for you.</li>
+                    <li>Your USDC arrives on Arc in a few minutes, even if your Arc wallet is brand new.</li>
                   </ul>
                 </div>
               </div>

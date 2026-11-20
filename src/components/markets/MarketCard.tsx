@@ -8,6 +8,8 @@ import { useReadContract } from 'wagmi';
 import { ARCSIGNAL_ABI, ARCSIGNAL_ADDRESS, arcChain } from '@/lib/contracts';
 import type { SerializableMarket } from '@/lib/markets';
 import { CountdownTimer } from './CountdownTimer';
+import { TrendingChip } from './TrendingBadge';
+import { trendInfo } from '@/lib/trend-drafts-shared';
 import {
   Brain,
   FileText,
@@ -196,6 +198,7 @@ export function MarketCard({ market, onFollow, onFade }: MarketCardProps) {
               {timeframe}
             </span>
           )}
+          <TrendingChip trend={trendInfo(market.analysis)} />
           {isActive && (
             <div className="w-1.5 h-1.5 rounded-full bg-[#4fdbc8] animate-pulse-dot" />
           )}

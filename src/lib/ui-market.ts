@@ -1,3 +1,4 @@
+import { trendInfo } from '@/lib/trend-drafts-shared';
 import { formatUnits } from 'viem';
 import type { SerializableMarket } from './types';
 import type { Market as UiMarket } from '@/types';
@@ -44,6 +45,7 @@ export function toUiMarket(market: SerializableMarket): UiMarket {
     proof: market.proof,
     category,
     subType: category === 'crypto' ? 'price' : undefined,
+    trend: trendInfo(market.analysis),
     title,
     description: market.analysis?.summary ?? title,
     agentPick: market.analysis?.prediction ?? 'YES',

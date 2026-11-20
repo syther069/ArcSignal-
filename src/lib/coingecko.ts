@@ -36,7 +36,15 @@ const MARKETS = [
   { id: 'ripple', symbol: 'xrp' },
   { id: 'avalanche-2', symbol: 'avax' },
 ] as const;
-const MARKET_IDS = MARKETS.map(({ id }) => id).join(',');
+/** Extra coins for X-trend markets, only with TREND_EXTRA_SYMBOLS=true (oracle-policy allows them under the same flag). */
+const EXTRA_MARKETS = [
+  { id: 'dogecoin', symbol: 'doge' },
+  { id: 'binancecoin', symbol: 'bnb' },
+  { id: 'chainlink', symbol: 'link' },
+  { id: 'the-open-network', symbol: 'ton' },
+] as const;
+const ACTIVE_MARKETS = process.env.TREND_EXTRA_SYMBOLS === 'true' ? [...MARKETS, ...EXTRA_MARKETS] : MARKETS;
+const MARKET_IDS = ACTIVE_MARKETS.map(({ id }) => id).join(',');
 
 let cachedAt = 0;
 let cachedCryptoData: CryptoData[] | null = null;
@@ -94,8 +102,11 @@ export function assertCryptoData(value: unknown): CryptoData[] {
       market_cap: data.market_cap,
       market_cap_rank: data.market_cap_rank,
       total_volume: data.total_volume,
-      high_24h: data.high_24h,
-      low_24h: data.low_24h,
+      // The live price and the 24h range can come from different snapshots or
+      // providers. A 24h range must contain the current price, so widen it
+      // rather than hand the AI an impossible "low above price" context.
+      high_24h: Math.max(data.high_24h, data.current_price),
+      low_24h: Math.min(data.low_24h, data.current_price),
       price_source: data.price_source,
       price_observed_at: data.price_observed_at,
     };
@@ -217,7 +228,7 @@ export async function fetchFreshCryptoPrices(): Promise<FreshCryptoPrice[]> {
 
   const data = raw as Record<string, unknown>;
   const prices: FreshCryptoPrice[] = [];
-  for (const market of MARKETS) {
+  for (const market of ACTIVE_MARKETS) {
     const value = data[market.id];
     if (typeof value !== 'object' || value === null || Array.isArray(value)) continue;
     const record = value as Record<string, unknown>;

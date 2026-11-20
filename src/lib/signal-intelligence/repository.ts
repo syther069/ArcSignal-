@@ -1,5 +1,6 @@
 import { getSql } from '@/lib/db';
 import { validateAnalysis, verifyAnalysis } from './audit';
+import { expectedSignalCount } from './agents';
 import { buildLeaderboard, scorePrediction } from './scoring';
 import type { AIAgent, AISignal, SignalAnalysis, SignalCoverageRecord, SignalResolution } from './types';
 
@@ -43,7 +44,8 @@ export async function getSignalCoverage(marketId?: string, limit = 10_000): Prom
       bool_or(abs(extract(epoch from (s.generated_at - (s.analysis->>'snapshotAt')::timestamptz))) > 120) as stale_snapshot
     from markets_index m
     left join signal_generation_jobs j on j.market_id = m.market_id
-    left join ai_signals s on s.market_id = m.market_id
+    -- Baselines (X crowd, market price) are scored for comparison but are not AI coverage.
+    left join ai_signals s on s.market_id = m.market_id and s.agent_id not like 'baseline-%'
     left join signal_scores r on r.signal_id = s.id
     where (${marketId ?? null}::text is null or m.market_id = ${marketId ?? null})
     group by m.market_id, m.question, m.category, m.status, m.resolution_time, m.resolved,
@@ -54,14 +56,14 @@ export async function getSignalCoverage(marketId?: string, limit = 10_000): Prom
   return rows.map(row => {
     const signalCount = Number(row.signal_count);
     const marketStatus = row.resolved ? 'RESOLVED' : String(row.market_status);
-    const generationStatus = signalCount >= 3 ? 'complete'
+    const generationStatus = signalCount >= expectedSignalCount() ? 'complete'
       : row.generation_status ? String(row.generation_status)
       : row.resolved ? 'predates'
       : marketStatus === 'OPEN' ? 'scheduled' : 'skipped';
     return {
       marketId: String(row.market_id), question: String(row.question), category: String(row.category), marketStatus,
       resolutionTime: Number(row.resolution_time), generationStatus: generationStatus as SignalCoverageRecord['generationStatus'],
-      signalCount, missingSignals: Math.max(0, 3 - signalCount), attemptCount: Number(row.attempt_count),
+      signalCount, missingSignals: Math.max(0, expectedSignalCount() - signalCount), attemptCount: Number(row.attempt_count),
       lastError: row.last_error ? String(row.last_error) : null,
       lastAttemptAt: row.last_attempt_at ? new Date(row.last_attempt_at).toISOString() : null,
       nextAttemptAt: row.next_attempt_at ? new Date(row.next_attempt_at).toISOString() : null,

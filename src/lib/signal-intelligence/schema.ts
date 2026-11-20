@@ -45,4 +45,68 @@ export const SIGNAL_OPERATIONS_MIGRATION = [
     where not resolved and status = 'OPEN' and resolution_time > extract(epoch from now())
       and upper(category) in ('CRYPTO', 'FOOTBALL')
     on conflict (market_id) do nothing`,
+  // Mirrors db/migrations/004_signal_anchors.sql.
+  `create table if not exists signal_anchor_batches (
+    id text primary key, merkle_root text not null unique check (merkle_root ~ '^0x[0-9a-f]{64}$'),
+    signal_count integer not null check (signal_count > 0), tx_hash text not null unique,
+    block_number bigint not null, chain_id bigint not null, contract_address text not null,
+    anchored_at timestamptz not null default now()
+  )`,
+  `create table if not exists signal_anchor_leaves (
+    signal_id text primary key references ai_signals(id),
+    batch_id text not null references signal_anchor_batches(id),
+    leaf_index integer not null check (leaf_index >= 0), proof jsonb not null
+  )`,
+  `create index if not exists signal_anchor_leaves_batch_idx on signal_anchor_leaves (batch_id)`,
+  // Mirrors db/migrations/005_x_pulse.sql.
+  `create table if not exists x_pulse (
+    id text primary key, market_id text not null references markets_index(market_id) on delete cascade,
+    mood text not null check (mood in ('YES', 'NO', 'SPLIT', 'QUIET')),
+    lean double precision check (lean is null or (lean >= 0 and lean <= 1)),
+    volume text not null check (volume in ('quiet', 'active', 'surging')),
+    summary text not null, citations jsonb not null default '[]'::jsonb, model text not null,
+    created_at timestamptz not null default now()
+  )`,
+  `create index if not exists x_pulse_market_time_idx on x_pulse (market_id, created_at desc)`,
+  // Mirrors db/migrations/006_grok_phase2.sql.
+  `create table if not exists market_price_points (
+    market_id text not null, p_yes double precision not null check (p_yes >= 0 and p_yes <= 1),
+    observed_at timestamptz not null default now(), primary key (market_id, observed_at)
+  )`,
+  `create table if not exists price_move_notes (
+    id text primary key, market_id text not null, from_p double precision not null, to_p double precision not null,
+    window_minutes integer not null, note text not null, citations jsonb not null default '[]'::jsonb, model text not null,
+    note_hash text not null check (note_hash ~ '^[a-f0-9]{64}$'), created_at timestamptz not null default now()
+  )`,
+  `create index if not exists price_move_notes_market_idx on price_move_notes (market_id, created_at desc)`,
+  `create table if not exists note_anchor_leaves (
+    note_id text primary key references price_move_notes(id),
+    batch_id text not null references signal_anchor_batches(id),
+    leaf_index integer not null check (leaf_index >= 0), proof jsonb not null
+  )`,
+  `create table if not exists ask_grok_usage (
+    bucket text not null, window_start timestamptz not null, count integer not null default 0,
+    primary key (bucket, window_start)
+  )`,
+  // Mirrors db/migrations/007_grok_phase3.sql.
+  `create table if not exists market_drafts (
+    id text primary key,
+    status text not null default 'draft' check (status in ('draft', 'approved', 'rejected', 'published', 'failed')),
+    symbol text not null, threshold double precision not null check (threshold > 0),
+    horizon_hours integer not null check (horizon_hours between 1 and 72),
+    reason text not null, citations jsonb not null default '[]'::jsonb, reference_price double precision not null,
+    model text not null, published_market_id text, last_error text,
+    created_at timestamptz not null default now(), decided_at timestamptz
+  )`,
+  `create index if not exists market_drafts_status_idx on market_drafts (status, created_at desc)`,
+  // Mirrors db/migrations/008_draft_sentiment.sql.
+  `alter table market_drafts add column if not exists buzz text check (buzz is null or buzz in ('quiet', 'active', 'surging'))`,
+  `alter table market_drafts add column if not exists lean double precision check (lean is null or (lean >= 0 and lean <= 1))`,
+  `alter table market_drafts add column if not exists post_count integer check (post_count is null or post_count >= 0)`,
+  `alter table market_drafts add column if not exists score double precision`,
+  `create table if not exists resolution_evidence (
+    market_id text primary key, likely_result text not null check (likely_result in ('YES', 'NO', 'UNCLEAR')),
+    summary text not null, citations jsonb not null default '[]'::jsonb, model text not null,
+    evidence_hash text not null check (evidence_hash ~ '^[a-f0-9]{64}$'), created_at timestamptz not null default now()
+  )`,
 ] as const;

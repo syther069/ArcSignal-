@@ -142,6 +142,60 @@ jobs:
             --request POST \
             --header "Authorization: Bearer $CRON_SECRET" \
             "$MAINTAIN_V2_URL"
+      - name: Anchor AI signal hashes on Arc
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          ANCHOR_URL: https://arc-signal.xyz/api/cron/anchor-signals
+        run: |
+          test -n "$CRON_SECRET"
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --retry 2 \
+            --retry-all-errors \
+            --connect-timeout 10 \
+            --max-time 55 \
+            --request POST \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "$ANCHOR_URL"
+      - name: Record prices, explain big moves, freeze crowd/price baselines
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          MOVES_URL: https://arc-signal.xyz/api/cron/price-moves
+        run: |
+          test -n "$CRON_SECRET"
+          curl             --silent             --show-error             --fail-with-body             --retry 1             --connect-timeout 10             --max-time 115             --request POST             --header "Authorization: Bearer $CRON_SECRET"             "$MOVES_URL"
+      - name: Gather Grok evidence packs for just-closed markets
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          EVIDENCE_URL: https://arc-signal.xyz/api/cron/evidence-packs
+        run: |
+          test -n "$CRON_SECRET"
+          curl             --silent             --show-error             --fail-with-body             --retry 1             --connect-timeout 10             --max-time 115             --request POST             --header "Authorization: Bearer $CRON_SECRET"             "$EVIDENCE_URL"
+      - name: Draft markets from X trends (at most every 6h, operator approves)
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          DRAFTS_URL: https://arc-signal.xyz/api/cron/trend-drafts
+        run: |
+          test -n "$CRON_SECRET"
+          curl             --silent             --show-error             --fail-with-body             --retry 1             --connect-timeout 10             --max-time 85             --request POST             --header "Authorization: Bearer $CRON_SECRET"             "$DRAFTS_URL"
+      - name: Refresh X Pulse (each market at most every 15 minutes)
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          PULSE_URL: https://arc-signal.xyz/api/cron/x-pulse
+        run: |
+          test -n "$CRON_SECRET"
+          curl \
+            --silent \
+            --show-error \
+            --fail-with-body \
+            --retry 1 \
+            --connect-timeout 10 \
+            --max-time 115 \
+            --request POST \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "$PULSE_URL"
       - name: Generate bounded Signal Intelligence coverage
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

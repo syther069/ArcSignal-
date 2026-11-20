@@ -12,7 +12,7 @@ interface WalletModalProps {
   onClose: () => void;
 }
 
-type WalletBrand = 'rabby' | 'metamask' | 'coinbase' | 'okx' | 'phantom' | 'trust' | 'generic';
+type WalletBrand = 'rabby' | 'metamask' | 'coinbase' | 'okx' | 'phantom' | 'trust' | 'walletconnect' | 'generic';
 
 interface WalletOption {
   key: string;
@@ -69,6 +69,7 @@ function getWalletBrand(connector?: Connector | null): WalletBrand {
   const id = String(connector.id || '').toLowerCase();
   const name = String(connector.name || '').toLowerCase();
 
+  if (id.includes('walletconnect') || name.includes('walletconnect')) return 'walletconnect';
   if (id.includes('rabby') || name.includes('rabby')) return 'rabby';
   if (id.includes('metamask') || name.includes('metamask') || id === 'injected') return 'metamask';
   if (id.includes('coinbase') || name.includes('coinbase')) return 'coinbase';
@@ -87,11 +88,13 @@ function getConnectorLabel(connector?: Connector | null): string {
   if (brand === 'okx') return 'OKX Wallet';
   if (brand === 'phantom') return 'Phantom';
   if (brand === 'trust') return 'Trust Wallet';
+  if (brand === 'walletconnect') return 'Phone wallet (WalletConnect)';
   return String(connector.name || 'Browser Wallet');
 }
 
 function getDescription(brand: WalletBrand, isRecent: boolean, isDetected: boolean) {
   if (isRecent) return 'Recent';
+  if (brand === 'walletconnect') return 'Scan a QR code with any mobile wallet';
   if (isDetected) return 'Detected';
   return 'Available';
 }
@@ -104,7 +107,8 @@ function brandRank(brand: WalletBrand): number {
     case 'coinbase': return 4;
     case 'phantom': return 5;
     case 'trust': return 6;
-    default: return 7;
+    case 'walletconnect': return 7;
+    default: return 8;
   }
 }
 
@@ -412,6 +416,10 @@ export default function WalletModal({ isOpen, onClose }: WalletModalProps) {
               );
             })}
           </div>
+
+          <p className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[13px] leading-snug text-[#b0abb5]">
+            <strong className="text-[#f1eef4]">New to wallets?</strong> A wallet is the app that holds your USDC and confirms each trade. Install one above, or connect a phone wallet by QR code.
+          </p>
 
           {/* Security / Sign-in info badge */}
           <div className="mt-2 flex items-center gap-2.5 rounded-xl border border-[#4fdbc8]/20 bg-[#4fdbc8]/5 px-3 py-2 text-[13px] leading-tight text-[#f1eef4]">

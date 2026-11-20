@@ -6,6 +6,8 @@ export interface AIAnalysis {
   provenance?: { provider: string; model: string; version: string | null; raw: string; generatedAt: string;
     versionSource?: 'provider-version' | 'provider-model-id'; systemFingerprint?: string | null; responseId?: string | null };
   confidenceRange?: [number, number];
+  /** Live X / web sources Grok cited for this forecast (receipts). */
+  citations?: { url: string; title: string | null; kind: 'x' | 'web' }[];
   probability: number;
   confidence: number;
   prediction: 'YES' | 'NO';

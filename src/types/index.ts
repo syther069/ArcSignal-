@@ -43,6 +43,8 @@ export interface Market {
     };  };
   category: MarketCategory;
   subType?: CryptoSubType;
+  /** Set when the market was drafted from an X trend and approved by an operator. */
+  trend?: import('@/lib/trend-drafts-shared').TrendInfo | null;
   title: string;
   description: string;
   agentPick: string;

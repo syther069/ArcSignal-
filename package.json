@@ -31,6 +31,7 @@
     "@neondatabase/serverless": "^1.1.0",
     "@tailwindcss/typography": "^0.5.20",
     "@tanstack/react-query": "^5.41.0",
+    "@walletconnect/ethereum-provider": "^2.26.0",
     "dotenv": "^17.4.2",
     "groq-sdk": "^0.9.1",
     "lucide-react": "^1.21.0",

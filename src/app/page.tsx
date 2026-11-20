@@ -27,7 +27,7 @@ export default async function LandingPage() {
           {stats.activeMarkets > 0 ? `${stats.activeMarkets} ACTIVE MARKETS` : 'LIVE PROTOCOL'}
         </span>
         <span className="text-[#334155]">•</span>
-        <span>{stats.totalVolume > 0 ? `${stats.totalVolume.toLocaleString()} USDC VOLUME` : 'PARI-MUTUEL POOLS'}</span>
+        <span>{stats.totalVolume > 0 ? `${stats.totalVolume.toLocaleString()} USDC VOLUME` : 'LIVE ON ARC MAINNET'}</span>
         <span className="text-[#334155]">•</span>
         <span className="text-[#ddb7ff] group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
           EXPLORE <span className="text-xs">→</span>
@@ -39,7 +39,7 @@ export default async function LandingPage() {
         Trade the signal, <span className="text-[#ddb7ff]">Challenge the AI</span>
       </h1>
       <p className="text-[#94a3b8] text-center max-w-2xl mb-10 text-lg leading-relaxed font-[family-name:var(--font-inter)]">
-        Every market runs on an AI-generated prediction. Follow it and split the pool with everyone who agreed. Fade it and profit if the model is wrong.
+        Every market starts with a public AI forecast. Back it with Follow, or bet against it with Fade. Each share pays 1 USDC if you are right, and every AI call is scored in public.
       </p>
 
       {/* CTA Buttons - Asymmetric Weight */}
@@ -68,7 +68,7 @@ export default async function LandingPage() {
             </div>
             <h3 className="text-xl font-bold text-on-surface mb-3">1. AI Baseline Analysis</h3>
             <p className="text-on-surface-variant leading-relaxed">
-              ArcSignal uses configured AI providers and external market-data APIs to generate a YES or NO prediction. The analysis and settlement rule are published with each testnet market.
+              Three AI analysts read live market data and give a YES or NO forecast with a probability. Each forecast is hashed and stored, and scored against the real result later.
             </p>
           </div>
           
@@ -78,7 +78,7 @@ export default async function LandingPage() {
             </div>
             <h3 className="text-xl font-bold text-on-surface mb-3">2. Follow or Fade</h3>
             <p className="text-on-surface-variant leading-relaxed">
-              Participants interact with a streamlined pari-mutuel smart contract by staking USDC. Choose to <strong>Follow</strong> the AI&apos;s prediction if you agree, or <strong>Fade</strong> it if you have contrarian alpha. Winning pools split the total staked capital proportionally.
+              Pay in USDC. Choose <strong>Follow</strong> if you agree with the AI, or <strong>Fade</strong> if you think it is wrong. The price shows what the crowd believes, and you see your possible payout before you confirm.
             </p>
           </div>
           
@@ -88,7 +88,7 @@ export default async function LandingPage() {
             </div>
             <h3 className="text-xl font-bold text-on-surface mb-3">3. Transparent Resolution</h3>
             <p className="text-on-surface-variant leading-relaxed">
-              When the event concludes, a server-side resolver checks the recorded external-data rule and the owner account submits the result on Arc. The owner remains a trusted settlement authority.
+              Every market lists its question, data source and dispute window up front. Today the ArcSignal operator submits results, so settlement is operator-run, and each market page says so.
             </p>
           </div>
 
@@ -98,7 +98,7 @@ export default async function LandingPage() {
             </div>
             <h3 className="text-xl font-bold text-on-surface mb-3">4. Manual Claims</h3>
             <p className="text-on-surface-variant leading-relaxed">
-              The smart contract calculates pari-mutuel payouts. Winning participants submit a separate claim transaction and pay its Arc network fee in native USDC.
+              Winners claim their USDC from the contract. Arc fees are paid in USDC and cost a fraction of a cent, and you can sell your position for USDC before the market closes.
             </p>
           </div>
         </div>
@@ -131,7 +131,7 @@ export default async function LandingPage() {
             </div>
             <h3 className="text-xl font-bold text-on-surface mb-4">Stake</h3>
             <p className="text-sm text-on-surface-variant mb-8 leading-relaxed">
-              Stake testnet USDC into Follow or Fade pools. Pool shares and potential payouts change as later stakes arrive.
+              Put USDC behind Follow or Fade. The price moves as others trade, so check the payout preview before you confirm.
             </p>
             <Link href="/docs" className="text-xs font-bold text-tertiary hover:text-tertiary-fixed uppercase tracking-widest flex justify-between items-center">
               Staking Rewards <span>→</span>
@@ -144,7 +144,7 @@ export default async function LandingPage() {
             </div>
             <h3 className="text-xl font-bold text-on-surface mb-4">Prevail</h3>
             <p className="text-sm text-on-surface-variant mb-8 leading-relaxed">
-              After the owner submits an outcome, winning participants can verify it on-chain and claim their payout from the contract.
+              Once the result is recorded on Arc, winners can verify it on-chain and claim their payout.
             </p>
             <Link href="/leaderboard" className="text-xs font-bold text-on-surface-variant hover:text-primary uppercase tracking-widest flex justify-between items-center">
               Leaderboard <span>→</span>

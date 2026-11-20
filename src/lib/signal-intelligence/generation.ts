@@ -8,11 +8,13 @@ import { hashAnalysis } from './audit';
 import { getSignals, storeSignal } from './repository';
 import type { AIAgent, SignalAnalysis, SignalSource, TimeHorizon } from './types';
 
-export const AGENT_STYLES = [
-  { id: 'macro', name: 'Macro Analyst Agent', description: 'Broader economic and market context.', reasoningStyle: 'Evaluate broad market context. Explicitly acknowledge economic data missing from the snapshot.' },
-  { id: 'technical', name: 'Technical Signal Agent', description: 'Price action, momentum, and volatility.', reasoningStyle: 'Evaluate price action, momentum and volatility. Do not invent chart history or indicators absent from the snapshot.' },
-  { id: 'contrarian', name: 'Contrarian Risk Agent', description: 'Contradictory evidence and failure cases.', reasoningStyle: 'Stress-test the market thesis and focus on contradictory evidence, uncertainty and failure cases.' },
-] as const;
+import { activeAgentStyles } from './agents';
+
+export { AGENT_STYLES, activeAgentStyles } from './agents';
+function safeHost(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return 'Web source'; }
+}
+
 export function timeHorizon(seconds: number): TimeHorizon {
   return seconds < 86400 ? 'Intraday' : seconds <= 86400 ? '1 day' : seconds <= 604800 ? '1 week' : seconds <= 2678400 ? '1 month' : 'Long-term';
 }
@@ -25,8 +27,9 @@ export async function generateMarketSignals(marketId: string) {
   ]);
   // A completed request is idempotent even if the market subsequently closes
   // or its data provider becomes unavailable. No further provider call is needed.
-  if (AGENT_STYLES.every(style => previous.some(s => s.agentId.startsWith(`${style.id}-`)))) {
-    return AGENT_STYLES.map(style => ({ agent: style.name, status: 'already recorded' }));
+  const styles = activeAgentStyles();
+  if (styles.every(style => previous.some(s => s.agentId.startsWith(`${style.id}-`)))) {
+    return styles.map(style => ({ agent: style.name, status: 'already recorded' }));
   }
   const market = rows[0];
   if (!market) throw new Error('An open, indexed market before its cutoff is required');
@@ -58,7 +61,7 @@ export async function generateMarketSignals(marketId: string) {
   } else throw new Error('Unsupported market category');
   const results: { agent: string; status: string }[] = [];
   // Sequential provider calls bound API pressure. Each successful record commits independently.
-  for (const style of AGENT_STYLES) {
+  for (const style of styles) {
     if (previous.some(s => s.agentId.startsWith(`${style.id}-`))) { results.push({ agent: style.name, status: 'already recorded' }); continue; }
     if (Date.now() / 1000 >= Number(market.resolution_time)) throw new Error('Market cutoff passed');
     const analysis = await generateAnalysis(`You are the ${style.name}. ${style.reasoningStyle}
@@ -67,12 +70,19 @@ Question: ${JSON.stringify(market.question)}. Cutoff: ${new Date(Number(market.r
 Snapshot recorded ${snapshotAt}: ${JSON.stringify(snapshot)}
 Estimate the probability the QUESTION resolves YES (not whether FOLLOW wins).
 Return only JSON: {"probability":0-100,"confidence":0-100,"confidenceRange":[lower0to100,upper0to100],"prediction":"YES or NO","summary":"analysis","bullCase":"case for YES","bearCase":"case for NO","keyFactors":["supporting evidence"],"riskFactors":["contradicting evidence"],"sources":["provided snapshot"],"generatedAt":"ISO timestamp"}.
-The range is your subjective uncertainty interval around the YES estimate and must contain it. It is not a statistically validated confidence interval.`, true);
+The range is your subjective uncertainty interval around the YES estimate and must contain it. It is not a statistically validated confidence interval.`, true, style.provider);
     if (!analysis.provenance || !Array.isArray(analysis.confidenceRange) || analysis.confidenceRange.length !== 2
       || !analysis.keyFactors.every(v => typeof v === 'string') || !analysis.riskFactors?.every(v => typeof v === 'string')) throw new Error('Provider returned incomplete auditable analysis');
     const p = analysis.provenance;
+    // Receipts: the live posts/pages Grok cited become part of the hashed (and anchored) record.
+    const receipts: SignalSource[] = (analysis.citations ?? []).map((c) => ({
+      name: c.kind === 'x' ? `Post on X${c.title ? `: ${c.title}` : ''}` : (c.title ?? safeHost(c.url)),
+      url: c.url,
+      accessedAt: p.generatedAt,
+    }));
+    const recordSnapshot = receipts.length ? { data: snapshot, liveEvidence: analysis.citations } : snapshot;
     const modelKey = createHash('sha256').update(JSON.stringify([p.provider, p.model, p.version])).digest('hex').slice(0, 16);
-    const agent: AIAgent = { ...style, id: `${style.id}-${modelKey}`, modelProvider: p.provider, modelName: p.model,
+    const agent: AIAgent = { name: style.name, description: style.description, reasoningStyle: style.reasoningStyle, id: `${style.id}-${modelKey}`, modelProvider: p.provider, modelName: p.model,
       modelVersion: p.version, modelVersionSource: p.versionSource, status: 'active', createdAt: p.generatedAt };
     const original: Omit<SignalAnalysis, 'analysisHash'> = {
       id: randomUUID(), marketId, agentId: agent.id, agentName: agent.name, modelProvider: p.provider,
@@ -84,7 +94,7 @@ The range is your subjective uncertainty interval around the YES estimate and mu
       probability: analysis.probability / 100, confidence: analysis.confidence / 100,
       confidenceRange: [analysis.confidenceRange[0] / 100, analysis.confidenceRange[1] / 100],
       supportingFactors: analysis.keyFactors, contradictingFactors: analysis.riskFactors,
-      sources: [source], previousSignalId: null, originalAnalysis: p.raw, snapshot,
+      sources: [source, ...receipts], previousSignalId: null, originalAnalysis: p.raw, snapshot: recordSnapshot,
     };
     await storeSignal(agent, { ...original, analysisHash: hashAnalysis(original) });
     results.push({ agent: style.name, status: 'recorded' });

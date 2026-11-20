@@ -1,6 +1,10 @@
 export const ORACLE_POLICY_VERSION = 2;
 
-const ALLOWED_SYMBOLS = new Set(['BTC', 'ETH', 'SOL', 'XRP', 'SUI', 'AVAX']);
+// Extra coins are settleable only when TREND_EXTRA_SYMBOLS=true. The resolver must run with the same flag.
+const ALLOWED_SYMBOLS = new Set([
+  'BTC', 'ETH', 'SOL', 'XRP', 'SUI', 'AVAX',
+  ...(process.env.TREND_EXTRA_SYMBOLS === 'true' ? ['DOGE', 'BNB', 'LINK', 'TON'] : []),
+]);
 const ALLOWED_TIMEFRAMES = new Set(['5m', '15m', '1h', '4h', '24h']);
 
 export interface CryptoOracleSpec {

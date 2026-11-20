@@ -25,6 +25,9 @@ import {
 import { upsertGeneratedMarketIndex } from '@/lib/indexed-markets';
 import { clearChainMarketSnapshotCache } from '@/lib/market-source';
 import { clearMarketCache } from '@/lib/markets';
+import { approvedDraftsToPublish, livePriceMap, markDraftFailed, markDraftPublished } from '@/lib/trend-drafts';
+import { draftCriteria, draftQuestion, validateDraftIdea } from '@/lib/trend-drafts-shared';
+import { generatePulse, storePulse } from '@/lib/x-pulse';
 
 const CONTRACT_ADDRESS = ARCSIGNAL_ADDRESS;
 
@@ -598,6 +601,68 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     errors.push(`[FOOTBALL] Fixtures generation skipped/failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  // OPERATOR-APPROVED MARKETS FROM X TRENDS (drafted by Grok, approved by a human)
+  if (process.env.ENABLE_TREND_DRAFTS === 'true' && (process.env.DATABASE_URL || process.env.POSTGRES_URL)) {
+    try {
+      const drafts = await approvedDraftsToPublish(3);
+      if (drafts.length) {
+        const prices = await livePriceMap();
+        for (const draft of drafts) {
+          try {
+            // Re-check against the live price at publish time; the market may have moved since approval.
+            const checked = validateDraftIdea(draft, prices);
+            if (!checked.ok) throw new Error(`No longer valid: ${checked.reason}`);
+            const resolutionTime = BigInt(Math.floor(Date.now() / 1000) + draft.horizonHours * 3600);
+            const closesAt = new Date(Number(resolutionTime) * 1000);
+            const question = draftQuestion(draft.symbol, draft.threshold, closesAt);
+            const resolutionCriteria = draftCriteria(draft.symbol, draft.threshold, closesAt);
+            const analysis = await generateCryptoAnalysis({
+              question, resolutionCriteria, resolutionTime: closesAt.toUTCString(),
+              cryptoData: { symbol: draft.symbol, current_price: prices[draft.symbol], target_price: draft.threshold, trend_reason_from_x: draft.reason },
+            });
+            const analysisWithOracle = {
+              ...analysis,
+              subType: 'x-trend',
+              trendDraftId: draft.id,
+              // Shown on the market as "Trending on X" so users know why it exists.
+              trendReason: draft.reason,
+              trendBuzz: draft.buzz,
+              trendLean: draft.lean,
+              trendPosts: draft.citations.filter((c) => c.kind === 'x').map((c) => c.url).slice(0, 3),
+              oracle: {
+                version: ORACLE_POLICY_VERSION, settlementModel: 'ai-agreement-v1', provider: 'coingecko', symbol: draft.symbol,
+                targetPrice: draft.threshold, comparator: 'gte', resolutionTimestamp: Number(resolutionTime), maxObservationDelaySeconds: 120,
+              },
+            };
+            const creation = await createConfiguredMarket({
+              legacyMarketId: `${draft.symbol}-XTREND-${draft.id.slice(0, 8)}-${now}`,
+              category: 'CRYPTO', question, analysis: analysisWithOracle as Record<string, unknown>, resolutionTime, resolutionCriteria,
+            });
+            await upsertGeneratedMarketIndex({
+              marketId: creation.marketId, category: 'CRYPTO', question, analysisJson: JSON.stringify(analysisWithOracle), resolutionTime,
+              createdBlock: creation.blockNumber, protocolVersion: creation.protocolVersion, contractAddress: creation.contractAddress,
+              categoryId: creation.categoryId, categoryVersion: creation.categoryVersion, oraclePolicyId: creation.oraclePolicyId,
+              oraclePolicyVersion: creation.oraclePolicyVersion, termsHash: creation.termsHash, resolutionSourceHash: creation.resolutionSourceHash,
+            }).catch((indexError) => indexWarnings.push(`[${creation.marketId}] index update failed: ${indexError instanceof Error ? indexError.message : String(indexError)}`));
+            await markDraftPublished(draft.id, creation.marketId);
+            // Seed X Pulse so the new market shows live X mood right away. Never blocks publishing.
+            if (process.env.ENABLE_X_PULSE === 'true') {
+              await generatePulse(creation.marketId, question, Number(resolutionTime)).then(storePulse)
+                .catch((pulseError) => indexWarnings.push(`[${creation.marketId}] X Pulse seed failed: ${pulseError instanceof Error ? pulseError.message : String(pulseError)}`));
+            }
+            created.push(`[V${creation.protocolVersion} X-TREND] ${question} (Tx: ${creation.hash})`);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            await markDraftFailed(draft.id, message).catch(() => undefined);
+            errors.push(`[X-TREND ${draft.symbol}] ${message}`);
+          }
+        }
+      }
+    } catch (err) {
+      errors.push(`[X-TREND] skipped: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   if (created.length > 0) {

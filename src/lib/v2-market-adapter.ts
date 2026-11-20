@@ -1,6 +1,7 @@
 import type { Market, MarketCategory, MarketOutcome, MarketStatus, SerializableMarket } from './types';
 import type { V2MarketRecord } from './v2-repository';
 import { getSql } from './db';
+import { aiPicksYes } from './market-insight';
 import { getExternalSettlementsByArcMarketIds } from './markets/externalSettlement';
 
 const CATEGORY_BY_ID: Record<number, MarketCategory> = {
@@ -19,9 +20,14 @@ function statusFromV2(state: string): MarketStatus {
   return 'OPEN';
 }
 
-function outcomeFromV2(outcome: string | null): MarketOutcome {
-  if (outcome === 'YES') return 'FOLLOW';
-  if (outcome === 'NO') return 'FADE';
+/**
+ * Maps the on-chain YES/NO result to the product's FOLLOW/FADE label.
+ * FOLLOW means the AI's pick won, so when the AI picked NO a YES result is FADE.
+ */
+export function outcomeFromV2(outcome: string | null, aiPrediction?: string | null): MarketOutcome {
+  const aiIsYes = aiPicksYes(aiPrediction);
+  if (outcome === 'YES') return aiIsYes ? 'FOLLOW' : 'FADE';
+  if (outcome === 'NO') return aiIsYes ? 'FADE' : 'FOLLOW';
   if (outcome === 'UNDETERMINED') return 'CANCELLED';
   return 'PENDING';
 }
@@ -75,7 +81,7 @@ export async function toSerializableV2Markets(records: V2MarketRecord[]): Promis
       followPool: record.collateralLiability,
       fadePool: record.collateralLiability,
       resolved: record.marketState === 'RESOLVED' || record.marketState === 'VOIDED',
-      outcome: outcomeFromV2(record.outcome),
+      outcome: outcomeFromV2(record.outcome, display?.analysis?.prediction),
       status: statusFromV2(record.marketState),
       resolvedAt: record.marketState === 'RESOLVED' || record.marketState === 'VOIDED'
         ? record.resolutionRequestedAt ?? undefined

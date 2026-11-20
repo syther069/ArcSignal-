@@ -26,6 +26,15 @@ describe('crypto market validation', () => {
     expect(assertCryptoData([validMarket])).toEqual([validMarket]);
   });
 
+  it('widens a 24h range that does not contain the current price', () => {
+    const [below] = assertCryptoData([{ ...validMarket, current_price: 7.62, high_24h: 8.1, low_24h: 7.84 }]);
+    expect(below.low_24h).toBe(7.62);
+    expect(below.high_24h).toBe(8.1);
+    const [above] = assertCryptoData([{ ...validMarket, current_price: 9, high_24h: 8.1, low_24h: 7.84 }]);
+    expect(above.high_24h).toBe(9);
+    expect(above.low_24h).toBe(7.84);
+  });
+
   it.each([
     ['NaN current price', { current_price: Number.NaN }],
     ['infinite change', { price_change_percentage_24h: Number.POSITIVE_INFINITY }],

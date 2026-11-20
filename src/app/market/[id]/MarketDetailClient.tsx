@@ -14,10 +14,15 @@ const ExternalV2PositionModal = dynamic(
   { ssr: false }
 );
 
+const SellPositionModal = dynamic(
+  () => import('@/components/markets/SellPositionModal').then((mod) => mod.SellPositionModal),
+  { ssr: false }
+);
+
 type PositionSide = 'FOLLOW' | 'FADE';
 
 function toLiveMarketFromV2(m: Market): ArcSignalLiveMarket {
-  const isYes = String(m.agentPick ?? '').toUpperCase() === 'YES';
+  const isYes = aiPicksYes(m.agentPick);
   return {
     id: m.marketId,
     source: 'internal',
@@ -38,6 +43,11 @@ function toLiveMarketFromV2(m: Market): ArcSignalLiveMarket {
   };
 }
 import { MarketProbabilityChart } from '@/components/markets/MarketProbabilityChart';
+import PriceMoveNote from '@/components/markets/PriceMoveNote';
+import AskGrok from '@/components/markets/AskGrok';
+import EvidencePack from '@/components/markets/EvidencePack';
+import TrendingBadge from '@/components/markets/TrendingBadge';
+import ShareOnX from '@/components/markets/ShareOnX';
 import { MarketTimeline } from '@/components/markets/MarketTimeline';
 import { CountdownTimer } from '@/components/markets/CountdownTimer';
 import { useGlobalTime } from '@/hooks/useGlobalTime';
@@ -47,6 +57,9 @@ import { decodeEventLog } from 'viem';
 import { ARCSIGNAL_ADDRESS, ARCSIGNAL_ABI, CANCELLATION_REFUNDS_ENABLED, arcChain } from '@/lib/contracts';
 import { ARCSIGNAL_MARKET_V2_ABI, OUTCOME_TOKEN_V2_ABI, PREDICTION_MARKET_AMM_V2_ABI } from '@/lib/contracts-v2';
 import { calculateParimutuelPayoutRaw } from '@/lib/parimutuel-math';
+import { aiPicksYes, payoutMultiple, questionOutcome, v2YesProbability } from '@/lib/market-insight';
+import { ResolutionCard } from '@/components/markets/ResolutionCard';
+import { QuickFollowAi } from '@/components/markets/QuickFollowAi';
 import type { ResolutionEvidence } from '@/lib/oracle-evidence';
 import { tradingDesign } from '@/components/layout/TradingDesign';
 import {
@@ -103,6 +116,8 @@ function safeAddress(value: string | undefined): `0x${string}` | undefined {
 export default function MarketDetailClient({ market, resolutionEvidence, initialSignals, signalCoverage }: MarketDetailClientProps) {
   const [stakeModalSide, setStakeModalSide] = useState<StakeSide | null>(null);
   const [v2TradeSide, setV2TradeSide] = useState<PositionSide | null>(null);
+  const [quickBetLimit, setQuickBetLimit] = useState<number | null>(null);
+  const [sellOpen, setSellOpen] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
   const [activeTab, setActiveTab] = useState<'analysis' | 'rules'>('analysis');
   const isV2 = market.protocolVersion === 2;
@@ -221,10 +236,25 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
     : toHumanUsdcNumber(market.fadePool);
 
   const totalPool = followPool + fadePool;
-  const followPercent = totalPool > 0 ? (followPool / totalPool) * 100 : 50;
-  const fadePercent = totalPool > 0 ? (fadePool / totalPool) * 100 : 50;
-  const followMultiplier = totalPool > 0 && followPool > 0 ? totalPool / followPool : 2.0;
-  const fadeMultiplier = totalPool > 0 && fadePool > 0 ? totalPool / fadePool : 2.0;
+  const aiPickUpper = (market.agentPick || 'YES').toUpperCase();
+  const isFollowAi = aiPicksYes(market.agentPick);
+
+  // V2 AMM: the scarcer token is the pricier one, so P(YES) = noReserve / total.
+  // (Reserve share alone points the wrong way.) V1 pari-mutuel keeps pool share.
+  // Only from live reserves: the indexed fallback has equal pools, which would show a fake 50%.
+  const v2YesProb = isV2 && v2Reserves ? v2YesProbability(v2Reserves[0], v2Reserves[1]) : null;
+  // V2: FOLLOW backs the AI's pick, so its price is P(AI side), not always P(YES).
+  const v2FollowProb = v2YesProb === null ? null : (isFollowAi ? v2YesProb : 1 - v2YesProb);
+  const followPercent = isV2 && v2FollowProb !== null
+    ? v2FollowProb * 100
+    : totalPool > 0 ? (followPool / totalPool) * 100 : 50;
+  const fadePercent = 100 - followPercent;
+  const followMultiplier = isV2 && v2FollowProb !== null
+    ? payoutMultiple(v2FollowProb) ?? 2.0
+    : totalPool > 0 && followPool > 0 ? totalPool / followPool : 2.0;
+  const fadeMultiplier = isV2 && v2FollowProb !== null
+    ? payoutMultiple(1 - v2FollowProb) ?? 2.0
+    : totalPool > 0 && fadePool > 0 ? totalPool / fadePool : 2.0;
 
   const categoryLabels: string[] =
     market.category === 'football'
@@ -239,7 +269,12 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
   const v2LpFeeBps = typeof v2LpFeeBpsRaw === 'number' ? v2LpFeeBpsRaw : Number(v2LpFeeBpsRaw ?? 0);
   const isClaimed = (claimedRaw as boolean) || false;
   const resolved = liveMarket?.resolved ?? market.resolved;
-  const outcome = liveMarket?.outcome ?? (market.outcome === 'FOLLOW' ? 1 : market.outcome === 'FADE' ? 2 : 0);
+  // market.outcome is the product label (FOLLOW = AI's pick won). V2 claims need the
+  // real question result (1 = YES, 2 = NO), so convert back using the AI's pick.
+  const productOutcome = market.outcome === 'FOLLOW' ? 1 : market.outcome === 'FADE' ? 2 : 0;
+  const v2QuestionOutcome = questionOutcome(productOutcome, isFollowAi);
+  const outcome = liveMarket?.outcome ?? (isV2 ? v2QuestionOutcome : productOutcome);
+  const followWon = isV2 ? (outcome === 1) === isFollowAi : outcome === 1;
 
   const now = useGlobalTime();
   const isPending = !resolved && (market.status === 'PENDING_RESOLUTION' || market.resolutionTime <= now);
@@ -367,7 +402,7 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
     } else {
       statusLabel = 'RESOLVED';
       statusBadgeClass = 'border-[#DDB7FF]/40 bg-[#DDB7FF]/10 text-[#DDB7FF]';
-      statusAlertMessage = `Market settlement verified on-chain. Outcome: ${outcome === 1 ? 'FOLLOW WON' : 'FADE WON'}.`;
+      statusAlertMessage = `Market settlement verified on-chain. Outcome: ${followWon ? 'FOLLOW WON' : 'FADE WON'}.`;
     }
   } else if (isPending) {
     statusLabel = 'PENDING RESOLUTION';
@@ -379,8 +414,6 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
     statusAlertMessage = 'Market closed for trading — awaiting resolution.';
   }
 
-  const aiPickUpper = (market.agentPick || 'YES').toUpperCase();
-  const isFollowAi = aiPickUpper === 'YES' || aiPickUpper === 'FOLLOW';
 
   return (
     <div className={`${tradingDesign} flex min-h-screen bg-[#131313] text-[#F1EEF4]`}>
@@ -533,6 +566,9 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
             {/* Left Column: Research, Pool Snapshot, Timeline, Analysis (8 cols) */}
             <div className="lg:col-span-8 space-y-6">
 
+              <TrendingBadge trend={market.trend} />
+              {isV2 ? <PriceMoveNote marketId={market.marketId} /> : null}
+
               {/* Pool Snapshot & Probability Visualizer */}
               <MarketProbabilityChart
                 followPercent={followPercent}
@@ -556,8 +592,36 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
                 openedAt={market.resolution_timestamp ? market.resolution_timestamp - 86400 : undefined}
               />
 
+              <div className="flex justify-end">
+                <ShareOnX
+                  marketId={market.marketId}
+                  question={market.title}
+                  aiPick={aiPickUpper === 'YES' || aiPickUpper === 'NO' ? aiPickUpper : null}
+                  aiConfidence={typeof market.confidence === 'number' ? market.confidence : null}
+                  marketYes={v2YesProb}
+                />
+              </div>
+
+              {!isOpen ? <EvidencePack marketId={market.marketId} /> : null}
+
               {/* Research, Analysis & Settlement Section */}
-              <SignalIntelligence marketId={market.marketId} initialSignals={initialSignals} initialCoverage={signalCoverage} />
+              <ResolutionCard
+                isV2={isV2}
+                category={market.category}
+                question={market.title}
+                closesAt={market.resolutionTime}
+                resolutionSource={market.resolution_source}
+                livenessSeconds={market.proof?.liveness}
+                voidAfterSeconds={market.proof?.voidAfter ? market.proof.voidAfter - market.resolutionTime : null}
+                externalSource={market.proof?.externalSettlement?.source}
+              />
+              <SignalIntelligence
+                marketId={market.marketId}
+                initialSignals={initialSignals}
+                initialCoverage={signalCoverage}
+                marketYesProbability={v2YesProb}
+              />
+              {process.env.NEXT_PUBLIC_ENABLE_ASK_GROK === 'true' ? <AskGrok marketId={market.marketId} /> : null}
               <section className="rounded-2xl border border-[#403947] bg-[#1C1B1B] p-5 lg:p-6 space-y-5 shadow-sm">
 
                 {/* Navigation Tabs */}
@@ -942,16 +1006,23 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
                   </div>
                 ) : isOpen && isV2 ? (
                   <div className="space-y-4 pt-1">
+                    <QuickFollowAi
+                      aiSideLabel={isFollowAi ? 'YES' : 'NO'}
+                      onQuickBet={(limit) => {
+                        setQuickBetLimit(limit);
+                        setV2TradeSide('FOLLOW');
+                      }}
+                    />
                     <div className="space-y-2.5">
                       {/* V2 Follow Button */}
                       <button
                         type="button"
-                        onClick={() => setV2TradeSide('FOLLOW')}
+                        onClick={() => { setQuickBetLimit(null); setV2TradeSide('FOLLOW'); }}
                         className="w-full min-h-[48px] flex items-center justify-between py-3 px-4 rounded-xl border border-[#4FDBC8]/40 bg-[#4FDBC8]/10 hover:bg-[#4FDBC8] text-[#4FDBC8] hover:text-[#131313] font-sans font-bold text-xs transition-all duration-140 active:scale-[0.98] shadow-md group"
                       >
                         <div className="flex items-center gap-2">
                           <CheckCircle2 size={18} />
-                          <span>Trade Follow (Buy YES)</span>
+                          <span>Follow AI (buy {isFollowAi ? 'YES' : 'NO'})</span>
                         </div>
                         <span className="font-mono text-xs tabular-nums font-bold">
                           {formatPercentage(followPercent)}
@@ -961,17 +1032,26 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
                       {/* V2 Fade Button */}
                       <button
                         type="button"
-                        onClick={() => setV2TradeSide('FADE')}
+                        onClick={() => { setQuickBetLimit(null); setV2TradeSide('FADE'); }}
                         className="w-full min-h-[48px] flex items-center justify-between py-3 px-4 rounded-xl border border-[#F3A6C8]/40 bg-[#F3A6C8]/10 hover:bg-[#F3A6C8] text-[#F3A6C8] hover:text-[#240B35] font-sans font-bold text-xs transition-all duration-140 active:scale-[0.98] shadow-md group"
                       >
                         <div className="flex items-center gap-2">
                           <XCircle size={18} />
-                          <span>Trade Fade (Buy NO)</span>
+                          <span>Fade AI (buy {isFollowAi ? 'NO' : 'YES'})</span>
                         </div>
                         <span className="font-mono text-xs tabular-nums font-bold">
                           {formatPercentage(fadePercent)}
                         </span>
                       </button>
+                      {address && v2YesBalance + v2NoBalance > 0n && v2MarketAddress && v2AmmAddress ? (
+                        <button
+                          type="button"
+                          onClick={() => setSellOpen(true)}
+                          className="w-full min-h-[44px] rounded-xl border border-[#DDB7FF]/40 text-[#DDB7FF] hover:bg-[#DDB7FF]/10 font-sans font-bold text-xs"
+                        >
+                          Sell your position for USDC
+                        </button>
+                      ) : null}
                     </div>
 
                     <div className="p-3.5 rounded-xl bg-[#252229] border border-[#403947] text-xs text-[#B0ABB5] leading-relaxed space-y-1">
@@ -990,6 +1070,25 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
                       </dl>
                     </div>
                   </div>
+                ) : !resolved ? (
+                  <div className="p-4 rounded-xl bg-[#252229] border border-[#403947] space-y-2 text-center">
+                    <Clock size={24} className="mx-auto text-[#F2C66D]" />
+                    <h4 className="font-mono text-xs font-bold text-[#F1EEF4] uppercase tracking-wider">
+                      Trading closed
+                    </h4>
+                    <p className="text-xs text-[#B0ABB5] leading-relaxed">
+                      The result has not been recorded yet. If you hold a position, you can claim here once the market settles.
+                    </p>
+                    {isV2 && address && v2YesBalance > 0n && v2NoBalance > 0n && v2MarketAddress && v2AmmAddress ? (
+                      <button
+                        type="button"
+                        onClick={() => setSellOpen(true)}
+                        className="w-full min-h-[44px] rounded-xl border border-[#DDB7FF]/40 text-[#DDB7FF] hover:bg-[#DDB7FF]/10 font-sans font-bold text-xs"
+                      >
+                        Merge YES + NO back into USDC
+                      </button>
+                    ) : null}
+                  </div>
                 ) : (
                   /* Resolved / Claim Section */
                   <div className="space-y-4 pt-1">
@@ -999,9 +1098,9 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
                         Official Outcome Recorded
                       </h4>
                       <p className={`font-mono text-lg font-bold tracking-tight ${
-                        outcome === 1 ? 'text-[#4FDBC8]' : outcome === 2 ? 'text-[#F3A6C8]' : 'text-[#F1EEF4]'
+                        outcome === 0 ? 'text-[#F1EEF4]' : followWon ? 'text-[#4FDBC8]' : 'text-[#F3A6C8]'
                       }`}>
-                        {outcome === 1 ? 'FOLLOW WON' : outcome === 2 ? 'FADE WON' : 'CANCELLED / REFUND'}
+                        {outcome === 0 ? 'CANCELLED / REFUND' : followWon ? 'FOLLOW WON' : 'FADE WON'}
                       </p>
                     </div>
 
@@ -1105,8 +1204,22 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
         <ExternalV2PositionModal
           market={toLiveMarketFromV2(market)}
           initialSide={v2TradeSide}
+          quickBetLimit={quickBetLimit ?? undefined}
           onClose={() => {
             setV2TradeSide(null);
+            setQuickBetLimit(null);
+            void Promise.all([refetchV2YesBalance(), refetchV2NoBalance(), refetchV2Reserves()]);
+          }}
+        />
+      )}
+
+      {isV2 && sellOpen && v2MarketAddress && v2AmmAddress && (
+        <SellPositionModal
+          marketAddress={v2MarketAddress}
+          ammAddress={v2AmmAddress}
+          question={market.title}
+          onClose={() => {
+            setSellOpen(false);
             void Promise.all([refetchV2YesBalance(), refetchV2NoBalance(), refetchV2Reserves()]);
           }}
         />

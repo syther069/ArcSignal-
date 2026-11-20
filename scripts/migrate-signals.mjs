@@ -11,6 +11,11 @@ const sql = neon(url);
 const migrationFiles = [
   'db/migrations/001_signal_intelligence.sql',
   'db/migrations/002_signal_generation_jobs.sql',
+  'db/migrations/004_signal_anchors.sql',
+  'db/migrations/005_x_pulse.sql',
+  'db/migrations/006_grok_phase2.sql',
+  'db/migrations/007_grok_phase3.sql',
+  'db/migrations/008_draft_sentiment.sql',
 ];
 const statements = migrationFiles.flatMap(file => readFileSync(file, 'utf8').split('-- statement').map(s => s.trim()).filter(Boolean));
 // Isolated schema test, in one transaction. No test records survive a success or failure.
