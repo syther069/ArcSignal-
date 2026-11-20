@@ -15,7 +15,7 @@ export function priceLabel(price: bigint): 'YES' | 'NO' | 'VOID' {
   return price === ORACLE_YES_PRICE ? 'YES' : price === ORACLE_NO_PRICE ? 'NO' : 'VOID';
 }
 
-export function settlementView(req: { state: number; proposedAt: bigint; liveness: bigint; proposedPrice: bigint; settledPrice: bigint } | null, now: number): SettlementView {
+export function settlementView(req: { state: number; proposedAt: bigint; liveness: bigint; proposedPrice: bigint; settledPrice: bigint } | null, now: number, singleOperator = false): SettlementView {
   const stage = req ? SETTLEMENT_REQUEST_STATE[req.state] ?? 'NONE' : 'NONE';
   if (!req || stage === 'NONE') {
     return { stage: 'not-requested', headline: 'Result not requested yet', detail: 'The result is requested automatically shortly after the market closes.', proposed: null, disputeUntil: null, canDispute: false, canFinalize: false };
@@ -35,7 +35,7 @@ export function settlementView(req: { state: number; proposedAt: bigint; livenes
     };
   }
   if (stage === 'DISPUTED') {
-    return { stage: 'disputed', headline: `Disputed (proposed ${proposed})`, detail: 'A multisig arbiter will decide the final result. Trading and claims wait until then.', proposed, disputeUntil: until, canDispute: false, canFinalize: false };
+    return { stage: 'disputed', headline: `Disputed (proposed ${proposed})`, detail: singleOperator ? 'The ArcSignal operator will review the dispute and decide the final result. Claims wait until then.' : 'A multisig arbiter will decide the final result. Trading and claims wait until then.', proposed, disputeUntil: until, canDispute: false, canFinalize: false };
   }
   const final = priceLabel(req.settledPrice);
   return { stage: 'settled', headline: final === 'VOID' ? 'Settled as void' : `Final result: ${final}`, detail: final === 'VOID' ? 'Holders can redeem their collateral.' : `${final} holders can redeem 1 USDC per token.`, proposed, disputeUntil: until, canDispute: false, canFinalize: false };

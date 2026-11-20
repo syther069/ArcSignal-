@@ -4,6 +4,7 @@ import { summarizeResolution } from '@/lib/market-insight';
 type Props = {
   isV2: boolean;
   settlementLive?: boolean;
+  singleOperator?: boolean;
   category: string;
   question: string;
   closesAt: number;

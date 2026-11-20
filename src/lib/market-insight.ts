@@ -136,6 +136,8 @@ export function summarizeResolution(input: {
   externalSource?: string | null;
   /** False when V2 results cannot be settled on this network yet (no working oracle). */
   settlementLive?: boolean;
+  /** True when one operator wallet both proposes results and decides disputes. */
+  singleOperator?: boolean;
 }): ResolutionSummary {
   const defaultSource = input.category.toLowerCase() === 'football' ? 'API-Football' : 'CoinGecko / Binance prices';
   const source = readableSource(
@@ -172,7 +174,9 @@ export function summarizeResolution(input: {
       ifUnclear: input.voidAfterSeconds && input.voidAfterSeconds > 0
         ? `If no result is settled within ${formatDuration(input.voidAfterSeconds)} of closing, the market is voided and you can redeem your collateral.`
         : 'If no result is settled in time, the market can be voided and collateral returned.',
-      trustNote: 'Disputed results are decided by a multisig arbiter, not by the operator alone. If the arbiter sides with the disputer, their bond is returned.',
+      trustNote: input.singleOperator
+        ? 'Today one ArcSignal operator wallet both proposes results and decides disputes, so you are trusting that operator. Disputes are recorded on chain and the bond is returned if the operator agrees with you.'
+        : 'Disputed results are decided by a multisig arbiter, not by the operator alone. If the arbiter sides with the disputer, their bond is returned.',
     };
   }
   return {

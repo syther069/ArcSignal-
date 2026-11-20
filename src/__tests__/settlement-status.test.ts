@@ -51,3 +51,11 @@ describe('live settlement wording', () => {
     expect(s.trustNote).toContain('multisig arbiter');
   });
 });
+
+describe('single-operator honesty', () => {
+  it('says plainly that one operator decides results and disputes', () => {
+    const s = summarizeResolution({ isV2: true, category: 'crypto', livenessSeconds: 3600, settlementLive: true, singleOperator: true });
+    expect(s.trustNote).toContain('one ArcSignal operator wallet both proposes results and decides disputes');
+    expect(settlementView(req(3), NOW, true).detail).toContain('operator will review the dispute');
+  });
+});

@@ -31,7 +31,7 @@ contract RegisterSettlementOracleTest is Test {
         return RegisterSettlementOracle.Config({
             deployerKey: KEY, registry: registry, usdc: usdc, owner: address(new CodeHolder()),
             proposer: makeAddr("proposer"), arbiter: arbiter, treasury: makeAddr("treasury"),
-            minBond: 1e6, rulesURI: "ipfs://arcsignal/oracle/settlement-v1", allowEoaArbiter: allowEoa
+            minBond: 1e6, rulesURI: "ipfs://arcsignal/oracle/settlement-v1", allowEoaArbiter: allowEoa, allowSingleOperator: false
         });
     }
 
@@ -61,6 +61,18 @@ contract RegisterSettlementOracleTest is Test {
 
     function testAllowsPlainWalletArbiterOnlyWhenExplicit() public {
         (, uint32 next) = script.register(_config(makeAddr("testnetArbiter"), true));
+        assertEq(next, 2);
+    }
+
+    function testSingleOperatorOnlyWithExplicitFlag() public {
+        address one = makeAddr("operator");
+        RegisterSettlementOracle.Config memory c = _config(one, false);
+        c.proposer = one;
+        c.owner = one;
+        vm.expectRevert(bytes("proposer and arbiter must differ"));
+        script.register(c);
+        c.allowSingleOperator = true;
+        (, uint32 next) = script.register(c);
         assertEq(next, 2);
     }
 }

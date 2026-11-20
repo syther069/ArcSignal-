@@ -54,6 +54,9 @@ if (readiness.ready) {
   out.bondOk = policyMin === null ? null : Number(v2DisputeBond()) / 1e6 >= policyMin;
 }
 
-const ok = readiness.ready && out.arbiterIsMultisigContract && out.ownerIsMultisigContract && out.resolverIsProposer && out.bondOk !== false;
-out.verdict = ok ? 'READY: safe to set ENABLE_V2_SETTLEMENT=true' : 'NOT READY: see fields above';
+const singleOperator = process.env.ALLOW_SINGLE_OPERATOR === 'true' || process.env.NEXT_PUBLIC_V2_SINGLE_OPERATOR === 'true';
+out.singleOperatorMode = singleOperator;
+const rolesOk = singleOperator || (out.arbiterIsMultisigContract && out.ownerIsMultisigContract);
+const ok = readiness.ready && rolesOk && out.resolverIsProposer && out.bondOk !== false;
+out.verdict = ok ? (singleOperator ? 'READY (single-operator mode: one wallet proposes and decides disputes)' : 'READY: safe to set ENABLE_V2_SETTLEMENT=true') : 'NOT READY: see fields above';
 console.log(JSON.stringify(out, (_k, v) => (typeof v === 'bigint' ? v.toString() : v), 2));

@@ -28,7 +28,7 @@ export function SettlementPanel({ view, bond, now, busy, onDispute, onFinalize }
     </p> : null}
     {view.canDispute && onDispute ? <div className="mt-3 rounded-xl border border-[#f2c66d]/30 bg-[#f2c66d]/5 p-3">
       <p className="text-xs text-[#f2c66d]">
-        Think this result is wrong? You post {bond !== null ? formatUsdc(bond) : 'a bond'}. If the arbiter agrees with you, you get it back.
+        Think this result is wrong? You post {bond !== null ? formatUsdc(bond) : 'a bond'}. If the decision goes your way, you get it back.
         If not, it goes to the treasury. Only dispute with clear evidence from the stated source.
       </p>
       <button type="button" disabled={busy} onClick={onDispute}
@@ -63,7 +63,7 @@ export default function SettlementStatus({ marketAddress, onChange }: { marketAd
 
   const now = Math.floor(Date.now() / 1000);
   const req = hasKey && request ? request as unknown as SettlementRequest : null;
-  const view = settlementView(req, now);
+  const view = settlementView(req, now, process.env.NEXT_PUBLIC_V2_SINGLE_OPERATOR === 'true');
 
   async function send(label: string, fn: () => Promise<Hash>) {
     const hash = await fn();

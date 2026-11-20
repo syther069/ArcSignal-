@@ -616,6 +616,7 @@ export default function MarketDetailClient({ market, resolutionEvidence, initial
               <ResolutionCard
                 isV2={isV2}
                 settlementLive={isV2 ? process.env.NEXT_PUBLIC_V2_SETTLEMENT_LIVE === 'true' : undefined}
+                singleOperator={process.env.NEXT_PUBLIC_V2_SINGLE_OPERATOR === 'true'}
                 category={market.category}
                 question={market.title}
                 closesAt={market.resolutionTime}

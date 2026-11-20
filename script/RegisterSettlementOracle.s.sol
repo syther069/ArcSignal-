@@ -25,6 +25,9 @@ import {ArcSignalSettlementOracleV2} from "../src/contracts/v2/ArcSignalSettleme
 ///                             the bond the market job creates markets with, or market creation reverts.
 ///   SETTLEMENT_RULES_URI      optional, default "ipfs://arcsignal/oracle/settlement-v1"
 ///   ALLOW_EOA_ARBITER         optional, "true" only for testnet: allows a plain wallet as arbiter/owner
+///   ALLOW_SINGLE_OPERATOR     optional, "true" = deliberate single-operator mode: ONE wallet may be proposer,
+///                             arbiter and owner. Disputes then cannot overrule that wallet. Move to a
+///                             multisig later with setArbiter/setOwner (no redeploy).
 contract RegisterSettlementOracle is Script {
     uint32 internal constant POLICY_ID = 1;
 
@@ -39,6 +42,7 @@ contract RegisterSettlementOracle is Script {
         uint128 minBond;
         string rulesURI;
         bool allowEoaArbiter;
+        bool allowSingleOperator;
     }
 
     function run() external {
@@ -52,14 +56,20 @@ contract RegisterSettlementOracle is Script {
             treasury: vm.envAddress("SETTLEMENT_TREASURY"),
             minBond: uint128(vm.envOr("SETTLEMENT_MIN_BOND", uint256(25e6))),
             rulesURI: vm.envOr("SETTLEMENT_RULES_URI", string("ipfs://arcsignal/oracle/settlement-v1")),
-            allowEoaArbiter: vm.envOr("ALLOW_EOA_ARBITER", false)
+            allowEoaArbiter: vm.envOr("ALLOW_EOA_ARBITER", false),
+            allowSingleOperator: vm.envOr("ALLOW_SINGLE_OPERATOR", false)
         }));
     }
 
     function register(Config memory c) public returns (ArcSignalSettlementOracleV2 oracle, uint32 next) {
-        // Separation of duties: the proposer must not also arbitrate its own proposals.
-        require(c.proposer != c.arbiter, "proposer and arbiter must differ");
-        if (!c.allowEoaArbiter) {
+        if (c.allowSingleOperator) {
+            // Explicit operator choice: one key proposes and arbitrates. Logged loudly.
+            console2.log("WARNING: single-operator mode. One wallet proposes results AND decides disputes.");
+        } else {
+            // Separation of duties: the proposer must not also arbitrate its own proposals.
+            require(c.proposer != c.arbiter, "proposer and arbiter must differ");
+        }
+        if (!c.allowEoaArbiter && !c.allowSingleOperator) {
             require(c.arbiter.code.length > 0, "arbiter must be a multisig contract (set ALLOW_EOA_ARBITER=true on testnet)");
             require(c.owner.code.length > 0, "owner must be a multisig contract (set ALLOW_EOA_ARBITER=true on testnet)");
         }
