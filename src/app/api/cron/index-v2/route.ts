@@ -9,6 +9,7 @@ import {
   type Log,
 } from 'viem';
 import { authorizeCronRequest } from '@/lib/cron-auth';
+import { chainMismatch } from '@/lib/v2-settlement-readiness';
 import { arcTestnet, USDC_ABI } from '@/lib/contracts';
 import { resolveArcRpcUrl } from '@/lib/arc-network';
 import {
@@ -232,9 +233,14 @@ async function syncV2(request: Request) {
     return NextResponse.json({ indexed: false, skipped: true, reason: 'ArcSignal V2 is not deployed/configured' });
   }
 
+  const chainId = BigInt(arcTestnet.id);
+  // Refuse to index if the RPC is a different network than configured. On 2026-11-20 six testnet
+  // markets were found stored as mainnet (chain 5042) rows, showing dead markets on the live site.
+  const mismatch = chainMismatch(await client.getChainId().catch(() => null), Number(chainId));
+  if (mismatch) return NextResponse.json({ indexed: false, error: mismatch }, { status: 503 });
+
   const sql = getSql();
   const leaseToken = randomUUID();
-  const chainId = BigInt(arcTestnet.id);
   const syncId = chainId === 5042002n ? 'arc-v2' : `arc-v2:${chainId}`;
   const confirmations = BigInt(readCount(process.env.V2_INDEX_CONFIRMATIONS, 1));
   const startBlock = ARCSIGNAL_V2_DEPLOYMENT_BLOCK;

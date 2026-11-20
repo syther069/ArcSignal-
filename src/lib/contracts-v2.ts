@@ -163,6 +163,8 @@ export const CATEGORY_REGISTRY_V2_ABI = parseAbi([
 ]);
 
 export const ORACLE_POLICY_REGISTRY_V2_ABI = parseAbi([
+  'function isActive(uint32 policyId,uint32 version) view returns (bool)',
+  'function getVersion(uint32 policyId,uint32 version) view returns ((address adapter,address oracle,address bondCurrency,bytes32 identifier,uint64 minLiveness,uint64 maxLiveness,uint128 minBond,bytes32 rulesHash,string rulesURI,bool activeForNewMarkets))',
   'event OraclePolicyVersionRegistered(uint32 indexed policyId,uint32 indexed version,address indexed adapter,address oracle,address bondCurrency,bytes32 identifier,uint64 minLiveness,uint64 maxLiveness,uint128 minBond,bytes32 rulesHash,string rulesURI)',
   'event OraclePolicyVersionStatusChanged(uint32 indexed policyId,uint32 indexed version,bool activeForNewMarkets)',
   'event RoleAdminChanged(bytes32 indexed role,bytes32 indexed previousAdminRole,bytes32 indexed newAdminRole)',

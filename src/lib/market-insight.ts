@@ -134,6 +134,8 @@ export function summarizeResolution(input: {
   livenessSeconds?: number | null;
   voidAfterSeconds?: number | null;
   externalSource?: string | null;
+  /** False when V2 results cannot be settled on this network yet (no working oracle). */
+  settlementLive?: boolean;
 }): ResolutionSummary {
   const defaultSource = input.category.toLowerCase() === 'football' ? 'API-Football' : 'CoinGecko / Binance prices';
   const source = readableSource(
@@ -147,6 +149,17 @@ export function summarizeResolution(input: {
       disputeWindow: 'None — the result is final as soon as the operator posts it.',
       ifUnclear: 'The operator can cancel the market. Whether stakes are refundable depends on the deployed contract.',
       trustNote: 'You are trusting the operator to report the result honestly.',
+    };
+  }
+  if (input.settlementLive === false) {
+    return {
+      who: 'Automatic settlement for this market type is not live on this network yet.',
+      source,
+      disputeWindow: 'Not active yet.',
+      ifUnclear: input.voidAfterSeconds && input.voidAfterSeconds > 0
+        ? `If no result is settled within ${formatDuration(input.voidAfterSeconds)} of closing, the market is voided and you can redeem your collateral (half the value of your YES + NO tokens).`
+        : 'If no result is settled in time, the market is voided and collateral can be redeemed.',
+      trustNote: 'Until settlement is live, this market cannot pay out a winning side. Trade with that in mind.',
     };
   }
   return {

@@ -93,9 +93,10 @@ export function v2Availability() {
 export async function getV2Markets(limit: number, offset: number) {
   const sql = getSql();
   const rows = await sql`
+    -- Only the active network: mixing in testnet rows showed dead testnet markets on mainnet.
     select * from markets_v2
-    where (chain_id = ${BigInt(arcChain.id)} or chain_id = 5042002 or chain_id = 5042)
-    order by case when chain_id = ${BigInt(arcChain.id)} then 0 else 1 end, created_block desc, market_id asc
+    where chain_id = ${BigInt(arcChain.id)}
+    order by created_block desc, market_id asc
     limit ${limit} offset ${offset}
   `;
   const seen = new Set<string>();
@@ -114,9 +115,8 @@ export async function getV2Market(marketId: string) {
   const sql = getSql();
   const rows = await sql`
     select * from markets_v2
-    where (chain_id = ${BigInt(arcChain.id)} or chain_id = 5042002 or chain_id = 5042)
+    where chain_id = ${BigInt(arcChain.id)}
       and lower(market_id) = lower(${marketId})
-    order by case when chain_id = ${BigInt(arcChain.id)} then 0 else 1 end
     limit 1
   `;
   return rows[0] ? mapMarket(rows[0] as MarketRow) : null;

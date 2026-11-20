@@ -9,6 +9,10 @@ import {IArcSignalOracleAdapterV2} from "./interfaces/IArcSignalOracleAdapterV2.
 import {IOracleConsumerV2} from "./interfaces/IOracleConsumerV2.sol";
 
 /**
+ * DO NOT DEPLOY. Unsafe as written (2026-11-20 review): anyone can propose with no bond, anyone can
+ * re-propose after a dispute and restart the clock, and a disputed settlement can only confirm the
+ * disputed value. Use ArcSignalSettlementOracleV2 instead.
+ *
  * @title HybridOracleRouterV2
  * @notice Production-grade Oracle Router for ArcSignal V2 on Arc Mainnet.
  * Supports:

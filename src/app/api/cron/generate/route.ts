@@ -25,6 +25,7 @@ import {
 import { upsertGeneratedMarketIndex } from '@/lib/indexed-markets';
 import { clearChainMarketSnapshotCache } from '@/lib/market-source';
 import { clearMarketCache } from '@/lib/markets';
+import { checkV2SettlementReady, v2OraclePolicyVersion } from '@/lib/v2-settlement-readiness';
 import { approvedDraftsToPublish, livePriceMap, markDraftFailed, markDraftPublished } from '@/lib/trend-drafts';
 import { draftCriteria, draftQuestion, validateDraftIdea } from '@/lib/trend-drafts-shared';
 import { generatePulse, storePulse } from '@/lib/x-pulse';
@@ -35,7 +36,7 @@ const MARKET_CREATION_VERSION = process.env.ARCSIGNAL_MARKET_CREATION_VERSION;
 const V2_METADATA_SCHEMA_VERSION = 1;
 const V2_CATEGORY_VERSION = 1;
 const V2_ORACLE_POLICY_ID = 1;
-const V2_ORACLE_POLICY_VERSION = 1;
+const V2_ORACLE_POLICY_VERSION = v2OraclePolicyVersion();
 const V2_LIVENESS_SECONDS = 3_600n;
 const V2_VOID_GRACE_SECONDS = 7_200n;
 const V2_PROPOSER_BOND = 1_000_000n;
@@ -113,11 +114,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'RESOLVER_PRIVATE_KEY missing or invalid' }, { status: 500 });
   }
 
-  const createOnV2 = Boolean(
+  let createOnV2 = Boolean(
     MARKET_CREATION_VERSION !== '1'
       && ARCSIGNAL_V2_ENABLED
       && ARCSIGNAL_V2_FACTORY_ADDRESS,
   );
+  // Never create a V2 market that cannot be settled. Fall back to V1 instead.
+  let v2Fallback: string | null = null;
+  if (createOnV2) {
+    const readiness = await checkV2SettlementReady({
+      client: publicClient, factory: ARCSIGNAL_V2_FACTORY_ADDRESS as Address,
+      policyId: V2_ORACLE_POLICY_ID, policyVersion: V2_ORACLE_POLICY_VERSION,
+    });
+    if (!readiness.ready) {
+      createOnV2 = false;
+      v2Fallback = `V2 creation skipped: ${readiness.reason}`;
+      console.warn(v2Fallback);
+    }
+  }
 
   if (!activeArcNetwork.testnet && !createOnV2 && (!CONTRACT_ADDRESS || CONTRACT_ADDRESS === '0x0000000000000000000000000000000000000000')) {
     return NextResponse.json({
@@ -675,6 +689,7 @@ export async function POST(req: Request) {
     skipped,
     errors,
     indexWarnings,
+    v2Fallback,
     summary: `${created.length} created, ${skipped.length} skipped, ${errors.length} failed`,
     totalCombinations,
   });
