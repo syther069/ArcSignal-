@@ -7,3 +7,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# Project handoff
+
+Read `HANDOFF.md` before doing anything else. It has the current state, contract addresses, open work and the hard
+rules: never print or commit keys, never use the compromised wallets listed there, and ask before any mainnet
+transaction, production env change, database migration or push.
